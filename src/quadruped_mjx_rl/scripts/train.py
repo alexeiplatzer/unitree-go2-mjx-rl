@@ -17,7 +17,7 @@ from brax.io import model
 from brax.training.agents.ppo import train as ppo
 from brax.training.agents.ppo import networks as ppo_networks
 
-from src.quadruped_mjx_rl.scripts import ckpt_path, model_path
+from paths import ckpt_path, model_path
 from domain_randomization import domain_randomize
 
 
