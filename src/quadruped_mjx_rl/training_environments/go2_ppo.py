@@ -1,39 +1,24 @@
 # Supporting
-import os
-import time
-import itertools
-import functools
-from datetime import datetime
-from etils import epath
-from typing import Any, Dict, Sequence, Tuple, Callable, NamedTuple, Optional, Union, List
+from typing import Any, Sequence, List
 from ml_collections import config_dict
 
 # Math
 import jax
 import jax.numpy as jp
 import numpy as np
-from jax import config  # Analytical gradients work much better with double precision.
-from flax.training import orbax_utils
-from flax import struct
-from orbax import checkpoint as ocp
 
 # Sim
 import mujoco
-import mujoco.mjx as mjx
 
 # Brax
 from brax import base
 from brax import envs
 from brax import math
-from brax.base import Base, Motion, Transform
-from brax.base import State as PipelineState
-from brax.envs.base import Env, PipelineEnv, State
-from brax.mjx.base import State as MjxState
-from brax.mjx.pipeline import _reformat_contact
-from brax.training.acme import running_statistics
-from brax.io import html, mjcf, model
+from brax.base import Motion, Transform
+from brax.envs.base import PipelineEnv, State
+from brax.io import mjcf
 
-from training_environments import GO2_ROOT_PATH
+from src.quadruped_mjx_rl.training_environments import GO2_ROOT_PATH
 
 
 def get_config():

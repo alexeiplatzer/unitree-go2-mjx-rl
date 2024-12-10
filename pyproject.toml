@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quadruped_mjx_rl"
+version = "0.0.1"
+description = "A Python package with multiple modules."
+readme = "README.md"
+authors = [
+    { name = "Alexei Platzer", email = "alexei.platzer@tum.de" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "mujoco",
+    "brax",
+    "mediapy"
+]
+
+[project.urls]
+Homepage = "https://github.com/alexeiplatzer/unitree-go2-mjx-rl"
+
+[tool.setuptools.packages.find]
+where = ["src"]

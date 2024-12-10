@@ -1,46 +1,24 @@
 # Supporting
-import os
-import time
-import itertools
 import functools
 from datetime import datetime
-from etils import epath
-from typing import Any, Dict, Sequence, Tuple, Callable, NamedTuple, Optional, Union, List
-from ml_collections import config_dict
 import matplotlib.pyplot as plt
 
 # Math
-import jax
-import jax.numpy as jp
-import numpy as np
-from jax import config  # Analytical gradients work much better with double precision.
 from flax.training import orbax_utils
-from flax import struct
 from orbax import checkpoint as ocp
 
 # Sim
-import mujoco
-import mujoco.mjx as mjx
 
 # Brax
-from brax import base
 from brax import envs
-from brax import math
-from brax.base import Base, Motion, Transform
-from brax.base import State as PipelineState
-from brax.envs.base import Env, PipelineEnv, State
-from brax.mjx.base import State as MjxState
-from brax.mjx.pipeline import _reformat_contact
-from brax.training.acme import running_statistics
-from brax.io import html, mjcf, model
+from brax.io import model
 
 # Algorithm
 from brax.training.agents.ppo import train as ppo
 from brax.training.agents.ppo import networks as ppo_networks
 
-from scripts import ckpt_path, model_path
+from src.quadruped_mjx_rl.scripts import ckpt_path, model_path
 from domain_randomization import domain_randomize
-import training_environments.go2_ppo
 
 
 def progress(num_steps, metrics):
