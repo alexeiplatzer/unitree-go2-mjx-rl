@@ -17,27 +17,9 @@ from brax.io import model
 from brax.training.agents.ppo import train as ppo
 from brax.training.agents.ppo import networks as ppo_networks
 
-from paths import ckpt_path, model_path
-from domain_randomization import domain_randomize
-from quadruped_mjx_rl.training_environments import go2_ppo
-
-
-def progress(num_steps, metrics):
-    times.append(datetime.now())
-    x_data.append(num_steps)
-    y_data.append(metrics['eval/episode_reward'])
-    ydataerr.append(metrics['eval/episode_reward_std'])
-
-    plt.xlim([0, train_fn.keywords['num_timesteps'] * 1.25])
-    plt.ylim([min_y, max_y])
-
-    plt.xlabel('# environment steps')
-    plt.ylabel('reward per episode')
-    plt.title(f'y={y_data[-1]:.3f}')
-
-    plt.errorbar(
-        x_data, y_data, yerr=ydataerr)
-    plt.show()
+from .paths import ckpt_path, model_path
+from .domain_randomization import domain_randomize
+from ..training_environments import go2_ppo
 
 
 def policy_params_fn(current_step, make_policy, params):
@@ -48,7 +30,25 @@ def policy_params_fn(current_step, make_policy, params):
     orbax_checkpointer.save(path, params, force=True, save_args=save_args)
 
 
-if __name__ == '__main__':
+def train():
+
+    def progress(num_steps, metrics):
+        times.append(datetime.now())
+        x_data.append(num_steps)
+        y_data.append(metrics['eval/episode_reward'])
+        ydataerr.append(metrics['eval/episode_reward_std'])
+
+        plt.xlim([0, train_fn.keywords['num_timesteps'] * 1.25])
+        plt.ylim([min_y, max_y])
+
+        plt.xlabel('# environment steps')
+        plt.ylabel('reward per episode')
+        plt.title(f'y={y_data[-1]:.3f}')
+
+        plt.errorbar(
+            x_data, y_data, yerr=ydataerr)
+        plt.show()
+
     env_name = 'joystick_go2'
     env = envs.get_environment(env_name)
 
