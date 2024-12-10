@@ -19,6 +19,7 @@ from brax.training.agents.ppo import networks as ppo_networks
 
 from paths import ckpt_path, model_path
 from domain_randomization import domain_randomize
+from quadruped_mjx_rl.training_environments import go2_ppo
 
 
 def progress(num_steps, metrics):

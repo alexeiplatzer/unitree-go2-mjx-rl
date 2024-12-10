@@ -18,7 +18,7 @@ from brax.base import Motion, Transform
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
-from paths import GO2_ROOT_PATH
+from .paths import GO2_ROOT_PATH
 
 
 def get_config():
