@@ -20,6 +20,7 @@ from brax.training.agents.ppo import networks as ppo_networks
 from .paths import ckpt_path, model_path
 from .domain_randomization import domain_randomize
 from ..training_environments import go2_ppo
+from ..training_environments import go2_teacher
 
 
 def policy_params_fn(current_step, make_policy, params):
