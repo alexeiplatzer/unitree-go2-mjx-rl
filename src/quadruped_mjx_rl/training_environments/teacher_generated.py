@@ -22,7 +22,15 @@ class RewardThresholdCurriculum:
         self.yaw_range = yaw_vel
         self.weights = np.ones((1,))  # placeholder for some distribution logic
 
-    def update(self, old_bins, lin_vel_rewards, ang_vel_rewards, lin_vel_thresh, ang_vel_thresh, local_range=0.5):
+    def update(
+        self,
+        old_bins,
+        lin_vel_rewards,
+        ang_vel_rewards,
+        lin_vel_thresh,
+        ang_vel_thresh,
+        local_range=0.5,
+    ):
         # Implement curriculum logic here
         pass
 
@@ -30,7 +38,9 @@ class RewardThresholdCurriculum:
         # Sample new commands from the distribution
         x_cmd = self.rng.uniform(self.x_range[0], self.x_range[1], size=batch_size)
         y_cmd = self.rng.uniform(self.y_range[0], self.y_range[1], size=batch_size)
-        yaw_cmd = self.rng.uniform(self.yaw_range[0], self.yaw_range[1], size=batch_size)
+        yaw_cmd = self.rng.uniform(
+            self.yaw_range[0], self.yaw_range[1], size=batch_size
+        )
         bins = np.zeros(batch_size, dtype=int)
         return np.stack([x_cmd, y_cmd, yaw_cmd], axis=1), bins
 
@@ -41,23 +51,25 @@ class LeggedRobotEnv(env.Env):
     Suitable for teacher-student PPO setup.
     """
 
-    def __init__(self,
-                 seed=0,
-                 num_envs=1,
-                 episode_length=1000,
-                 dt=0.002,
-                 action_scale=0.5,
-                 # Curriculum and domain randomization configs:
-                 curriculum_cfg=None,
-                 domain_rand_cfg=None,
-                 # Teacher-student configs:
-                 observe_command=True,
-                 observe_vel=True,
-                 observe_only_lin_vel=False,
-                 observe_only_ang_vel=False,
-                 observe_yaw=False,
-                 measure_heights=False,
-                 **kwargs):
+    def __init__(
+        self,
+        seed=0,
+        num_envs=1,
+        episode_length=1000,
+        dt=0.002,
+        action_scale=0.5,
+        # Curriculum and domain randomization configs:
+        curriculum_cfg=None,
+        domain_rand_cfg=None,
+        # Teacher-student configs:
+        observe_command=True,
+        observe_vel=True,
+        observe_only_lin_vel=False,
+        observe_only_ang_vel=False,
+        observe_yaw=False,
+        measure_heights=False,
+        **kwargs
+    ):
         self._num_envs = num_envs
         self._episode_length = episode_length
         self._action_scale = action_scale
@@ -75,7 +87,7 @@ class LeggedRobotEnv(env.Env):
         self.domain_rand_cfg = domain_rand_cfg or {}
 
         # Load MJCF model
-        sys = mjcf.load('path/to/robot.xml')
+        sys = mjcf.load("path/to/robot.xml")
         self.sys = sys
 
         # Curriculum initialization
@@ -112,8 +124,11 @@ class LeggedRobotEnv(env.Env):
         if self.domain_rand_cfg.get("randomize_base_mass", False):
             rng, subrng = jax.random.split(rng)
             payload_range = self.domain_rand_cfg.get("added_mass_range", (0.0, 5.0))
-            self._payloads = jax.random.uniform(subrng, (self._num_envs,)) * (payload_range[1] - payload_range[0]) + \
-                             payload_range[0]
+            self._payloads = (
+                jax.random.uniform(subrng, (self._num_envs,))
+                * (payload_range[1] - payload_range[0])
+                + payload_range[0]
+            )
 
         # Apply payload as mass changes - in Brax, mass changes require reconstructing sys or a similar workaround.
         # For simplicity, we won't dynamically change it here, but you could by modifying sys.def.
@@ -126,7 +141,7 @@ class LeggedRobotEnv(env.Env):
             obs=self._get_observation(pipeline_state),
             reward=jnp.zeros(self._num_envs),
             done=jnp.zeros(self._num_envs, dtype=bool),
-            metrics={}
+            metrics={},
         )
         self._current_step = 0
         return state, rng
@@ -151,11 +166,7 @@ class LeggedRobotEnv(env.Env):
         extras = self._get_privileged_info(qp)
 
         new_state = state.replace(
-            qp=qp,
-            obs=obs,
-            reward=rew,
-            done=done,
-            metrics=metrics
+            qp=qp, obs=obs, reward=rew, done=done, metrics=metrics
         )
 
         self._current_step += 1
@@ -188,7 +199,11 @@ class LeggedRobotEnv(env.Env):
             obs_list = [self.commands, base_vel] if self.observe_command else [base_vel]
 
         if self.observe_only_ang_vel:
-            obs_list = [self.commands, base_ang_vel] if self.observe_command else [base_ang_vel]
+            obs_list = (
+                [self.commands, base_ang_vel]
+                if self.observe_command
+                else [base_ang_vel]
+            )
 
         if self.observe_yaw:
             # extract yaw from orientation
@@ -200,10 +215,16 @@ class LeggedRobotEnv(env.Env):
             cosy_cosp = 1.0 - 2.0 * (rot[2] * rot[2] + rot[3] * rot[3])
             yaw = jnp.arctan2(siny_cosp, cosy_cosp)
             heading_error = jnp.clip(0.5 * yaw, -1.0, 1.0)
-            obs_list.append(heading_error.reshape(-1, 1) if len(heading_error.shape) == 1 else heading_error)
+            obs_list.append(
+                heading_error.reshape(-1, 1)
+                if len(heading_error.shape) == 1
+                else heading_error
+            )
 
         # Add joint angles and velocities
-        joint_pos = self.sys.link_jnt(qp)  # link_jnt gives joint angles if defined correctly
+        joint_pos = self.sys.link_jnt(
+            qp
+        )  # link_jnt gives joint angles if defined correctly
         joint_vel = self.sys.link_jntd(qp)
 
         obs_list.append(joint_pos)
@@ -215,8 +236,13 @@ class LeggedRobotEnv(env.Env):
         # If implemented, obs_list.append(height_measurements)
 
         # Combine all
-        obs = jnp.concatenate([x if x.ndim > 1 else x[jnp.newaxis, :]
-        if x.ndim == 1 else x for x in obs_list], axis=-1)
+        obs = jnp.concatenate(
+            [
+                x if x.ndim > 1 else x[jnp.newaxis, :] if x.ndim == 1 else x
+                for x in obs_list
+            ],
+            axis=-1,
+        )
         return obs
 
     def _compute_reward(self, qp: brax.QP, action: jp.ndarray):
@@ -244,10 +270,11 @@ class LeggedRobotEnv(env.Env):
         friction = self._friction_coeffs
         payload = self._payloads
         motor_strength = self._motor_strengths.mean(axis=1)
-        priv_obs = jnp.stack([jnp.ones(self._num_envs) * friction,
-                              payload,
-                              motor_strength], axis=-1)
+        priv_obs = jnp.stack(
+            [jnp.ones(self._num_envs) * friction, payload, motor_strength], axis=-1
+        )
         return {"privileged_obs": priv_obs}
+
 
 # Example usage:
 # env = LeggedRobotEnv(

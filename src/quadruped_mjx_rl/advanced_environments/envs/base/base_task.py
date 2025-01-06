@@ -49,7 +49,9 @@ class BaseEnv(PipelineEnv):
         self.reset_buf = jnp.ones(self.num_envs, dtype=jnp.int32)
         self.episode_length_buf = jnp.zeros(self.num_envs, dtype=jnp.int32)
         self.time_out_buf = jnp.zeros(self.num_envs, dtype=jnp.bool_)
-        self.privileged_obs_buf = jnp.zeros(shape=(self.num_envs, self.num_privileged_obs), dtype=jnp.float32)
+        self.privileged_obs_buf = jnp.zeros(
+            shape=(self.num_envs, self.num_privileged_obs), dtype=jnp.float32
+        )
 
         self.extras = {}
 
@@ -66,11 +68,16 @@ class BaseEnv(PipelineEnv):
         if horizon == 0:
             return self.privileged_obs_buf
         else:
-            env_timesteps_remaining_until_rand = (int(self._config.domain_rand.rand_interval)
-                                                  - self.episode_length_buf % int(self.cfg.domain_rand.rand_interval))
-            switched_env_ids = torch.arange(self.num_envs, device=self.device)[env_timesteps_remaining_until_rand>=horizon]
+            env_timesteps_remaining_until_rand = int(
+                self._config.domain_rand.rand_interval
+            ) - self.episode_length_buf % int(self.cfg.domain_rand.rand_interval)
+            switched_env_ids = torch.arange(self.num_envs, device=self.device)[
+                env_timesteps_remaining_until_rand >= horizon
+            ]
             privileged_obs_buf = self.privileged_obs_buf
-            privileged_obs_buf[switched_env_ids] = self.next_privileged_obs_buf[switched_env_ids]
+            privileged_obs_buf[switched_env_ids] = self.next_privileged_obs_buf[
+                switched_env_ids
+            ]
             return privileged_obs_buf
 
     def reset_idx(self, env_ids):
@@ -78,10 +85,11 @@ class BaseEnv(PipelineEnv):
         raise NotImplementedError
 
     def reset(self, rng: jax.Array):
-        """ Reset all robots"""
+        """Reset all robots"""
         self.reset_idx(torch.arange(self.num_envs))
         obs, privileged_obs, _, _, _ = self.step(
-            torch.zeros(self.num_envs, self.num_actions, requires_grad=False))
+            torch.zeros(self.num_envs, self.num_actions, requires_grad=False)
+        )
         return obs, privileged_obs
 
     def step(self, state: State, actions: jax.Array):

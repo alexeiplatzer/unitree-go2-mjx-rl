@@ -1,5 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Any
+
+from ml_collections import ConfigDict
 
 import jax
 import jax.numpy as jnp
@@ -21,9 +23,12 @@ class Go2TeacherEnvConfig:
     timestep: float = 0.002
 
 
+go2_teacher_env_config = ConfigDict(asdict(Go2TeacherEnvConfig()))
+
+
 class Go2TeacherEnv(PipelineEnv):
 
-    def __init__(self, config: Go2TeacherEnvConfig = Go2TeacherEnvConfig()):
+    def __init__(self, config: ConfigDict):
 
         self._config = config
         n_frames = int(config.dt / config.timestep)
@@ -34,7 +39,7 @@ class Go2TeacherEnv(PipelineEnv):
 
         self._nv = sys.nv
 
-    def make_system(self, config: Go2TeacherEnvConfig) -> System:
+    def make_system(self, config: ConfigDict) -> System:
         model_path = config.model_path
         sys = mjcf.load(model_path)
         sys = sys.tree_replace({"opt.timestep": config.timestep})
@@ -48,7 +53,7 @@ class Go2TeacherEnv(PipelineEnv):
         state_info = {
             "rng": rng,
             "last_contact": jnp.zeros(4, dtype=jnp.bool),
-            "step": 0
+            "step": 0,
         }
 
         obs = self._get_obs(pipeline_state, state_info)
@@ -81,13 +86,26 @@ class Go2TeacherEnv(PipelineEnv):
         )
         return state
 
-    def _get_obs(self, pipeline_state: PipelineState, state_info: dict[str, Any]) -> jax.Array:
+    def _get_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, Any],
+        obs_history: jax.Array,
+    ) -> jax.Array:
 
-        obs = jnp.concatenate([
-            state_info["last_act"]
-        ])
+        obs = jnp.concatenate([state_info["last_act"]])
+
+        priveleged_obs = jnp.concatenate([])
+
+        # stack observations through time
+        obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
 
         return obs
 
+    def get_privileged_observations(
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
+    ) -> jax.Array:
+        pass
 
-envs.register_environment(env_name='go2_teacher', env_class=Go2TeacherEnv)
+
+envs.register_environment(env_name="go2_teacher", env_class=Go2TeacherEnv)

@@ -23,23 +23,29 @@ def ang_vel_yaw(env, actor_critic, obs):
 
 def base_height(env, actor_critic, obs):
     import torch
-    return torch.mean(env.root_states[:, 2].unsqueeze(1) - env.measured_heights, dim=1).cpu()
+
+    return torch.mean(
+        env.root_states[:, 2].unsqueeze(1) - env.measured_heights, dim=1
+    ).cpu()
 
 
 def max_torques(env, actor_critic, obs):
     import torch
+
     max_torque, max_torque_indices = torch.max(torch.abs(env.torques), dim=1)
     return max_torque.cpu()
 
 
 def power_consumption(env, actor_critic, obs):
     import torch
+
     return torch.sum(torch.multiply(env.torques, env.dof_vel), dim=1).cpu()
 
 
 def CoT(env, actor_critic, obs):
     # P / (mgv)
     import torch
+
     P = power_consumption(env, actor_critic, obs)
     m = (env.default_body_mass + env.payloads).cpu()
     g = 9.8  # m/s^2
@@ -52,11 +58,12 @@ def froude_number(env, actor_critic, obs):
     v = lin_vel_x(env, actor_critic, obs)
     g = 9.8
     h = 0.30
-    return v ** 2 / (g * h)
+    return v**2 / (g * h)
 
 
 def adaptation_loss(env, actor_critic, obs):
     import torch
+
     if hasattr(actor_critic, "adaptation_module"):
         pred = actor_critic.adaptation_module(obs["obs_history"])
         target = actor_critic.env_factor_encoder(obs["privileged_obs"])
@@ -84,9 +91,13 @@ def latents(env, actor_critic, obs):
     return actor_critic.env_factor_encoder(obs["privileged_obs"]).cpu().numpy()
 
 
-METRICS_FNS = {name: fn for name, fn in locals().items() if name not in ['to_numpy'] and "__" not in name}
+METRICS_FNS = {
+    name: fn
+    for name, fn in locals().items()
+    if name not in ["to_numpy"] and "__" not in name
+}
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(*METRICS_FNS.items(), sep="\n")
 
     import torch
@@ -97,4 +108,3 @@ if __name__ == '__main__':
 
     metric = lin_vel_rmsd(env, None, None)
     print(metric)
-    

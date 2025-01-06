@@ -18,22 +18,18 @@ class DistCache:
             **key_vals:
         """
         for k, v in key_vals.items():
-            count = self.cache[k + '@counts'] + 1
-            self.cache[k + '@counts'] = count
+            count = self.cache[k + "@counts"] + 1
+            self.cache[k + "@counts"] = count
             self.cache[k] = v + (count - 1) * self.cache[k]
             self.cache[k] /= count
 
     def get_summary(self):
-        ret = {
-            k: v
-            for k, v in self.cache.items()
-            if not k.endswith("@counts")
-        }
+        ret = {k: v for k, v in self.cache.items() if not k.endswith("@counts")}
         self.cache.clear()
         return ret
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cl = DistCache()
     lin_vel = np.ones((11, 11))
     ang_vel = np.zeros((5, 5))
@@ -63,22 +59,18 @@ class SlotCache:
             slots = range(self.n)
 
         for k, v in key_vals.items():
-            counts = self.cache[k + '@counts'][slots] + 1
-            self.cache[k + '@counts'][slots] = counts
+            counts = self.cache[k + "@counts"][slots] + 1
+            self.cache[k + "@counts"][slots] = counts
             self.cache[k][slots] = v + (counts - 1) * self.cache[k][slots]
             self.cache[k][slots] /= counts
 
     def get_summary(self):
-        ret = {
-            k: v
-            for k, v in self.cache.items()
-            if not k.endswith("@counts")
-        }
+        ret = {k: v for k, v in self.cache.items() if not k.endswith("@counts")}
         self.cache.clear()
         return ret
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cl = SlotCache(100)
     reset_env_ids = [2, 5, 6]
     lin_vel = [0.1, 0.5, 0.8]
