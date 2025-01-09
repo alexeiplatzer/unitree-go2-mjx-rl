@@ -21,70 +21,12 @@ from brax.io import mjcf
 from .paths import GO2_ROOT_PATH
 
 
-def get_config():
-    """Returns reward config for barkour quadruped environment."""
-
-    def get_default_rewards_config():
-        default_config = config_dict.ConfigDict(
-            dict(
-                # The coefficients for all reward terms used for training. All
-                # physical quantities are in SI units, if no otherwise specified,
-                # i.e. joint positions are in rad, positions are measured in meters,
-                # torques in Nm, and time in seconds, and forces in Newtons.
-                scales=config_dict.ConfigDict(
-                    dict(
-                        # Tracking rewards are computed using exp(-delta^2/sigma)
-                        # sigma can be a hyperparameters to tune.
-                        # Track the base x-y velocity (no z-velocity tracking.)
-                        tracking_lin_vel=1.5,
-                        # Track the angular velocity along z-axis, i.e. yaw rate.
-                        tracking_ang_vel=0.8,
-                        # Below are regularization terms, we roughly divide the
-                        # terms to base state regularizations, joint
-                        # regularizations, and other behavior regularizations.
-                        # Penalize the base velocity in z direction, L2 penalty.
-                        lin_vel_z=-2.0,
-                        # Penalize the base roll and pitch rate. L2 penalty.
-                        ang_vel_xy=-0.05,
-                        # Penalize non-zero roll and pitch angles. L2 penalty.
-                        orientation=-5.0,
-                        # L2 regularization of joint torques, |tau|^2.
-                        torques=-0.0002,
-                        # Penalize the change in the action and encourage smooth
-                        # actions. L2 regularization |action - last_action|^2
-                        action_rate=-0.01,
-                        # Encourage long swing steps.  However, it does not
-                        # encourage high clearances.
-                        feet_air_time=0.2,
-                        # Encourage no motion at zero command, L2 regularization
-                        # |q - q_default|^2.
-                        stand_still=-0.5,
-                        # Early termination penalty.
-                        termination=-1.0,
-                        # Penalizing foot slipping on the ground.
-                        foot_slip=-0.1,
-                    )
-                ),
-                # Tracking reward = exp(-error^2/sigma).
-                tracking_sigma=0.25,
-            )
-        )
-        return default_config
-
-    default_config = config_dict.ConfigDict(
-        dict(
-            rewards=get_default_rewards_config(),
-        )
-    )
-
-    return default_config
-
-
 class Go2JoystickEnv(PipelineEnv):
     """Environment for training the go2 quadruped joystick policy in MJX."""
 
     def __init__(
         self,
+        rewards: dict,
         obs_noise: float = 0.05,
         action_scale: float = 0.3,
         kick_vel: float = 0.05,
@@ -106,11 +48,11 @@ class Go2JoystickEnv(PipelineEnv):
         n_frames = kwargs.pop("n_frames", int(self._dt / sys.opt.timestep))
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        self.reward_config = get_config()
+        self.rewards = config_dict.ConfigDict(rewards)
         # set custom from kwargs
         for k, v in kwargs.items():
             if k.endswith("_scale"):
-                self.reward_config.rewards.scales[k[:-6]] = v
+                self.rewards.scales[k[:-6]] = v
 
         self._torso_idx = mujoco.mj_name2id(
             sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, "base"
@@ -155,12 +97,8 @@ class Go2JoystickEnv(PipelineEnv):
         ang_vel_yaw = [-0.7, 0.7]  # min max [rad/s]
 
         _, key1, key2, key3 = jax.random.split(rng, 4)
-        lin_vel_x = jax.random.uniform(
-            key1, (1,), minval=lin_vel_x[0], maxval=lin_vel_x[1]
-        )
-        lin_vel_y = jax.random.uniform(
-            key2, (1,), minval=lin_vel_y[0], maxval=lin_vel_y[1]
-        )
+        lin_vel_x = jax.random.uniform(key1, (1,), minval=lin_vel_x[0], maxval=lin_vel_x[1])
+        lin_vel_y = jax.random.uniform(key2, (1,), minval=lin_vel_y[0], maxval=lin_vel_y[1])
         ang_vel_yaw = jax.random.uniform(
             key3, (1,), minval=ang_vel_yaw[0], maxval=ang_vel_yaw[1]
         )
@@ -240,12 +178,8 @@ class Go2JoystickEnv(PipelineEnv):
 
         # reward
         rewards = {
-            "tracking_lin_vel": (
-                self._reward_tracking_lin_vel(state.info["command"], x, xd)
-            ),
-            "tracking_ang_vel": (
-                self._reward_tracking_ang_vel(state.info["command"], x, xd)
-            ),
+            "tracking_lin_vel": (self._reward_tracking_lin_vel(state.info["command"], x, xd)),
+            "tracking_ang_vel": (self._reward_tracking_ang_vel(state.info["command"], x, xd)),
             "lin_vel_z": self._reward_lin_vel_z(xd),
             "ang_vel_xy": self._reward_ang_vel_xy(xd),
             "orientation": self._reward_orientation(x),
@@ -265,9 +199,7 @@ class Go2JoystickEnv(PipelineEnv):
             "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
             "termination": self._reward_termination(done, state.info["step"]),
         }
-        rewards = {
-            k: v * self.reward_config.rewards.scales[k] for k, v in rewards.items()
-        }
+        rewards = {k: v * self.rewards.scales[k] for k, v in rewards.items()}
         reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
         # state management
@@ -287,18 +219,14 @@ class Go2JoystickEnv(PipelineEnv):
             state.info["command"],
         )
         # reset the step counter when done
-        state.info["step"] = jp.where(
-            done | (state.info["step"] > 500), 0, state.info["step"]
-        )
+        state.info["step"] = jp.where(done | (state.info["step"] > 500), 0, state.info["step"])
 
         # log total displacement as a proxy metric
         state.metrics["total_dist"] = math.normalize(x.pos[self._torso_idx - 1])[1]
         state.metrics.update(state.info["rewards"])
 
         done = jp.float32(done)
-        state = state.replace(
-            pipeline_state=pipeline_state, obs=obs, reward=reward, done=done
-        )
+        state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
         return state
 
     def _get_obs(
@@ -358,9 +286,7 @@ class Go2JoystickEnv(PipelineEnv):
         # Tracking of linear velocity commands (xy axes)
         local_vel = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
         lin_vel_error = jp.sum(jp.square(commands[:2] - local_vel[:2]))
-        lin_vel_reward = jp.exp(
-            -lin_vel_error / self.reward_config.rewards.tracking_sigma
-        )
+        lin_vel_reward = jp.exp(-lin_vel_error / self.rewards.tracking_sigma)
         return lin_vel_reward
 
     def _reward_tracking_ang_vel(
@@ -369,16 +295,14 @@ class Go2JoystickEnv(PipelineEnv):
         # Tracking of angular velocity commands (yaw)
         base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         ang_vel_error = jp.square(commands[2] - base_ang_vel[2])
-        return jp.exp(-ang_vel_error / self.reward_config.rewards.tracking_sigma)
+        return jp.exp(-ang_vel_error / self.rewards.tracking_sigma)
 
     def _reward_feet_air_time(
         self, air_time: jax.Array, first_contact: jax.Array, commands: jax.Array
     ) -> jax.Array:
         # Reward air time.
         rew_air_time = jp.sum((air_time - 0.1) * first_contact)
-        rew_air_time *= (
-            math.normalize(commands[:2])[1] > 0.05
-        )  # no reward for zero command
+        rew_air_time *= math.normalize(commands[:2])[1] > 0.05  # no reward for zero command
         return rew_air_time
 
     def _reward_stand_still(
@@ -418,6 +342,3 @@ class Go2JoystickEnv(PipelineEnv):
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
-
-
-envs.register_environment("joystick_go2", Go2JoystickEnv)

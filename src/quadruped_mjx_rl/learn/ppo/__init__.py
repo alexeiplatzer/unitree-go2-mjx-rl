@@ -133,9 +133,7 @@ class Runner:
         lenbuffer = deque(maxlen=100)
         rewbuffer_eval = deque(maxlen=100)
         lenbuffer_eval = deque(maxlen=100)
-        cur_reward_sum = torch.zeros(
-            self.env.num_envs, dtype=torch.float, device=self.device
-        )
+        cur_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
         cur_episode_length = torch.zeros(
             self.env.num_envs, dtype=torch.float, device=self.device
         )
@@ -230,9 +228,7 @@ class Runner:
                         new_ids = (dones > 0).nonzero(as_tuple=False)
 
                         new_ids_train = new_ids[new_ids < num_train_envs]
-                        rewbuffer.extend(
-                            cur_reward_sum[new_ids_train].cpu().numpy().tolist()
-                        )
+                        rewbuffer.extend(cur_reward_sum[new_ids_train].cpu().numpy().tolist())
                         lenbuffer.extend(
                             cur_episode_length[new_ids_train].cpu().numpy().tolist()
                         )
@@ -250,9 +246,7 @@ class Runner:
                         cur_episode_length[new_ids_eval] = 0
 
                 # Learning step
-                self.alg.compute_returns(
-                    obs[:num_train_envs], privileged_obs[:num_train_envs]
-                )
+                self.alg.compute_returns(obs[:num_train_envs], privileged_obs[:num_train_envs])
 
                 if it % eval_freq == 0:
                     self.env.reset_evaluation_envs()
@@ -310,15 +304,11 @@ class Runner:
                     adaptation_module = copy.deepcopy(
                         self.alg.actor_critic.adaptation_module
                     ).to("cpu")
-                    traced_script_adaptation_module = torch.jit.script(
-                        adaptation_module
-                    )
+                    traced_script_adaptation_module = torch.jit.script(adaptation_module)
                     traced_script_adaptation_module.save(adaptation_module_path)
 
                     body_path = f"{path}/body_latest.jit"
-                    body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to(
-                        "cpu"
-                    )
+                    body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to("cpu")
                     traced_script_body_module = torch.jit.script(body_model)
                     traced_script_body_module.save(body_path)
 
@@ -347,9 +337,7 @@ class Runner:
             os.makedirs(path, exist_ok=True)
 
             adaptation_module_path = f"{path}/adaptation_module_latest.jit"
-            adaptation_module = copy.deepcopy(
-                self.alg.actor_critic.adaptation_module
-            ).to("cpu")
+            adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to("cpu")
             traced_script_adaptation_module = torch.jit.script(adaptation_module)
             traced_script_adaptation_module.save(adaptation_module_path)
 
@@ -363,41 +351,4 @@ class Runner:
                 target_path=f"checkpoints/",
                 once=False,
             )
-            logger.upload_file(
-                file_path=body_path, target_path=f"checkpoints/", once=False
-            )
-
-    def log_video(self, it):
-        if it - self.last_recording_it >= RunnerArgs.save_video_interval:
-            self.env.start_recording()
-            if self.env.num_eval_envs > 0:
-                self.env.start_recording_eval()
-            print("START RECORDING")
-            self.last_recording_it = it
-
-        frames = self.env.get_complete_frames()
-        if len(frames) > 0:
-            self.env.pause_recording()
-            print("LOGGING VIDEO")
-            logger.save_video(frames, f"videos/{it:05d}.mp4", fps=1 / self.env.dt)
-
-        if self.env.num_eval_envs > 0:
-            frames = self.env.get_complete_frames_eval()
-            if len(frames) > 0:
-                self.env.pause_recording_eval()
-                print("LOGGING EVAL VIDEO")
-                logger.save_video(
-                    frames, f"videos/{it:05d}_eval.mp4", fps=1 / self.env.dt
-                )
-
-    def get_inference_policy(self, device=None):
-        self.alg.actor_critic.eval()
-        if device is not None:
-            self.alg.actor_critic.to(device)
-        return self.alg.actor_critic.act_inference
-
-    def get_expert_policy(self, device=None):
-        self.alg.actor_critic.eval()
-        if device is not None:
-            self.alg.actor_critic.to(device)
-        return self.alg.actor_critic.act_expert
+            logger.upload_file(file_path=body_path, target_path=f"checkpoints/", once=False)

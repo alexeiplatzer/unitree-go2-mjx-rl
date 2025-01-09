@@ -1,7 +1,12 @@
-import torch
-import torch.nn as nn
+# import torch
+# import torch.nn as nn
 from params_proto.proto import PrefixProto
-from torch.distributions import Normal
+
+# from torch.distributions import Normal
+
+# import jax
+from jax import numpy as jnp
+from flax import linen as nn
 
 
 class AC_Args(PrefixProto, cli=False):
@@ -21,9 +26,7 @@ class AC_Args(PrefixProto, cli=False):
 class ActorCritic(nn.Module):
     is_recurrent = False
 
-    def __init__(
-        self, num_obs, num_privileged_obs, num_obs_history, num_actions, **kwargs
-    ):
+    def __init__(self, num_obs, num_privileged_obs, num_obs_history, num_actions, **kwargs):
         if kwargs:
             print(
                 "ActorCritic.__init__ got unexpected arguments, which will be ignored: "
@@ -42,9 +45,7 @@ class ActorCritic(nn.Module):
         ):
             # Env factor encoder
             env_factor_encoder_layers = []
-            env_factor_encoder_layers.append(
-                nn.Linear(branch_input_dim, branch_hidden_dims[0])
-            )
+            env_factor_encoder_layers.append(nn.Linear(branch_input_dim, branch_hidden_dims[0]))
             env_factor_encoder_layers.append(activation)
             for l in range(len(branch_hidden_dims)):
                 if l == len(branch_hidden_dims) - 1:
@@ -67,9 +68,7 @@ class ActorCritic(nn.Module):
             )
         ):
             adaptation_module_layers = []
-            adaptation_module_layers.append(
-                nn.Linear(num_obs_history, branch_hidden_dims[0])
-            )
+            adaptation_module_layers.append(nn.Linear(num_obs_history, branch_hidden_dims[0]))
             adaptation_module_layers.append(activation)
             for l in range(len(branch_hidden_dims)):
                 if l == len(branch_hidden_dims) - 1:
@@ -90,20 +89,14 @@ class ActorCritic(nn.Module):
 
         # Policy
         actor_layers = []
-        actor_layers.append(
-            nn.Linear(total_latent_dim + num_obs, AC_Args.actor_hidden_dims[0])
-        )
+        actor_layers.append(nn.Linear(total_latent_dim + num_obs, AC_Args.actor_hidden_dims[0]))
         actor_layers.append(activation)
         for l in range(len(AC_Args.actor_hidden_dims)):
             if l == len(AC_Args.actor_hidden_dims) - 1:
-                actor_layers.append(
-                    nn.Linear(AC_Args.actor_hidden_dims[l], num_actions)
-                )
+                actor_layers.append(nn.Linear(AC_Args.actor_hidden_dims[l], num_actions))
             else:
                 actor_layers.append(
-                    nn.Linear(
-                        AC_Args.actor_hidden_dims[l], AC_Args.actor_hidden_dims[l + 1]
-                    )
+                    nn.Linear(AC_Args.actor_hidden_dims[l], AC_Args.actor_hidden_dims[l + 1])
                 )
                 actor_layers.append(activation)
         self.actor_body = nn.Sequential(*actor_layers)
@@ -119,9 +112,7 @@ class ActorCritic(nn.Module):
                 critic_layers.append(nn.Linear(AC_Args.critic_hidden_dims[l], 1))
             else:
                 critic_layers.append(
-                    nn.Linear(
-                        AC_Args.critic_hidden_dims[l], AC_Args.critic_hidden_dims[l + 1]
-                    )
+                    nn.Linear(AC_Args.critic_hidden_dims[l], AC_Args.critic_hidden_dims[l + 1])
                 )
                 critic_layers.append(activation)
         self.critic_body = nn.Sequential(*critic_layers)
@@ -137,22 +128,6 @@ class ActorCritic(nn.Module):
         # disable args validation for speedup
         Normal.set_default_validate_args = False
 
-    @staticmethod
-    # not used at the moment
-    def init_weights(sequential, scales):
-        [
-            torch.nn.init.orthogonal_(module.weight, gain=scales[idx])
-            for idx, module in enumerate(
-                mod for mod in sequential if isinstance(mod, nn.Linear)
-            )
-        ]
-
-    def reset(self, dones=None):
-        pass
-
-    def forward(self):
-        raise NotImplementedError
-
     @property
     def action_mean(self):
         return self.distribution.mean
@@ -167,7 +142,7 @@ class ActorCritic(nn.Module):
 
     def update_distribution(self, observations, privileged_observations):
         latent = self.env_factor_encoder(privileged_observations)
-        mean = self.actor_body(torch.cat((observations, latent), dim=-1))
+        mean = self.actor_body(jnp.concatenate((observations, latent), axis=-1))
         self.distribution = Normal(mean, mean * 0.0 + self.std)
 
     def act(self, observations, privileged_observations, **kwargs):
@@ -177,48 +152,35 @@ class ActorCritic(nn.Module):
     def get_actions_log_prob(self, actions):
         return self.distribution.log_prob(actions).sum(dim=-1)
 
-    def act_expert(self, ob, policy_info={}):
-        return self.act_teacher(ob["obs"], ob["privileged_obs"])
-
-    def act_inference(self, ob, policy_info={}):
-        if ob["privileged_obs"] is not None:
-            gt_latent = self.env_factor_encoder(ob["privileged_obs"])
-            policy_info["gt_latents"] = gt_latent.detach().cpu().numpy()
-        return self.act_student(ob["obs"], ob["obs_history"])
-
-    def act_student(self, observations, observation_history, policy_info={}):
+    def act_student(self, observations, observation_history):
         latent = self.adaptation_module(observation_history)
-        actions_mean = self.actor_body(torch.cat((observations, latent), dim=-1))
-        policy_info["latents"] = latent.detach().cpu().numpy()
+        actions_mean = self.actor_body(jnp.concatenate((observations, latent), axis=-1))
         return actions_mean
 
-    def act_teacher(self, observations, privileged_info, policy_info={}):
+    def act_teacher(self, observations, privileged_info):
         latent = self.env_factor_encoder(privileged_info)
-        actions_mean = self.actor_body(torch.cat((observations, latent), dim=-1))
-        policy_info["latents"] = latent.detach().cpu().numpy()
+        actions_mean = self.actor_body(jnp.concatenate((observations, latent), axis=-1))
         return actions_mean
 
-    def evaluate(self, critic_observations, privileged_observations, **kwargs):
+    def evaluate(self, critic_observations, privileged_observations):
         latent = self.env_factor_encoder(privileged_observations)
-        value = self.critic_body(torch.cat((critic_observations, latent), dim=-1))
+        value = self.critic_body(jnp.concatenate((critic_observations, latent), axis=-1))
         return value
 
 
 def get_activation(act_name):
     if act_name == "elu":
-        return nn.ELU()
+        return nn.activation.relu
     elif act_name == "selu":
-        return nn.SELU()
+        return nn.activation.selu
     elif act_name == "relu":
-        return nn.ReLU()
-    elif act_name == "crelu":
-        return nn.ReLU()
+        return nn.activation.relu
     elif act_name == "lrelu":
-        return nn.LeakyReLU()
+        return nn.activation.leaky_relu
     elif act_name == "tanh":
-        return nn.Tanh()
+        return nn.activation.tanh
     elif act_name == "sigmoid":
-        return nn.Sigmoid()
+        return nn.activation.sigmoid
     else:
         print("invalid activation function!")
         return None

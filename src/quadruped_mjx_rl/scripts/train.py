@@ -2,6 +2,7 @@
 import functools
 from datetime import datetime
 import matplotlib.pyplot as plt
+import yaml
 
 # Math
 from flax.training import orbax_utils
@@ -17,9 +18,10 @@ from brax.io import model
 from brax.training.agents.ppo import train as ppo
 from brax.training.agents.ppo import networks as ppo_networks
 
-from .paths import ckpt_path, model_path
+from .paths import ckpt_path, model_path, configurations_path
 from .domain_randomization import domain_randomize
 from ..training_environments import go2_ppo
+from ..training_environments.go2_ppo import Go2JoystickEnv
 from ..training_environments import go2_teacher
 
 
@@ -49,32 +51,26 @@ def train():
         plt.errorbar(x_data, y_data, yerr=ydataerr)
         plt.show()
 
+    # Load configs
+    with open(configurations_path / "example_ppo.yaml", "r") as f:
+        config = yaml.safe_load(f)
+
     env_name = "joystick_go2"
-    env = envs.get_environment(env_name)
+    envs.register_environment(env_name, Go2JoystickEnv)
+    env_config = config["environment"]
+    env = envs.get_environment(env_name, **env_config)
 
     make_networks_factory = functools.partial(
         ppo_networks.make_ppo_networks, policy_hidden_layer_sizes=(128, 128, 128, 128)
     )
+    training_config = config["training"]
     train_fn = functools.partial(
         ppo.train,
-        num_timesteps=100_000_000,
-        num_evals=10,
-        reward_scaling=1,
-        episode_length=1000,
-        normalize_observations=True,
-        action_repeat=1,
-        unroll_length=20,
-        num_minibatches=32,
-        num_updates_per_batch=4,
-        discounting=0.97,
-        learning_rate=3.0e-4,
-        entropy_cost=1e-2,
-        num_envs=8192,
-        batch_size=256,
         network_factory=make_networks_factory,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
+        **training_config,
     )
 
     x_data = []
@@ -85,8 +81,8 @@ def train():
 
     # Reset environments since internals may be overwritten by tracers from the
     # domain randomization function.
-    env = envs.get_environment(env_name)
-    eval_env = envs.get_environment(env_name)
+    env = envs.get_environment(env_name, **env_config)
+    eval_env = envs.get_environment(env_name, **env_config)
     make_inference_fn, params, _ = train_fn(
         environment=env, progress_fn=progress, eval_env=eval_env
     )

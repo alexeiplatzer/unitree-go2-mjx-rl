@@ -24,9 +24,7 @@ def ang_vel_yaw(env, actor_critic, obs):
 def base_height(env, actor_critic, obs):
     import torch
 
-    return torch.mean(
-        env.root_states[:, 2].unsqueeze(1) - env.measured_heights, dim=1
-    ).cpu()
+    return torch.mean(env.root_states[:, 2].unsqueeze(1) - env.measured_heights, dim=1).cpu()
 
 
 def max_torques(env, actor_critic, obs):
@@ -92,9 +90,7 @@ def latents(env, actor_critic, obs):
 
 
 METRICS_FNS = {
-    name: fn
-    for name, fn in locals().items()
-    if name not in ["to_numpy"] and "__" not in name
+    name: fn for name, fn in locals().items() if name not in ["to_numpy"] and "__" not in name
 }
 
 if __name__ == "__main__":

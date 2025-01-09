@@ -80,9 +80,7 @@ class RolloutStorage:
         )
         self.mu = self.mu.at[self.step].set(transition.action_mean)
         self.sigma = self.sigma.at[self.step].set(transition.action_sigma)
-        self.env_bins = self.env_bins.at[self.step].set(
-            transition.env_bins.reshape(-1, 1)
-        )
+        self.env_bins = self.env_bins.at[self.step].set(transition.env_bins.reshape(-1, 1))
         self.step += 1
 
     def clear(self):
@@ -90,9 +88,7 @@ class RolloutStorage:
 
     def compute_returns(self, last_values, gamma, lam):
         advantage = jnp.zeros(self.num_transitions_per_env)
-        next_values = jnp.concatenate(
-            [self.values[1:], jnp.expand_dims(last_values, axis=0)]
-        )
+        next_values = jnp.concatenate([self.values[1:], jnp.expand_dims(last_values, axis=0)])
         next_is_not_terminal = 1.0 - self.dones
         delta = self.rewards + next_is_not_terminal * gamma * next_values - self.values
         discount = next_is_not_terminal * gamma * lam

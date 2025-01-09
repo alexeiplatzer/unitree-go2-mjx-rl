@@ -1,7 +1,10 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# import torch.optim as optim
+# import torch.nn.functional as F
+import flax
+import flax.linen as nn
+import optax
 import numpy as np
 from params_proto.proto import PrefixProto
 
@@ -33,18 +36,12 @@ class PPO_Args(PrefixProto):
 class PPO:
     actor_critic: ActorCritic
 
-    def __init__(self, actor_critic, device="cpu"):
-
-        self.device = device
-
+    def __init__(self, actor_critic):
         # PPO components
         self.actor_critic = actor_critic
-        self.actor_critic.to(device)
         self.storage = None  # initialized later
-        self.optimizer = optim.Adam(
-            self.actor_critic.parameters(), lr=PPO_Args.learning_rate
-        )
-        self.adaptation_module_optimizer = optim.Adam(
+        self.optimizer = optax.Adam(self.actor_critic.parameters(), lr=PPO_Args.learning_rate)
+        self.adaptation_module_optimizer = optax.Adam(
             self.actor_critic.parameters(), lr=PPO_Args.adaptation_module_learning_rate
         )
         self.transition = RolloutStorage.Transition()
@@ -67,7 +64,6 @@ class PPO:
             privileged_obs_shape,
             obs_history_shape,
             action_shape,
-            self.device,
         )
 
     def test_mode(self):
@@ -79,9 +75,7 @@ class PPO:
     def act(self, obs, privileged_obs, obs_history):
         # Compute the actions and values
         self.transition.actions = self.actor_critic.act(obs, privileged_obs).detach()
-        self.transition.values = self.actor_critic.evaluate(
-            obs, privileged_obs
-        ).detach()
+        self.transition.values = self.actor_critic.evaluate(obs, privileged_obs).detach()
         self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(
             self.transition.actions
         ).detach()
@@ -101,8 +95,7 @@ class PPO:
         # Bootstrapping on time outs
         if "time_outs" in infos:
             self.transition.rewards += PPO_Args.gamma * torch.squeeze(
-                self.transition.values
-                * infos["time_outs"].unsqueeze(1).to(self.device),
+                self.transition.values * infos["time_outs"].unsqueeze(1).to(self.device),
                 1,
             )
 
@@ -143,9 +136,7 @@ class PPO:
         ) in generator:
 
             self.actor_critic.act(obs_batch, privileged_obs_batch, masks=masks_batch)
-            actions_log_prob_batch = self.actor_critic.get_actions_log_prob(
-                actions_batch
-            )
+            actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
             value_batch = self.actor_critic.evaluate(
                 critic_obs_batch, privileged_obs_batch, masks=masks_batch
             )
@@ -188,9 +179,9 @@ class PPO:
 
             # Value function loss
             if PPO_Args.use_clipped_value_loss:
-                value_clipped = target_values_batch + (
-                    value_batch - target_values_batch
-                ).clamp(-PPO_Args.clip_param, PPO_Args.clip_param)
+                value_clipped = target_values_batch + (value_batch - target_values_batch).clamp(
+                    -PPO_Args.clip_param, PPO_Args.clip_param
+                )
                 value_losses = (value_batch - returns_batch).pow(2)
                 value_losses_clipped = (value_clipped - returns_batch).pow(2)
                 value_loss = torch.max(value_losses, value_losses_clipped).mean()
@@ -206,9 +197,7 @@ class PPO:
             # Gradient step
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(
-                self.actor_critic.parameters(), PPO_Args.max_grad_norm
-            )
+            nn.utils.clip_grad_norm_(self.actor_critic.parameters(), PPO_Args.max_grad_norm)
             self.optimizer.step()
 
             mean_value_loss += value_loss.item()
@@ -238,9 +227,7 @@ class PPO:
         num_updates = PPO_Args.num_learning_epochs * PPO_Args.num_mini_batches
         mean_value_loss /= num_updates
         mean_surrogate_loss /= num_updates
-        mean_adaptation_module_loss /= (
-            num_updates * PPO_Args.num_adaptation_module_substeps
-        )
+        mean_adaptation_module_loss /= num_updates * PPO_Args.num_adaptation_module_substeps
         self.storage.clear()
 
         return mean_value_loss, mean_surrogate_loss, mean_adaptation_module_loss

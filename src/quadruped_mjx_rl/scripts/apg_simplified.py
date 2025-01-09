@@ -210,9 +210,7 @@ class TrotGo2(PipelineEnv):
 
         #### Imitation reference
         kinematic_ref_qpos = make_kinematic_ref(cos_wave, step_k, scale=0.3, dt=self.dt)
-        kinematic_ref_qvel = make_kinematic_ref(
-            dcos_wave, step_k, scale=0.3, dt=self.dt
-        )
+        kinematic_ref_qvel = make_kinematic_ref(dcos_wave, step_k, scale=0.3, dt=self.dt)
 
         self.l_cycle = jp.array(kinematic_ref_qpos.shape[0])
 
@@ -274,12 +272,8 @@ class TrotGo2(PipelineEnv):
 
         data = self.pipeline_step(state.pipeline_state, action)
 
-        ref_qpos = self.kinematic_ref_qpos[
-            jp.array(state.info["steps"] % self.l_cycle, int)
-        ]
-        ref_qvel = self.kinematic_ref_qvel[
-            jp.array(state.info["steps"] % self.l_cycle, int)
-        ]
+        ref_qpos = self.kinematic_ref_qpos[jp.array(state.info["steps"] % self.l_cycle, int)]
+        ref_qvel = self.kinematic_ref_qvel[jp.array(state.info["steps"] % self.l_cycle, int)]
 
         # Calculate maximal coordinates
         ref_data = data.replace(qpos=ref_qpos, qvel=ref_qvel)
@@ -332,9 +326,7 @@ class TrotGo2(PipelineEnv):
         error = (((x.pos - ref_x.pos) ** 2).sum(-1) ** 0.5).mean()
         to_reference = jp.where(error > self.err_threshold, 1.0, 0.0)
 
-        to_reference = jp.array(
-            to_reference, dtype=int
-        )  # keeps output types same as input.
+        to_reference = jp.array(to_reference, dtype=int)  # keeps output types same as input.
         ref_data = self.mjx_to_brax(ref_data)
 
         data = jax.tree_util.tree_map(
@@ -366,9 +358,7 @@ class TrotGo2(PipelineEnv):
         # last action
         obs_list.append(state_info["last_action"])
         # kinematic reference
-        kin_ref = self.kinematic_ref_qpos[
-            jp.array(state_info["steps"] % self.l_cycle, int)
-        ]
+        kin_ref = self.kinematic_ref_qpos[jp.array(state_info["steps"] % self.l_cycle, int)]
         obs_list.append(kin_ref[7:])  # First 7 indicies are fixed
 
         obs = jp.clip(jp.concatenate(obs_list), -100.0, 100.0)
@@ -398,9 +388,7 @@ class TrotGo2(PipelineEnv):
         f = lambda x, y: ((x - y) ** 2).sum(-1).mean()
 
         _mse_pos = f(x.pos, ref_x.pos)
-        _mse_rot = f(
-            quaternion_to_rotation_6d(x.rot), quaternion_to_rotation_6d(ref_x.rot)
-        )
+        _mse_rot = f(quaternion_to_rotation_6d(x.rot), quaternion_to_rotation_6d(ref_x.rot))
         _mse_vel = f(xd.vel, ref_xd.vel)
         _mse_ang = f(xd.ang, ref_xd.ang)
 
@@ -411,9 +399,7 @@ class TrotGo2(PipelineEnv):
         """
         Using minimal coordinates. Improves accuracy of joint angle tracking.
         """
-        pos = jp.concatenate(
-            [state.pipeline_state.qpos[:3], state.pipeline_state.qpos[7:]]
-        )
+        pos = jp.concatenate([state.pipeline_state.qpos[:3], state.pipeline_state.qpos[7:]])
         pos_targ = jp.concatenate([ref_qpos[:3], ref_qpos[7:]])
         pos_err = jp.linalg.norm(pos_targ - pos)
         vel_err = jp.linalg.norm(state.pipeline_state.qvel - ref_qvel)
@@ -480,9 +466,7 @@ def axis_angle_to_quaternion(v: jp.ndarray, theta: jp.float_):
     """
     axis angle representation: rotation of theta around v.
     """
-    return jp.concatenate(
-        [jp.cos(0.5 * theta).reshape(1), jp.sin(0.5 * theta) * v.reshape(3)]
-    )
+    return jp.concatenate([jp.cos(0.5 * theta).reshape(1), jp.sin(0.5 * theta) * v.reshape(3)])
 
 
 def get_config():
@@ -579,9 +563,7 @@ class FwdTrotGo2(PipelineEnv):
         #### Add Randomness ####
 
         r_xyz = 0.2 * (jax.random.uniform(key_xyz, (3,)) - 0.5)
-        r_angle = (jp.pi / 12) * (
-            jax.random.uniform(key_ang, (1,)) - 0.5
-        )  # 15 deg range
+        r_angle = (jp.pi / 12) * (jax.random.uniform(key_ang, (1,)) - 0.5)  # 15 deg range
         r_axis = jax.random.uniform(key_ax, (3,)) - 0.5
         r_axis = r_axis / jp.linalg.norm(r_axis)
         r_quat = axis_angle_to_quaternion(r_axis, r_angle)
@@ -700,15 +682,13 @@ class FwdTrotGo2(PipelineEnv):
                 * self.reward_config.rewards.scales.tracking_lin_vel
             ),
             "orientation": (
-                self._reward_orientation(x)
-                * self.reward_config.rewards.scales.orientation
+                self._reward_orientation(x) * self.reward_config.rewards.scales.orientation
             ),
             "lin_vel_z": (
                 self._reward_lin_vel_z(xd) * self.reward_config.rewards.scales.lin_vel_z
             ),
             "height": (
-                self._reward_height(data.qpos)
-                * self.reward_config.rewards.scales.height
+                self._reward_height(data.qpos) * self.reward_config.rewards.scales.height
             ),
             "torque": (
                 self._reward_action(data.qfrc_actuator)
@@ -719,8 +699,7 @@ class FwdTrotGo2(PipelineEnv):
                 * self.reward_config.rewards.scales.joint_velocity
             ),
             "feet_pos": (
-                self._reward_feet_pos(data, state)
-                * self.reward_config.rewards.scales.feet_pos
+                self._reward_feet_pos(data, state) * self.reward_config.rewards.scales.feet_pos
             ),
             "feet_height": (
                 self._reward_feet_height(data, state.info)
@@ -764,9 +743,7 @@ class FwdTrotGo2(PipelineEnv):
         # last action
         obs_list.append(state_info["last_action"])
         # gait schedule
-        kin_ref = self.kinematic_ref_qpos[
-            jp.array(state_info["steps"] % self.l_cycle, int)
-        ]
+        kin_ref = self.kinematic_ref_qpos[jp.array(state_info["steps"] % self.l_cycle, int)]
         obs_list.append(kin_ref)
 
         obs = jp.clip(jp.concatenate(obs_list), -100.0, 100.0)
@@ -797,9 +774,7 @@ class FwdTrotGo2(PipelineEnv):
         return jp.clip(jp.sqrt(jp.sum(jp.square(qvel[6:]))), 0, 100)
 
     def _reward_height(self, qpos) -> jax.Array:
-        return jp.exp(
-            -jp.abs(qpos[2] - self.target_h)
-        )  # Not going to be > 1 meter tall.
+        return jp.exp(-jp.abs(qpos[2] - self.target_h))  # Not going to be > 1 meter tall.
 
     def _reward_action(self, action) -> jax.Array:
         return jp.sqrt(jp.sum(jp.square(action)))
@@ -807,9 +782,7 @@ class FwdTrotGo2(PipelineEnv):
     def _reward_feet_pos(self, data, state):
         dt = (state.info["steps"] - state.info["k0"]) * self.dt  # scalar
         step_period = self.gait_period / 2
-        xyt = state.info["xy0"] + (state.info["xy*"] - state.info["xy0"]) * (
-            dt / step_period
-        )
+        xyt = state.info["xy0"] + (state.info["xy*"] - state.info["xy0"]) * (dt / step_period)
 
         feet_pos = data.geom_xpos[self.feet_inds][:, :2]
 
@@ -878,9 +851,7 @@ model_path = "/kaggle/working/trotting_2hz_policy"
 params = model.load_params(model_path)
 baseline_inference_fn = make_inference_fn(params)
 
-env_kwargs = dict(
-    target_vel=0.75, step_k=13, baseline_inference_fn=baseline_inference_fn
-)
+env_kwargs = dict(target_vel=0.75, step_k=13, baseline_inference_fn=baseline_inference_fn)
 
 x_data = []
 y_data = []

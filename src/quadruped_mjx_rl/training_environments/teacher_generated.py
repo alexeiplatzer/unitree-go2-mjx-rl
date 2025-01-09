@@ -38,9 +38,7 @@ class RewardThresholdCurriculum:
         # Sample new commands from the distribution
         x_cmd = self.rng.uniform(self.x_range[0], self.x_range[1], size=batch_size)
         y_cmd = self.rng.uniform(self.y_range[0], self.y_range[1], size=batch_size)
-        yaw_cmd = self.rng.uniform(
-            self.yaw_range[0], self.yaw_range[1], size=batch_size
-        )
+        yaw_cmd = self.rng.uniform(self.yaw_range[0], self.yaw_range[1], size=batch_size)
         bins = np.zeros(batch_size, dtype=int)
         return np.stack([x_cmd, y_cmd, yaw_cmd], axis=1), bins
 
@@ -165,9 +163,7 @@ class LeggedRobotEnv(env.Env):
         metrics = {}
         extras = self._get_privileged_info(qp)
 
-        new_state = state.replace(
-            qp=qp, obs=obs, reward=rew, done=done, metrics=metrics
-        )
+        new_state = state.replace(qp=qp, obs=obs, reward=rew, done=done, metrics=metrics)
 
         self._current_step += 1
 
@@ -199,11 +195,7 @@ class LeggedRobotEnv(env.Env):
             obs_list = [self.commands, base_vel] if self.observe_command else [base_vel]
 
         if self.observe_only_ang_vel:
-            obs_list = (
-                [self.commands, base_ang_vel]
-                if self.observe_command
-                else [base_ang_vel]
-            )
+            obs_list = [self.commands, base_ang_vel] if self.observe_command else [base_ang_vel]
 
         if self.observe_yaw:
             # extract yaw from orientation
@@ -216,15 +208,11 @@ class LeggedRobotEnv(env.Env):
             yaw = jnp.arctan2(siny_cosp, cosy_cosp)
             heading_error = jnp.clip(0.5 * yaw, -1.0, 1.0)
             obs_list.append(
-                heading_error.reshape(-1, 1)
-                if len(heading_error.shape) == 1
-                else heading_error
+                heading_error.reshape(-1, 1) if len(heading_error.shape) == 1 else heading_error
             )
 
         # Add joint angles and velocities
-        joint_pos = self.sys.link_jnt(
-            qp
-        )  # link_jnt gives joint angles if defined correctly
+        joint_pos = self.sys.link_jnt(qp)  # link_jnt gives joint angles if defined correctly
         joint_vel = self.sys.link_jntd(qp)
 
         obs_list.append(joint_pos)
@@ -237,10 +225,7 @@ class LeggedRobotEnv(env.Env):
 
         # Combine all
         obs = jnp.concatenate(
-            [
-                x if x.ndim > 1 else x[jnp.newaxis, :] if x.ndim == 1 else x
-                for x in obs_list
-            ],
+            [x if x.ndim > 1 else x[jnp.newaxis, :] if x.ndim == 1 else x for x in obs_list],
             axis=-1,
         )
         return obs
