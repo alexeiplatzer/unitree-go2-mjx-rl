@@ -31,6 +31,15 @@ class Go2TeacherEnv(PipelineEnv):
         sys = self.make_system(model_path, config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
+        # get priveleged info about environment
+        self.priveleged_obs = jnp.concatenate(
+            [
+                sys.geom_friction,
+                sys.actuator_forcerange,
+                sys.body_mass
+            ]
+        )
+
         self.rewards = config.rewards
 
         self._obs_noise_config = config.noise
@@ -242,7 +251,10 @@ class Go2TeacherEnv(PipelineEnv):
             ]
         )
 
-        priveleged_obs = jnp.concatenate([])
+        priveleged_obs = jnp.concatenate(
+            [
+
+        ])
 
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
@@ -294,6 +306,15 @@ class Go2TeacherEnv(PipelineEnv):
     def _reward_torques(self, torques: jax.Array) -> jax.Array:
         # Penalize torques
         return jnp.sqrt(jnp.sum(jnp.square(torques))) + jnp.sum(jnp.abs(torques))
+
+    def _reward_energy(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
+        return jnp.sum(torques * joint_vels)
+
+    def _reward_energy_expenditure(self, torques, joint_vels):
+        return jnp.sum(jnp.clip(torques * joint_vels, 0, 1e30))
+
+    def _reward_joint_ang_vel(self, joint_vels):
+        return jnp.sum(jnp.square(joint_vels))
 
     def _reward_action_rate(self, act: jax.Array, last_act: jax.Array) -> jax.Array:
         # Penalize changes in actions
