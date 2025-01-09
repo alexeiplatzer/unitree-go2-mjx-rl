@@ -31,12 +31,17 @@ class Go2TeacherEnv(PipelineEnv):
         sys = self.make_system(model_path, config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        # get priveleged info about environment
-        self.priveleged_obs = jnp.concatenate(
+        # get privileged info about environment
+        self.total_mass = sys.body_mass[0]
+        self.privileged_obs = jnp.concatenate(
             [
+                # sys.geom_friction,
                 sys.geom_friction,
+                sys.dof_frictionloss,
+                sys.dof_damping,
+                sys.jnt_stiffness,
                 sys.actuator_forcerange,
-                sys.body_mass
+                sys.body_mass[0],
             ]
         )
 
@@ -102,6 +107,10 @@ class Go2TeacherEnv(PipelineEnv):
         sys = mjcf.load(model_path)
         sys = sys.tree_replace({"opt.timestep": config.sim.timestep})
         return sys
+
+    def get_privileged_obs(self):
+
+        return jnp.concatenate([self.privileged_obs, 0], axis=1)
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         # TODO adapt from config / sample with curriculum
