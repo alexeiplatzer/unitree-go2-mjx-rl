@@ -3,3 +3,4 @@ jax
 brax
 mediapy
 etils
+ml_collections

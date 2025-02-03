@@ -19,6 +19,7 @@ environment:
   obs_noise: 0.05
   action_scale: 0.3
   kick_vel: 0.05
+  scene_file: "scene_mjx.xml"
 
   rewards:
     # The coefficients for all reward terms used for training. All

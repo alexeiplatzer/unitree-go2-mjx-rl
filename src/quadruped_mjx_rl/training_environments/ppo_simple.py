@@ -1,6 +1,8 @@
+"""Adapted from the Google Deepmind PPO example to train a Unitree Go2 quadruped."""
+
 # Supporting
 from typing import Any, Sequence, List
-from ml_collections import config_dict
+from ml_collections.config_dict import ConfigDict
 
 # Math
 import jax
@@ -12,28 +14,17 @@ import mujoco
 
 # Brax
 from brax import base
-from brax import envs
 from brax import math
 from brax.base import Motion, Transform
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
-from .paths import GO2_ROOT_PATH
 
-
-class Go2JoystickEnv(PipelineEnv):
+class JoystickEnv(PipelineEnv):
     """Environment for training the go2 quadruped joystick policy in MJX."""
 
-    def __init__(
-        self,
-        rewards: dict,
-        obs_noise: float = 0.05,
-        action_scale: float = 0.3,
-        kick_vel: float = 0.05,
-        scene_file: str = "scene_mjx.xml",
-        **kwargs,
-    ):
-        path = GO2_ROOT_PATH / scene_file
+    def __init__(self, environment_config: ConfigDict, robot_config: ConfigDict):
+        path = environment_config.scene_file
         sys = mjcf.load(path.as_posix())
         self._dt = 0.02  # this environment is 50 fps
         sys = sys.tree_replace({"opt.timestep": 0.004})
@@ -45,42 +36,39 @@ class Go2JoystickEnv(PipelineEnv):
             actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(-35.0),
         )
 
-        n_frames = kwargs.pop("n_frames", int(self._dt / sys.opt.timestep))
+        n_frames = environment_config.get("n_frames", int(self._dt / sys.opt.timestep))
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        self.rewards = config_dict.ConfigDict(rewards)
-        # set custom from kwargs
-        for k, v in kwargs.items():
-            if k.endswith("_scale"):
-                self.rewards.scales[k[:-6]] = v
+        self.rewards = environment_config.rewards
 
         self._torso_idx = mujoco.mj_name2id(
-            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, "base"
+            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, robot_config.torso_name
         )
-        self._action_scale = action_scale
-        self._obs_noise = obs_noise
-        self._kick_vel = kick_vel
-        self._init_q = jp.array(sys.mj_model.keyframe("home").qpos)
-        self._default_pose = sys.mj_model.keyframe("home").qpos[7:]
-        self.lowers = jp.array([-0.7, -1.0, -2.3] * 4)
-        self.uppers = jp.array([0.52, 2.1, -1] * 4)
+        self._action_scale = environment_config.action_scale
+        self._obs_noise = environment_config.obs_noise
+        self._kick_vel = environment_config.kick_vel
+        self._init_q = jp.array(sys.mj_model.keyframe(robot_config.initial_keyframe).qpos)
+        self._default_pose = sys.mj_model.keyframe(robot_config.initial_keyframe).qpos[7:]
+        self.lowers = jp.array(robot_config.joints_lower_limits * 4)
+        self.uppers = jp.array(robot_config.joints_upper_limits * 4)
         feet_site = [
-            "FL_foot",
-            "RL_foot",
-            "FR_foot",
-            "RR_foot",
+            robot_config.feet_sites.front_left,
+            robot_config.feet_sites.rear_left,
+            robot_config.feet_sites.front_right,
+            robot_config.feet_sites.rear_right,
         ]
         feet_site_id = [
             mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
             for f in feet_site
         ]
-        assert not any(id_ == -1 for id_ in feet_site_id), "Site not found."
+        if not any(id_ == -1 for id_ in feet_site_id):
+            raise Exception("Site not found.")
         self._feet_site_id = np.array(feet_site_id)
         lower_leg_body = [
-            "FL_calf",
-            "RL_calf",
-            "FR_calf",
-            "RR_calf",
+            robot_config.lower_leg_bodies.front_left,
+            robot_config.lower_leg_bodies.rear_left,
+            robot_config.lower_leg_bodies.front_right,
+            robot_config.lower_leg_bodies.rear_right,
         ]
         lower_leg_body_id = [
             mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
