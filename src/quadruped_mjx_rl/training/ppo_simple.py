@@ -67,7 +67,8 @@ def train(
     )
 
     make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks, policy_hidden_layer_sizes=(128, 128, 128, 128)
+        ppo_networks.make_ppo_networks,
+        policy_hidden_layer_sizes=tuple(rl_config.model.hidden_sizes),
     )
     training_config = rl_config.training
     train_fn = functools.partial(

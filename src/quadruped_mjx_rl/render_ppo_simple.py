@@ -46,7 +46,8 @@ def render(
     )
 
     make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks, policy_hidden_layer_sizes=(128, 128, 128, 128)
+        ppo_networks.make_ppo_networks,
+        policy_hidden_layer_sizes=tuple(rl_config.model.hidden_sizes),
     )
 
     nets = make_networks_factory(
