@@ -3,6 +3,7 @@
 # Supporting
 from typing import Any, Sequence, List
 from ml_collections.config_dict import ConfigDict
+from etils.epath import Path
 
 # Math
 import jax
@@ -23,9 +24,13 @@ from brax.io import mjcf
 class JoystickEnv(PipelineEnv):
     """Environment for training the go2 quadruped joystick policy in MJX."""
 
-    def __init__(self, environment_config: ConfigDict, robot_config: ConfigDict):
-        path = environment_config.scene_file
-        sys = mjcf.load(path.as_posix())
+    def __init__(
+        self,
+        environment_config: ConfigDict,
+        robot_config: ConfigDict,
+        init_scene_path: Path,
+    ):
+        sys = mjcf.load(init_scene_path.as_posix())
         self._dt = 0.02  # this environment is 50 fps
         sys = sys.tree_replace({"opt.timestep": 0.004})
 
@@ -61,7 +66,7 @@ class JoystickEnv(PipelineEnv):
             mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
             for f in feet_site
         ]
-        if not any(id_ == -1 for id_ in feet_site_id):
+        if any(id_ == -1 for id_ in feet_site_id):
             raise Exception("Site not found.")
         self._feet_site_id = np.array(feet_site_id)
         lower_leg_body = [
@@ -105,7 +110,7 @@ class JoystickEnv(PipelineEnv):
             "command": self.sample_command(key),
             "last_contact": jp.zeros(4, dtype=bool),
             "feet_air_time": jp.zeros(4),
-            "rewards": {k: 0.0 for k in self.reward_config.rewards.scales.keys()},
+            "rewards": {k: 0.0 for k in self.rewards.scales.keys()},
             "kick": jp.array([0.0, 0.0]),
             "step": 0,
         }
