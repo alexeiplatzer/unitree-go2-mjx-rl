@@ -1,0 +1,8 @@
+command:
+  x_vel: 0.5
+  y_vel: 0.0
+  ang_vel: 0.0
+n_steps: 500
+render_every: 2
+seed: 0
+episode_length: 1000
