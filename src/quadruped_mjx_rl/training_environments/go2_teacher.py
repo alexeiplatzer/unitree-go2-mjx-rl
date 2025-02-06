@@ -34,18 +34,19 @@ class Go2TeacherEnv(PipelineEnv):
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
         # get privileged info about environment
-        self.total_mass = sys.body_mass[0]
-        self.privileged_obs = jnp.concatenate(
-            [
-                # sys.geom_friction,
-                sys.geom_friction,
-                sys.dof_frictionloss,
-                sys.dof_damping,
-                sys.jnt_stiffness,
-                sys.actuator_forcerange,
-                sys.body_mass[0],
-            ]
-        )
+        # self.total_mass = sys.body_mass[0]
+        # self.privileged_obs = jnp.concatenate(
+        #     [
+        #         # sys.geom_friction,
+        #         sys.geom_friction,
+        #         sys.dof_frictionloss,
+        #         sys.dof_damping,
+        #         sys.jnt_stiffness,
+        #         sys.actuator_forcerange,
+        #         sys.body_mass[0],
+        #     ]
+        # )
+        # self._privileged_obs_size = self.privileged_obs.size
 
         self.rewards = environment_config.rewards
 
@@ -121,8 +122,7 @@ class Go2TeacherEnv(PipelineEnv):
         return sys
 
     def get_privileged_obs(self):
-
-        return jnp.concatenate([self.privileged_obs, 0], axis=1)
+        return jnp.concatenate([self.privileged_obs], axis=1)
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         # TODO adapt from config / sample with curriculum
@@ -155,14 +155,15 @@ class Go2TeacherEnv(PipelineEnv):
             "rewards": {k: 0.0 for k in self.rewards.scales.keys()},
             "kick": jnp.array([0.0, 0.0]),
             "step": 0,
+            # "privileged_obs": jnp.zeros(self._privileged_obs_size),
         }
 
         obs_history = jnp.zeros(15 * 31)  # store 15 steps of history
         obs = self._get_obs(pipeline_state, state_info, obs_history)
         reward, done = jnp.zeros(2)
-        metrics = {"total_dist": jnp.array(0)}
+        metrics = {"total_dist": 0.0}
         for k in state_info["rewards"]:
-            metrics[k] = jnp.array(state_info["rewards"][k])
+            metrics[k] = state_info["rewards"][k]
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
@@ -177,7 +178,7 @@ class Go2TeacherEnv(PipelineEnv):
         motor_targets = jnp.clip(
             motor_targets, self.joints_lower_limits, self.joints_upper_limits
         )
-        pipeline_state = self.pipeline_step(state, motor_targets)
+        pipeline_state = self.pipeline_step(state.pipeline_state, motor_targets)
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_angles = pipeline_state.q[7:]
         joint_vel = pipeline_state.qd[6:]
@@ -203,9 +204,7 @@ class Go2TeacherEnv(PipelineEnv):
             "lin_vel_z": self._reward_lin_vel_z(xd),
             "ang_vel_xy": self._reward_ang_vel_xy(xd),
             "orientation": self._reward_orientation(x),
-            "torques": self._reward_torques(
-                pipeline_state.qfrc_actuator
-            ),
+            "torques": self._reward_torques(pipeline_state.qfrc_actuator),
             "action_rate": self._reward_action_rate(action, state.info["last_act"]),
             "stand_still": self._reward_stand_still(
                 state.info["command"],
@@ -218,6 +217,11 @@ class Go2TeacherEnv(PipelineEnv):
             ),
             "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
             "termination": self._reward_termination(done, state.info["step"]),
+            # "energy": self._reward_energy(pipeline_state.qfrc_actuator, pipeline_state.qvel[6:]),
+            # "energy_expenditure": self._reward_energy_expenditure(
+            #     pipeline_state.qfrc_actuator, pipeline_state.qvel[6:]
+            # ),
+            # "joint_ang_vel": self._reward_joint_ang_vel(pipeline_state.qvel[6:]),
         }
         rewards = {k: v * self.rewards.scales[k] for k, v in rewards.items()}
         reward = jnp.clip(sum(rewards.values()) * self.dt, min=0.0, max=10_000.0)
@@ -238,6 +242,8 @@ class Go2TeacherEnv(PipelineEnv):
             self.sample_command(cmd_rng),
             state.info["command"],
         )
+
+        # state.info["privileged_obs"] = self.get_privileged_obs()
 
         # reset the step counter when done
         state.info["step"] = jnp.where(
@@ -271,11 +277,6 @@ class Go2TeacherEnv(PipelineEnv):
                 state_info["last_act"],  # last action
             ]
         )
-
-        priveleged_obs = jnp.concatenate(
-            [
-
-        ])
 
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
@@ -331,10 +332,10 @@ class Go2TeacherEnv(PipelineEnv):
     def _reward_energy(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
         return jnp.sum(torques * joint_vels)
 
-    def _reward_energy_expenditure(self, torques, joint_vels):
+    def _reward_energy_expenditure(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
         return jnp.sum(jnp.clip(torques * joint_vels, 0, 1e30))
 
-    def _reward_joint_ang_vel(self, joint_vels):
+    def _reward_joint_ang_vel(self, joint_vels: jax.Array) -> jax.Array:
         return jnp.sum(jnp.square(joint_vels))
 
     def _reward_action_rate(self, act: jax.Array, last_act: jax.Array) -> jax.Array:

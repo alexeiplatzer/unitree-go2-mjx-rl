@@ -4,6 +4,7 @@ PROJECT_ROOT_DIRECTORY = Path(__file__).parent.parent
 
 CONFIGS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "configs"
 ppo_simple_config = CONFIGS_DIRECTORY / "ppo_simple.yaml"
+ppo_enhanced_config = CONFIGS_DIRECTORY / "ppo_enhanced.yaml"
 unitree_go2_config = CONFIGS_DIRECTORY / "unitree_go2_environment.yaml"
 barkour_config = CONFIGS_DIRECTORY / "google_barkour_vb_environment.yaml"
 

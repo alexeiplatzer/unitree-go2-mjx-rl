@@ -30,6 +30,7 @@ environment:
 
   domain_rand:
     kick_vel: 0.05
+    kick_interval: 10
 
   sim:
     dt: 0.02
@@ -37,7 +38,7 @@ environment:
 
   rewards:
     tracking_sigma: 0.25    # Used in tracking reward: exp(-error^2/sigma).
-    termination_body_height: 0.20
+    termination_body_height: 0.18
 
     # The coefficients for all reward terms used for training. All
     # physical quantities are in SI units, if no otherwise specified,
