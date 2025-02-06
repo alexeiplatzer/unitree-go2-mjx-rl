@@ -1,4 +1,5 @@
 mujoco
+mujoco_mjx
 brax
 mediapy
 etils
