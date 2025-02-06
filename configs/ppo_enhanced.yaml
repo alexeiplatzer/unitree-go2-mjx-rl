@@ -19,11 +19,26 @@ training:
 
 
 environment:
-  obs_noise: 0.05
-  action_scale: 0.3
-  kick_vel: 0.05
+  noise:
+    obs_noise: 0.05
+
+  control:
+    action_scale: 0.3
+
+  command:
+    resampling_time: 500
+
+  domain_rand:
+    kick_vel: 0.05
+
+  sim:
+    dt: 0.02
+    timestep: 0.004
 
   rewards:
+    tracking_sigma: 0.25    # Used in tracking reward: exp(-error^2/sigma).
+    termination_body_height: 0.20
+
     # The coefficients for all reward terms used for training. All
     # physical quantities are in SI units, if no otherwise specified,
     # i.e. joint positions are in rad, positions are measured in meters,
@@ -45,4 +60,3 @@ environment:
       termination: -1.0     # Early termination penalty.
       foot_slip: -0.1       # Penalize foot slipping on the ground.
 
-    tracking_sigma: 0.25    # Used in tracking reward: exp(-error^2/sigma).

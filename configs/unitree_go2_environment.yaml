@@ -16,3 +16,4 @@ feet_sites:
   rear_right: RR_foot
 joints_lower_limits: [-0.5, 0.4, -2.3]
 joints_upper_limits: [0.5, 1.4, -0.85]
+foot_radius: 0.0175

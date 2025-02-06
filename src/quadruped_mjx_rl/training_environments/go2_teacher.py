@@ -1,6 +1,7 @@
-from dataclasses import dataclass, asdict
-from typing import Any, Sequence, List
 from ml_collections import ConfigDict
+from etils.epath import Path
+from collections.abc import Sequence
+from typing import Any
 
 # Math
 import jax
@@ -18,80 +19,91 @@ from brax.base import State as PipelineState
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
-from .paths import SCENE_PATH
-
 
 class Go2TeacherEnv(PipelineEnv):
 
-    def __init__(self, model_path: str, config: ConfigDict):
-
-        self._config = config
-        self._dt = config.sim.dt
-        n_frames = int(config.sim.dt / config.sim.timestep)
-        sys = self.make_system(model_path, config)
+    def __init__(
+        self,
+        environment_config: ConfigDict,
+        robot_config: ConfigDict,
+        init_scene_path: Path,
+    ):
+        self._dt = environment_config.sim.dt
+        n_frames = int(environment_config.sim.dt / environment_config.sim.timestep)
+        sys = self.make_system(init_scene_path, environment_config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        self.rewards = config.rewards
+        self.rewards = environment_config.rewards
 
-        self._obs_noise_config = config.noise
+        self._obs_noise_config = environment_config.noise
 
-        self._action_scale = config.control.action_scale
-        self._resampling_time = config.command.resampling_time
-        self._kick_interval = config.domain_rand.kick_interval
-        self._kick_vel = config.domain_rand.kick_vel
-        self._termination_body_height = config.rewards.termination_body_height
+        self._action_scale = environment_config.control.action_scale
+        self._resampling_time = environment_config.command.resampling_time
+        self._kick_interval = environment_config.domain_rand.kick_interval
+        self._kick_vel = environment_config.domain_rand.kick_vel
+        self._termination_body_height = environment_config.rewards.termination_body_height
 
-        initial_keyframe_name = config.init_state.initial_keyframe
+        initial_keyframe_name = robot_config.initial_keyframe
         initial_keyframe = sys.mj_model.keyframe(initial_keyframe_name)
         self._init_q = jnp.array(initial_keyframe.qpos)
         self._default_pose = initial_keyframe.qpos[7:]
 
         # joint ranges
-        self.joints_lower_limits = jnp.array([-0.5, 0.4, -2.3] * 4)
-        self.joints_upper_limits = jnp.array([0.5, 1.4, -0.85] * 4)
+        self.joints_lower_limits = jnp.array(robot_config.joints_lower_limits * 4)
+        self.joints_upper_limits = jnp.array(robot_config.joints_upper_limits * 4)
 
         # find body definition
         self._torso_idx = mujoco.mj_name2id(
-            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name="base"
+            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.torso_name
         )
 
         # find lower leg definition
         lower_leg_body = [
-            "FL_calf",
-            "RL_calf",
-            "FR_calf",
-            "RR_calf",
+            robot_config.lower_leg_bodies.front_left,
+            robot_config.lower_leg_bodies.rear_left,
+            robot_config.lower_leg_bodies.front_right,
+            robot_config.lower_leg_bodies.rear_right,
         ]
         lower_leg_body_id = [
             mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
             for l in lower_leg_body
         ]
-        assert not any(id_ == -1 for id_ in lower_leg_body_id), "Body not found."
+        if any(id_ == -1 for id_ in lower_leg_body_id):
+            raise Exception("Body not found.")
         self._lower_leg_body_id = np.array(lower_leg_body_id)
 
         # find feet definition
         feet_site = [
-            "FL_foot",
-            "RL_foot",
-            "FR_foot",
-            "RR_foot",
+            robot_config.feet_sites.front_left,
+            robot_config.feet_sites.rear_left,
+            robot_config.feet_sites.front_right,
+            robot_config.feet_sites.rear_right,
         ]
         feet_site_id = [
             mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
             for f in feet_site
         ]
-        assert not any(id_ == -1 for id_ in feet_site_id), "Site not found."
+        if any(id_ == -1 for id_ in feet_site_id):
+            raise Exception("Site not found.")
         self._feet_site_id = np.array(feet_site_id)
 
-        self._foot_radius = 0.0175
+        self._foot_radius = robot_config.foot_radius
 
         # number of everything
-        self._nv = self.sys.nv
-        self._nq = self.sys.nq
+        self._nv = sys.nv
+        self._nq = sys.nq
 
-    def make_system(self, model_path: str, config: ConfigDict) -> System:
-        sys = mjcf.load(model_path)
-        sys = sys.tree_replace({"opt.timestep": config.sim.timestep})
+    def make_system(self, init_scene_path: Path, environment_config: ConfigDict) -> System:
+        sys = mjcf.load(init_scene_path)
+        sys = sys.tree_replace({"opt.timestep": environment_config.sim.timestep})
+
+        # override menagerie params for smoother policy
+        sys = sys.replace(
+            dof_damping=sys.dof_damping.at[6:].set(0.5239),
+            actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(35.0),
+            actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(-35.0),
+        )
+
         return sys
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
@@ -354,13 +366,10 @@ class Go2TeacherEnv(PipelineEnv):
 
     def render(
         self,
-        trajectory: List[PipelineState],
+        trajectory: list[PipelineState],
         camera: str | None = None,
         width: int = 240,
         height: int = 320,
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
-
-
-envs.register_environment(env_name="go2_teacher", env_class=Go2TeacherEnv)
