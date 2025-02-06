@@ -16,7 +16,6 @@ classifiers = [
 ]
 dependencies = [
     "mujoco",
-    "jax",
     "brax",
     "mediapy",
     "ml_collections",

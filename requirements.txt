@@ -1,5 +1,4 @@
 mujoco
-jax
 brax
 mediapy
 etils
