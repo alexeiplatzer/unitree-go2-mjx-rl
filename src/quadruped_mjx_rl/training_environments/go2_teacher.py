@@ -33,6 +33,20 @@ class Go2TeacherEnv(PipelineEnv):
         sys = self.make_system(init_scene_path, environment_config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
+        # get privileged info about environment
+        self.total_mass = sys.body_mass[0]
+        self.privileged_obs = jnp.concatenate(
+            [
+                # sys.geom_friction,
+                sys.geom_friction,
+                sys.dof_frictionloss,
+                sys.dof_damping,
+                sys.jnt_stiffness,
+                sys.actuator_forcerange,
+                sys.body_mass[0],
+            ]
+        )
+
         self.rewards = environment_config.rewards
 
         self._obs_noise_config = environment_config.noise
@@ -105,6 +119,10 @@ class Go2TeacherEnv(PipelineEnv):
         )
 
         return sys
+
+    def get_privileged_obs(self):
+
+        return jnp.concatenate([self.privileged_obs, 0], axis=1)
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         # TODO adapt from config / sample with curriculum
@@ -254,7 +272,10 @@ class Go2TeacherEnv(PipelineEnv):
             ]
         )
 
-        priveleged_obs = jnp.concatenate([])
+        priveleged_obs = jnp.concatenate(
+            [
+
+        ])
 
         # stack observations through time
         obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
@@ -306,6 +327,15 @@ class Go2TeacherEnv(PipelineEnv):
     def _reward_torques(self, torques: jax.Array) -> jax.Array:
         # Penalize torques
         return jnp.sqrt(jnp.sum(jnp.square(torques))) + jnp.sum(jnp.abs(torques))
+
+    def _reward_energy(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
+        return jnp.sum(torques * joint_vels)
+
+    def _reward_energy_expenditure(self, torques, joint_vels):
+        return jnp.sum(jnp.clip(torques * joint_vels, 0, 1e30))
+
+    def _reward_joint_ang_vel(self, joint_vels):
+        return jnp.sum(jnp.square(joint_vels))
 
     def _reward_action_rate(self, act: jax.Array, last_act: jax.Array) -> jax.Array:
         # Penalize changes in actions
