@@ -16,8 +16,11 @@ classifiers = [
 ]
 dependencies = [
     "mujoco",
+    "mujoco_mjx",
     "brax",
-    "mediapy"
+    "mediapy",
+    "ml_collections",
+    "pyyaml"
 ]
 
 [project.urls]
@@ -25,3 +28,6 @@ Homepage = "https://github.com/alexeiplatzer/unitree-go2-mjx-rl"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.black]
+line-length = 96

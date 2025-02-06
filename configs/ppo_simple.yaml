@@ -1,0 +1,49 @@
+model:
+  hidden_sizes: [128, 128, 128, 128]
+
+training:
+  num_timesteps: 100_000_000
+  num_evals: 10
+  reward_scaling: 1
+  episode_length: 1000
+  normalize_observations: True
+  action_repeat: 1
+  unroll_length: 20
+  num_minibatches: 32
+  num_updates_per_batch: 4
+  discounting: 0.97
+  learning_rate: 0.0004
+  entropy_cost: 0.01
+  num_envs: 8192
+  batch_size: 256
+
+
+environment:
+  obs_noise: 0.05
+  action_scale: 0.3
+  kick_vel: 0.05
+  scene_file: "scene_mjx.xml"
+
+  rewards:
+    # The coefficients for all reward terms used for training. All
+    # physical quantities are in SI units, if no otherwise specified,
+    # i.e. joint positions are in rad, positions are measured in meters,
+    # torques in Nm, and time in seconds, and forces in Newtons.
+    scales:
+      # Tracking rewards are computed using exp(-delta^2/sigma)
+      # sigma can be a hyperparameter to tune.
+      tracking_lin_vel: 1.5  # Track the base x-y velocity (no z-velocity tracking).
+      tracking_ang_vel: 0.8  # Track the angular velocity along the z-axis (yaw rate).
+
+      # Regularization terms:
+      lin_vel_z: -2.0       # Penalize base velocity in the z direction (L2 penalty).
+      ang_vel_xy: -0.05     # Penalize base roll and pitch rate (L2 penalty).
+      orientation: -5.0     # Penalize non-zero roll and pitch angles (L2 penalty).
+      torques: -0.0002      # L2 regularization of joint torques, |tau|^2.
+      action_rate: -0.01    # Penalize changes in actions; encourage smooth actions.
+      feet_air_time: 0.2    # Encourage long swing steps (not high clearances).
+      stand_still: -0.5     # Encourage no motion at zero command (L2 penalty).
+      termination: -1.0     # Early termination penalty.
+      foot_slip: -0.1       # Penalize foot slipping on the ground.
+
+    tracking_sigma: 0.25    # Used in tracking reward: exp(-error^2/sigma).

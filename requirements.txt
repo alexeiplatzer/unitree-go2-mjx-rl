@@ -1,5 +1,7 @@
 mujoco
-jax
+mujoco_mjx
 brax
 mediapy
 etils
+ml_collections
+pyyaml
