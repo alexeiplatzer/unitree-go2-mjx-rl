@@ -56,6 +56,7 @@ def render(
     nets = make_networks_factory(
         # Observation_size argument doesn't matter since it's only used for param init.
         observation_size=1,
+        privileged_observation_size=1,
         action_size=12,
         preprocess_observations_fn=running_statistics.normalize,
     )
