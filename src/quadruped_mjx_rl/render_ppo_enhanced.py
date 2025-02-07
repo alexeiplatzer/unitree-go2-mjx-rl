@@ -14,7 +14,7 @@ from brax.io import model
 from brax.training.acme import running_statistics
 
 # Algorithms
-from brax.training.agents.ppo import networks as ppo_networks
+from .brax_alt.training.agents.teacher import networks as teacher_networks
 
 from .training_environments.go2_teacher import Go2TeacherEnv
 from .utils import load_config_dicts
@@ -46,8 +46,11 @@ def render(
     )
 
     make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=tuple(rl_config.model.hidden_sizes),
+        teacher_networks.make_teacher_networks,
+        latent_representation_size=rl_config.model.latent_size,
+        policy_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),
+        value_hidden_layer_sizes=tuple(rl_config.model.value_hidden_sizes),
+        encoder_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),  # TODO correct this
     )
 
     nets = make_networks_factory(
@@ -57,12 +60,12 @@ def render(
         preprocess_observations_fn=running_statistics.normalize,
     )
 
-    make_inference_fn = ppo_networks.make_inference_fn(nets)
+    make_inference_fn = teacher_networks.make_teacher_inference_fn(nets)
 
     params = model.load_params(trained_model_path)
 
     # Inference function
-    ppo_inference_fn = make_inference_fn(params)
+    teacher_inference_fn = make_inference_fn(params)
 
     # Commands
     x_vel = render_config.command.x_vel
@@ -80,7 +83,7 @@ def render(
     render_rollout(
         jax.jit(demo_env.reset),
         jax.jit(demo_env.step),
-        jax.jit(ppo_inference_fn),
+        jax.jit(teacher_inference_fn),
         demo_env,
         render_config=render_config,
         save_animation=save_animation,

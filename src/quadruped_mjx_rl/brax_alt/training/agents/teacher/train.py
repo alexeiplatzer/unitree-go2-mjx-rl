@@ -313,7 +313,7 @@ def train(
         action_size=env.action_size,
         preprocess_observations_fn=normalize,
     )
-    make_policy = teacher_networks.make_inference_fn(teacher_network)
+    make_policy = teacher_networks.make_teacher_inference_fn(teacher_network)
 
     optimizer = optax.adam(learning_rate=learning_rate)
     if max_grad_norm is not None:

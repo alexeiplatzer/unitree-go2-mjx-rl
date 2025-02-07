@@ -4,6 +4,7 @@ from brax.training import types
 from . import networks as teacher_networks
 from brax.training.types import Params
 import flax
+import optax
 import jax
 import jax.numpy as jnp
 
@@ -15,6 +16,11 @@ class TeacherNetworkParams:
     encoder: Params
     policy: Params
     value: Params
+
+
+@flax.struct.dataclass
+class StudentNetworkParams:
+    encoder: Params
 
 
 def compute_gae(
@@ -185,3 +191,55 @@ def compute_teacher_loss(
         'v_loss': v_loss,
         'entropy_loss': entropy_loss,
     }
+
+
+def compute_student_loss(
+        teacher_params: TeacherNetworkParams,
+        student_params: StudentNetworkParams,
+        normalizer_params: Any,
+        data: types.Transition,
+        rng: jnp.ndarray,
+        teacher_network: teacher_networks.TeacherNetworks,
+        student_network: teacher_networks.StudentNetworks,
+        entropy_cost: float = 1e-4,
+        discounting: float = 0.9,
+        reward_scaling: float = 1.0,
+        gae_lambda: float = 0.95,
+        clipping_epsilon: float = 0.3,
+        normalize_advantage: bool = True,
+) -> Tuple[jnp.ndarray, types.Metrics]:
+    """Computes Adaptation module loss.
+
+  Args:
+    params: Network parameters,
+    normalizer_params: Parameters of the normalizer.
+    data: Transition that with leading dimension [B, T]. extra fields required
+      are ['state_extras']['truncation'] ['policy_extras']['raw_action']
+      ['policy_extras']['log_prob']
+    rng: Random key
+    ppo_network: PPO networks.
+    entropy_cost: entropy cost.
+    discounting: discounting,
+    reward_scaling: reward multiplier.
+    gae_lambda: General advantage estimation lambda.
+    clipping_epsilon: Policy loss clipping epsilon
+    normalize_advantage: whether to normalize advantage estimate
+
+  Returns:
+    loss
+  """
+
+    encoder_apply = teacher_network.encoder_network.apply
+    adapter_apply = student_network.encoder_network.apply
+
+    # Put the time dimension first.
+    data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
+    teacher_latent_vector = encoder_apply(
+        normalizer_params, teacher_params.encoder, data.observation
+    )
+    student_latent_vector = adapter_apply(
+        normalizer_params, student_params.encoder, data.observation
+    )
+    total_loss = optax.square(teacher_latent_vector - student_latent_vector).mean()
+
+    return total_loss
