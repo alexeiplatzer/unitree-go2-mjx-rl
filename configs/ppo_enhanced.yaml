@@ -1,5 +1,8 @@
 model:
-  hidden_sizes: [128, 128, 128, 128]
+  policy_hidden_sizes: [512, 256, 128]
+  value_hidden_sizes: [512, 256, 128]
+  latent_size: 18
+  encoder_hidden_sizes: [256, 32]
 
 training:
   num_timesteps: 100_000_000

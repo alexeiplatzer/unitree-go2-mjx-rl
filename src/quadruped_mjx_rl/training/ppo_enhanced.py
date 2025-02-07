@@ -14,8 +14,8 @@ from brax import envs
 from brax.io import model
 
 # Algorithm
-from ..brax_alt.training.agents.ppo import train as ppo
-from ..brax_alt.training.agents.ppo import networks as ppo_networks
+from ..brax_alt.training.agents.teacher import train as teacher_train
+from ..brax_alt.training.agents.teacher import networks as teacher_networks
 
 from .domain_randomization import domain_randomize
 from ..training_environments.go2_teacher import Go2TeacherEnv
@@ -67,12 +67,15 @@ def train(
     )
 
     make_networks_factory = functools.partial(
-        ppo_networks.make_ppo_networks,
-        policy_hidden_layer_sizes=tuple(rl_config.model.hidden_sizes),
+        teacher_networks.make_teacher_networks,
+        latent_representation_size=rl_config.model.latent_size,
+        policy_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),
+        value_hidden_layer_sizes=tuple(rl_config.model.value_hidden_sizes),
+        encoder_hidden_layer_sizes=tuple(rl_config.model.encoder_hidden_sizes),
     )
     training_config = rl_config.training
     train_fn = functools.partial(
-        ppo.train,
+        teacher_train.train,
         network_factory=make_networks_factory,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,

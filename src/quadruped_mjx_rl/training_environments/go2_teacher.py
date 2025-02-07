@@ -121,8 +121,8 @@ class Go2TeacherEnv(PipelineEnv):
 
         return sys
 
-    def get_privileged_obs(self):
-        return jnp.concatenate([self.privileged_obs], axis=1)
+    # def get_privileged_obs(self):
+    #     return jnp.concatenate([self.privileged_obs], axis=1)
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         # TODO adapt from config / sample with curriculum
@@ -184,7 +184,7 @@ class Go2TeacherEnv(PipelineEnv):
         joint_vel = pipeline_state.qd[6:]
 
         # observation data
-        obs = self._get_obs(pipeline_state, state.info, state.obs)
+        obs = self._get_obs(pipeline_state, state.info, state.obs["state"])
 
         done = self._check_termination(pipeline_state)
 
@@ -264,11 +264,11 @@ class Go2TeacherEnv(PipelineEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
         obs_history: jax.Array,
-    ) -> jax.Array:
+    ) -> dict[str, jax.Array]:
         inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
         local_rpyrate = math.rotate(pipeline_state.xd.ang[0], inv_torso_rot)
 
-        obs = jnp.concatenate(
+        state = jnp.concatenate(
             [
                 jnp.array([local_rpyrate[2]]) * 0.25,  # yaw rate
                 math.rotate(jnp.array([0, 0, -1]), inv_torso_rot),  # projected gravity
@@ -279,7 +279,24 @@ class Go2TeacherEnv(PipelineEnv):
         )
 
         # stack observations through time
-        obs = jnp.roll(obs_history, obs.size).at[: obs.size].set(obs)
+        history = jnp.roll(obs_history, state.size).at[: state.size].set(state)
+
+        privileged_state = jnp.concatenate(
+            [
+                self.sys.geom_friction.reshape(-1),
+                # self.sys.dof_frictionloss,
+                # self.sys.dof_damping,
+                # self.sys.jnt_stiffness,
+                # self.sys.actuator_forcerange,
+                # self.sys.body_mass[0],
+            ]
+        )
+
+        obs = {
+            "state": state,
+            # "history": history,
+            "privileged_state": privileged_state,
+        }
 
         return obs
 
