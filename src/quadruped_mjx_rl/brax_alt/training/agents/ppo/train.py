@@ -568,8 +568,8 @@ def train(
         metrics = evaluator.run_evaluation(
             _unpmap((
                 training_state.normalizer_params,
-                training_state.params.policy,
-                training_state.params.value,
+                training_state.teacher_params.policy,
+                training_state.teacher_params.value,
             )),
             training_metrics={},
         )

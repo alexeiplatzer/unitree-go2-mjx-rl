@@ -198,15 +198,8 @@ def compute_student_loss(
         student_params: StudentNetworkParams,
         normalizer_params: Any,
         data: types.Transition,
-        rng: jnp.ndarray,
         teacher_network: teacher_networks.TeacherNetworks,
         student_network: teacher_networks.StudentNetworks,
-        entropy_cost: float = 1e-4,
-        discounting: float = 0.9,
-        reward_scaling: float = 1.0,
-        gae_lambda: float = 0.95,
-        clipping_epsilon: float = 0.3,
-        normalize_advantage: bool = True,
 ) -> Tuple[jnp.ndarray, types.Metrics]:
     """Computes Adaptation module loss.
 

@@ -184,7 +184,7 @@ class Go2TeacherEnv(PipelineEnv):
         joint_vel = pipeline_state.qd[6:]
 
         # observation data
-        obs = self._get_obs(pipeline_state, state.info, state.obs["state"])
+        obs = self._get_obs(pipeline_state, state.info, state.obs["state_history"])
 
         done = self._check_termination(pipeline_state)
 
@@ -294,7 +294,7 @@ class Go2TeacherEnv(PipelineEnv):
 
         obs = {
             "state": state,
-            # "history": history,
+            "state_history": history,
             "privileged_state": privileged_state,
         }
 

@@ -35,7 +35,9 @@ class TrainingState:
     """Contains training state for the learner."""
 
     optimizer_state: optax.OptState
-    params: teacher_losses.TeacherNetworkParams
+    student_optimizer_state: optax.OptState
+    teacher_params: teacher_losses.TeacherNetworkParams
+    student_params: teacher_losses.StudentNetworkParams
     normalizer_params: running_statistics.RunningStatisticsState
     env_steps: jnp.ndarray
 
@@ -122,6 +124,7 @@ def train(
         max_devices_per_host: Optional[int] = None,
         num_eval_envs: int = 128,
         learning_rate: float = 1e-4,
+        student_learning_rate: float = 1e-4,
         entropy_cost: float = 1e-4,
         discounting: float = 0.9,
         seed: int = 0,
@@ -129,6 +132,7 @@ def train(
         batch_size: int = 32,
         num_minibatches: int = 16,
         num_updates_per_batch: int = 2,
+        num_student_updates_per_batch: int = 8,
         num_evals: int = 1,
         num_resets_per_eval: int = 0,
         normalize_observations: bool = False,
@@ -136,7 +140,8 @@ def train(
         clipping_epsilon: float = 0.3,
         gae_lambda: float = 0.95,
         deterministic_eval: bool = False,
-        network_factory=teacher_networks.make_teacher_networks,
+        teacher_network_factory=teacher_networks.make_teacher_networks,
+        student_network_factory=teacher_networks.make_student_networks,
         progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
         normalize_advantage: bool = True,
         eval_env: Optional[envs.Env] = None,
@@ -192,7 +197,7 @@ def train(
     clipping_epsilon: clipping epsilon for PPO loss
     gae_lambda: General advantage estimation lambda
     deterministic_eval: whether to run the eval with a deterministic policy
-    network_factory: function that generates networks for policy and value
+    teacher_network_factory: function that generates networks for policy and value
       functions
     progress_fn: a user-defined callback function for reporting/plotting metrics
     normalize_advantage: whether to normalize advantage estimate
@@ -264,7 +269,8 @@ def train(
     local_key, key_env, eval_key = jax.random.split(local_key, 3)
     # key_networks should be global, so that networks are initialized the same
     # way for different processes.
-    key_encoder, key_policy, key_value = jax.random.split(global_key, 3)
+    encoding_key, key_policy, key_value = jax.random.split(global_key, 3)
+    key_adapter, key_encoder = jax.random.split(encoding_key, 2)
     del global_key
 
     assert num_envs % device_count == 0
@@ -303,11 +309,14 @@ def train(
     privileged_obs_shape = jax.tree_util.tree_map(
         lambda x: x.shape[2:], env_state.obs["privileged_state"]
     )
+    obs_history_shape = jax.tree_util.tree_map(
+        lambda x: x.shape[2:], env_state.obs["state_history"]
+    )
 
     normalize = lambda x, y: x
     if normalize_observations:
         normalize = running_statistics.normalize
-    teacher_network = network_factory(  # TODO check this signature
+    teacher_network = teacher_network_factory(  # TODO check this signature
         observation_size=obs_shape[0],
         privileged_observation_size=privileged_obs_shape[0],
         action_size=env.action_size,
@@ -315,7 +324,13 @@ def train(
     )
     make_policy = teacher_networks.make_teacher_inference_fn(teacher_network)
 
+    student_network = student_network_factory(
+        observation_size=obs_history_shape[0],
+        preprocess_observations_fn=normalize,
+    )
+
     optimizer = optax.adam(learning_rate=learning_rate)
+    student_optimizer = optax.adam(learning_rate=student_learning_rate)
     if max_grad_norm is not None:
         # TODO: Move gradient clipping to `training/gradients.py`.
         optimizer = optax.chain(
@@ -333,9 +348,17 @@ def train(
         clipping_epsilon=clipping_epsilon,
         normalize_advantage=normalize_advantage,
     )
+    student_loss_fn = functools.partial(
+        teacher_losses.compute_student_loss,
+        teacher_network=teacher_network,
+        student_network=student_network,
+    )
 
     gradient_update_fn = gradients.gradient_update_fn(
         loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
+    )
+    student_gradient_update_fn = gradients.gradient_update_fn(
+        student_loss_fn, student_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
     )
 
     def minibatch_step(
@@ -343,17 +366,24 @@ def train(
             data: types.Transition,
             normalizer_params: running_statistics.RunningStatisticsState,
     ):
-        optimizer_state, params, key = carry
-        key, key_loss = jax.random.split(key)
-        (_, metrics), params, optimizer_state = gradient_update_fn(
-            params,
+        optimizer_state, student_optimizer_state, teacher_params, student_params, key = carry
+        key, key_loss, key_student_loss = jax.random.split(key, 3)
+        (_, teacher_metrics), teacher_params, optimizer_state = gradient_update_fn(
+            teacher_params,
             normalizer_params,
             data,
             key_loss,
             optimizer_state=optimizer_state,
         )
+        _, student_params, student_optimizer_state = gradient_update_fn(
+            student_params,
+            normalizer_params,
+            data,
+            key_student_loss,
+            optimizer_state=student_optimizer_state,
+        )
 
-        return (optimizer_state, params, key), metrics
+        return (optimizer_state, teacher_params, student_optimizer_state, student_params, key), teacher_metrics
 
     def sgd_step(
             carry,
@@ -361,7 +391,7 @@ def train(
             data: types.Transition,
             normalizer_params: running_statistics.RunningStatisticsState,
     ):
-        optimizer_state, params, key = carry
+        optimizer_state, student_optimizer_state, teacher_params, student_params, key = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
 
         if augment_pixels:
@@ -382,13 +412,13 @@ def train(
             return x
 
         shuffled_data = jax.tree_util.tree_map(convert_data, data)
-        (optimizer_state, params, _), metrics = jax.lax.scan(
+        (optimizer_state, teacher_params, student_optimizer_state, student_params, _), metrics = jax.lax.scan(
             functools.partial(minibatch_step, normalizer_params=normalizer_params),
-            (optimizer_state, params, key_grad),
+            (optimizer_state, teacher_params, student_optimizer_state, student_params, key_grad),
             shuffled_data,
             length=num_minibatches,
         )
-        return (optimizer_state, params, key), metrics
+        return (optimizer_state, teacher_params, student_optimizer_state, student_params, key), metrics
 
     def training_step(
             carry: Tuple[TrainingState, envs.State, PRNGKey], unused_t
@@ -398,9 +428,9 @@ def train(
 
         policy = make_policy((
             training_state.normalizer_params,
-            training_state.params.encoder,
-            training_state.params.policy,
-            training_state.params.value,
+            training_state.teacher_params.encoder,
+            training_state.teacher_params.policy,
+            training_state.teacher_params.value,
         ))
 
         def f(carry, unused_t):
@@ -436,18 +466,20 @@ def train(
             pmap_axis_name=_PMAP_AXIS_NAME,
         )
 
-        (optimizer_state, params, _), metrics = jax.lax.scan(
+        (optimizer_state, teacher_params, student_optimizer_state, student_params, _), metrics = jax.lax.scan(
             functools.partial(
                 sgd_step, data=data, normalizer_params=normalizer_params
             ),
-            (training_state.optimizer_state, training_state.params, key_sgd),
+            (training_state.optimizer_state, training_state.teacher_params, training_state.student_optimizer_state, training_state.student_params, key_sgd),
             (),
             length=num_updates_per_batch,
         )
 
         new_training_state = TrainingState(
             optimizer_state=optimizer_state,
-            params=params,
+            student_optimizer_state=student_optimizer_state,
+            teacher_params=teacher_params,
+            student_params=student_params,
             normalizer_params=normalizer_params,
             env_steps=jnp.array(
                 training_state.env_steps + env_step_per_training_step,
@@ -502,21 +534,26 @@ def train(
         policy=teacher_network.policy_network.init(key_policy),
         value=teacher_network.value_network.init(key_value),
     )
+    student_init_params = teacher_losses.StudentNetworkParams(
+        encoder=student_network.encoder_network.init(key_adapter),
+    )
 
     obs_shape = jax.tree_util.tree_map(
         lambda x: specs.Array(x.shape[-1:], jnp.dtype('float32')), env_state.obs
     )  # TODO this might be broken
     training_state = TrainingState(  # pytype: disable=wrong-arg-types  # jax-ndarray
         optimizer_state=optimizer.init(init_params),
+        student_optimizer_state=student_optimizer.init(student_init_params),
         # pytype: disable=wrong-arg-types  # numpy-scalars
-        params=init_params,
+        teacher_params=init_params,
+        student_params=student_init_params,
         normalizer_params=running_statistics.init_state(
             _remove_pixels(obs_shape)
         ),
         env_steps=jnp.array(0, dtype=jnp.int64),
     )
 
-    if (
+    if (  # TODO: add student network here
             restore_checkpoint_path is not None
             and epath.Path(restore_checkpoint_path).exists()
     ):
@@ -535,9 +572,9 @@ def train(
             make_policy,
             (
                 training_state.normalizer_params,
-                training_state.params.encoder,
-                training_state.params.policy,
-                training_state.params.value,
+                training_state.teacher_params.encoder,
+                training_state.teacher_params.policy,
+                training_state.teacher_params.value,
             ),
             {},
         )
@@ -575,9 +612,9 @@ def train(
         metrics = evaluator.run_evaluation(
             _unpmap((
                 training_state.normalizer_params,
-                training_state.params.encoder,
-                training_state.params.policy,
-                training_state.params.value,
+                training_state.teacher_params.encoder,
+                training_state.teacher_params.policy,
+                training_state.teacher_params.value,
             )),
             training_metrics={},
         )
@@ -610,16 +647,16 @@ def train(
             metrics = evaluator.run_evaluation(
                 _unpmap((
                     training_state.normalizer_params,
-                    training_state.params.encoder,
-                    training_state.params.policy,
-                    training_state.params.value,
+                    training_state.teacher_params.encoder,
+                    training_state.teacher_params.policy,
+                    training_state.teacher_params.value,
                 )),
                 training_metrics,
             )
             logging.info(metrics)
             progress_fn(current_step, metrics)
             params = _unpmap(
-                (training_state.normalizer_params, training_state.params)
+                (training_state.normalizer_params, training_state.teacher_params)
             )
             policy_params_fn(current_step, make_policy, params)
 
@@ -629,12 +666,16 @@ def train(
     # If there was no mistakes the training_state should still be identical on all
     # devices.
     pmap.assert_is_replicated(training_state)
-    params = _unpmap((
+    teacher_params = _unpmap((
         training_state.normalizer_params,
-        training_state.params.encoder,
-        training_state.params.policy,
-        training_state.params.value,
+        training_state.teacher_params.encoder,
+        training_state.teacher_params.policy,
+        training_state.teacher_params.value,
+    ))
+    student_params = _unpmap((
+        training_state.normalizer_params,
+        training_state.student_params.encoder,
     ))
     logging.info('total steps: %s', total_steps)
     pmap.synchronize_hosts()
-    return (make_policy, params, metrics)
+    return (make_policy, teacher_params, student_params, metrics)

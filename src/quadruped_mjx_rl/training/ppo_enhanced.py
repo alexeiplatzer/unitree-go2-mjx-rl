@@ -27,6 +27,7 @@ def train(
     robot_config_path,
     init_scene_path,
     model_save_path,
+    student_model_save_path,
     checkpoints_save_path,
 ):
 
@@ -66,17 +67,23 @@ def train(
         init_scene_path=init_scene_path,
     )
 
-    make_networks_factory = functools.partial(
+    make_teacher_networks_factory = functools.partial(
         teacher_networks.make_teacher_networks,
         latent_representation_size=rl_config.model.latent_size,
         policy_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),
         value_hidden_layer_sizes=tuple(rl_config.model.value_hidden_sizes),
         encoder_hidden_layer_sizes=tuple(rl_config.model.encoder_hidden_sizes),
     )
+    make_student_networks_factory = functools.partial(
+        teacher_networks.make_student_networks,
+        latent_representation_size=rl_config.model.latent_size,
+        encoder_hidden_layer_sizes=tuple(rl_config.model.encoder_hidden_sizes),
+    )
     training_config = rl_config.training
     train_fn = functools.partial(
         teacher_train.train,
-        network_factory=make_networks_factory,
+        teacher_network_factory=make_teacher_networks_factory,
+        student_network_factory=make_student_networks_factory,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
@@ -103,7 +110,7 @@ def train(
         robot_config=robot_config,
         init_scene_path=init_scene_path,
     )
-    make_inference_fn, params, _ = train_fn(
+    make_inference_fn, teacher_params, student_params, _ = train_fn(
         environment=env, progress_fn=progress, eval_env=eval_env
     )
 
@@ -111,5 +118,8 @@ def train(
     print(f"time to train: {times[-1] - times[1]}")
 
     # Save and reload params.
-    model.save_params(model_save_path, params)
-    params = model.load_params(model_save_path)
+    model.save_params(model_save_path, teacher_params)
+    teacher_params = model.load_params(model_save_path)
+
+    model.save_params(student_model_save_path, student_params)
+    student_params = model.load_params(student_model_save_path)
