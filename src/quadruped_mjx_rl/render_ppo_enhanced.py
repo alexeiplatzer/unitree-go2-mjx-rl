@@ -50,7 +50,9 @@ def render(
         latent_representation_size=rl_config.model.latent_size,
         policy_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),
         value_hidden_layer_sizes=tuple(rl_config.model.value_hidden_sizes),
-        encoder_hidden_layer_sizes=tuple(rl_config.model.policy_hidden_sizes),  # TODO correct this
+        encoder_hidden_layer_sizes=tuple(
+            rl_config.model.policy_hidden_sizes
+        ),  # TODO correct this
     )
 
     nets = make_networks_factory(
@@ -90,7 +92,7 @@ def render(
         save_animation=save_animation,
         save_path=animation_save_path,
         the_command=movement_command,
-        camera="track"
+        camera="track",
     )
 
 
@@ -109,7 +111,7 @@ def render_rollout(
     render_every = render_config.render_every
     state = reset_fn(rng)
     if the_command is not None:
-      state.info['command'] = the_command
+        state.info["command"] = the_command
     rollout = [state.pipeline_state]
 
     for i in range(render_config.n_steps):
@@ -125,12 +127,11 @@ def render_rollout(
             save_path,
             env.render(rollout, camera=camera),
             fps=1.0 / (env.dt * render_every),
-            codec='gif',
+            codec="gif",
         )
     else:
         media.show_video(
             env.render(rollout, camera=camera),
             fps=1.0 / (env.dt * render_every),
-            codec='gif',
+            codec="gif",
         )
-

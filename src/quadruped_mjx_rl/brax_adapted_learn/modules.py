@@ -27,28 +27,40 @@ class TeacherStudentActorCritic(nn.Module):
             event_size=self.action_size
         )
         self.encoder_module = MLP(
-            layer_sizes=[self.priveleged_observation_size] + list(self.encoder_hidden_layer_sizes) + [self.latent_layer_size],
+            layer_sizes=[self.priveleged_observation_size]
+            + list(self.encoder_hidden_layer_sizes)
+            + [self.latent_layer_size],
             activation=self.activation,
         )
         historical_observations_size = self.observation_size * self.num_history_steps
         self.adapter_module = MLP(
-            layer_sizes=[historical_observations_size] + list(self.adapter_hidden_layer_sizes) + [self.latent_layer_size],
+            layer_sizes=[historical_observations_size]
+            + list(self.adapter_hidden_layer_sizes)
+            + [self.latent_layer_size],
             activation=self.activation,
         )
         extended_observations_size = self.latent_layer_size + self.observation_size
         self.policy_module = MLP(
-            layer_sizes=[extended_observations_size] + list(self.policy_hidden_layer_sizes) + [self.action_size],
+            layer_sizes=[extended_observations_size]
+            + list(self.policy_hidden_layer_sizes)
+            + [self.action_size],
             activation=self.activation,
         )
         self.value_module = MLP(
-            layer_sizes=[extended_observations_size] + list(self.value_hidden_layer_sizes) + [1],
+            layer_sizes=[extended_observations_size]
+            + list(self.value_hidden_layer_sizes)
+            + [1],
             activation=self.activation,
         )
 
-    def __call__(self, observation: jnp.ndarray, privileged_observation: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    def __call__(
+        self, observation: jnp.ndarray, privileged_observation: jnp.ndarray
+    ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
         return self.apply_teacher(observation, privileged_observation)
 
-    def apply_teacher(self, observation: jnp.ndarray, privileged_observation: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    def apply_teacher(
+        self, observation: jnp.ndarray, privileged_observation: jnp.ndarray
+    ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
         latent = self.encoder_module(privileged_observation)
         extended_observation = jnp.concatenate([latent, observation])
         policy_logits = self.policy_module(extended_observation)

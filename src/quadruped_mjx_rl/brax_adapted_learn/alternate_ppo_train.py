@@ -34,6 +34,7 @@ _PMAP_AXIS_NAME = "i"
 @flax.struct.dataclass
 class TeacherStudentNetworkParams:
     """Contains training state for the learner."""
+
     encoder: Params
     adapter: Params
     policy: Params
@@ -43,6 +44,7 @@ class TeacherStudentNetworkParams:
 @flax.struct.dataclass
 class TrainingState:
     """Contains training state for the learner."""
+
     optimizer_state: optax.OptState
     params: TeacherStudentNetworkParams
     normalizer_params: running_statistics.RunningStatisticsState
@@ -64,7 +66,7 @@ def _strip_weak_type(tree):
 
 
 def _remove_pixels(
-        obs: Union[jnp.ndarray, Mapping[str, jax.Array]],
+    obs: Union[jnp.ndarray, Mapping[str, jax.Array]],
 ) -> Union[jnp.ndarray, Mapping[str, jax.Array]]:
     """Removes pixel observations from the observation dict."""
     if not isinstance(obs, Mapping):
@@ -73,39 +75,39 @@ def _remove_pixels(
 
 
 def train(
-        environment: envs.Env,
-        network_hyperparams: dict,
-        num_timesteps: int,
-        episode_length: int,
-        wrap_env: bool = True,
-        action_repeat: int = 1,
-        num_envs: int = 1,
-        num_eval_envs: int = 128,
-        learning_rate: float = 1e-4,
-        entropy_cost: float = 1e-4,
-        discounting: float = 0.9,
-        seed: int = 0,
-        unroll_length: int = 10,
-        batch_size: int = 32,
-        num_minibatches: int = 16,
-        num_updates_per_batch: int = 2,
-        num_evals: int = 1,
-        # num_resets_per_eval: int = 0,
-        normalize_observations: bool = False,
-        reward_scaling: float = 1.0,
-        clipping_epsilon: float = 0.3,
-        gae_lambda: float = 0.95,
-        # deterministic_eval: bool = False,
-        # network_factory: types.NetworkFactory[
-        #     ppo_networks.PPONetworks
-        # ] = ppo_networks.make_ppo_networks,
-        progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
-        normalize_advantage: bool = True,
-        eval_env: Optional[envs.Env] = None,
-        policy_params_fn: Callable[..., None] = lambda *args: None,
-        randomization_fn: Optional[
-            Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
-        ] = None,
+    environment: envs.Env,
+    network_hyperparams: dict,
+    num_timesteps: int,
+    episode_length: int,
+    wrap_env: bool = True,
+    action_repeat: int = 1,
+    num_envs: int = 1,
+    num_eval_envs: int = 128,
+    learning_rate: float = 1e-4,
+    entropy_cost: float = 1e-4,
+    discounting: float = 0.9,
+    seed: int = 0,
+    unroll_length: int = 10,
+    batch_size: int = 32,
+    num_minibatches: int = 16,
+    num_updates_per_batch: int = 2,
+    num_evals: int = 1,
+    # num_resets_per_eval: int = 0,
+    normalize_observations: bool = False,
+    reward_scaling: float = 1.0,
+    clipping_epsilon: float = 0.3,
+    gae_lambda: float = 0.95,
+    # deterministic_eval: bool = False,
+    # network_factory: types.NetworkFactory[
+    #     ppo_networks.PPONetworks
+    # ] = ppo_networks.make_ppo_networks,
+    progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
+    normalize_advantage: bool = True,
+    eval_env: Optional[envs.Env] = None,
+    policy_params_fn: Callable[..., None] = lambda *args: None,
+    randomization_fn: Optional[
+        Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
+    ] = None,
 ):
     assert batch_size * num_minibatches % num_envs == 0
     xt = time.time()
@@ -132,8 +134,7 @@ def train(
     # equals to ceil(num_timesteps / (num_evals * env_step_per_training_step *
     #                                 num_resets_per_eval))
     num_training_steps_per_epoch = np.ceil(
-        num_timesteps
-        / (num_evals_after_init * env_step_per_training_step)
+        num_timesteps / (num_evals_after_init * env_step_per_training_step)
     ).astype(int)
 
     key = jax.random.PRNGKey(seed)
@@ -155,9 +156,7 @@ def train(
             randomization_batch_size = num_envs // local_device_count
             # all devices gets the same randomization rng
             randomization_rng = jax.random.split(key_env, randomization_batch_size)
-            v_randomization_fn = functools.partial(
-                randomization_fn, rng=randomization_rng
-            )
+            v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
         wrap_for_training = envs.training.wrap
         env = wrap_for_training(
             environment,
@@ -193,7 +192,7 @@ def train(
         normalize_advantage=normalize_advantage,
     )
 
-    student_loss_fn = lambda x,y: optax.losses.squared_error(x, y).mean()
+    student_loss_fn = lambda x, y: optax.losses.squared_error(x, y).mean()
 
     gradient_update_fn = gradients.gradient_update_fn(
         loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
@@ -204,9 +203,9 @@ def train(
     )
 
     def minibatch_step(
-            carry,
-            data: types.Transition,
-            normalizer_params: running_statistics.RunningStatisticsState,
+        carry,
+        data: types.Transition,
+        normalizer_params: running_statistics.RunningStatisticsState,
     ):
         optimizer_state, params, key = carry
         key, key_loss = jax.random.split(key)
@@ -221,10 +220,10 @@ def train(
         return (optimizer_state, params, key), metrics
 
     def sgd_step(
-            carry,
-            unused_t,
-            data: types.Transition,
-            normalizer_params: running_statistics.RunningStatisticsState,
+        carry,
+        unused_t,
+        data: types.Transition,
+        normalizer_params: running_statistics.RunningStatisticsState,
     ):
         optimizer_state, params, key = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
@@ -244,7 +243,7 @@ def train(
         return (optimizer_state, params, key), metrics
 
     def training_step(
-            carry: Tuple[TrainingState, envs.State, PRNGKey], unused_t
+        carry: Tuple[TrainingState, envs.State, PRNGKey], unused_t
     ) -> Tuple[Tuple[TrainingState, envs.State, PRNGKey], Metrics]:
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
@@ -306,7 +305,7 @@ def train(
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
-            training_state: TrainingState, state: envs.State, key: PRNGKey
+        training_state: TrainingState, state: envs.State, key: PRNGKey
     ) -> Tuple[TrainingState, envs.State, Metrics]:
         (training_state, state, _), loss_metrics = jax.lax.scan(
             training_step,
@@ -321,7 +320,7 @@ def train(
 
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
-            training_state: TrainingState, env_state: envs.State, key: PRNGKey
+        training_state: TrainingState, env_state: envs.State, key: PRNGKey
     ) -> Tuple[TrainingState, envs.State, Metrics]:
         nonlocal training_walltime
         t = time.time()
@@ -334,10 +333,7 @@ def train(
 
         epoch_training_time = time.time() - t
         training_walltime += epoch_training_time
-        sps = (
-                      num_training_steps_per_epoch
-                      * env_step_per_training_step
-              ) / epoch_training_time
+        sps = (num_training_steps_per_epoch * env_step_per_training_step) / epoch_training_time
         metrics = {
             "training/sps": sps,
             "training/walltime": training_walltime,
@@ -352,20 +348,23 @@ def train(
     # Initialize model params and training state.
     init_params = TeacherStudentNetworkParams(
         # encoder=teacher_student_network.init(key_encoder),
-        adapter=teacher_student_network.init(key_adapter, method=teacher_student_network.encode_student),
-        policy=teacher_student_network.init(key_policy, method=teacher_student_network.apply_teacher),
+        adapter=teacher_student_network.init(
+            key_adapter, method=teacher_student_network.encode_student
+        ),
+        policy=teacher_student_network.init(
+            key_policy, method=teacher_student_network.apply_teacher
+        ),
         # value=teacher_student_network.init(key_value),
     )
-    adapter_params = teacher_student_network.init(key_adapter, method=teacher_student_network.encode_teacher)
-
+    adapter_params = teacher_student_network.init(
+        key_adapter, method=teacher_student_network.encode_teacher
+    )
 
     obs_shape = jax.tree_util.tree_map(
         lambda x: specs.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
     )
     training_state = TrainingState(  # pytype: disable=wrong-arg-types  # jax-ndarray
-        optimizer_state=optimizer.init(
-            init_params.policy
-        ),
+        optimizer_state=optimizer.init(init_params.policy),
         params=init_params.policy,
         env_steps=jnp.array(0, dtype=jnp.int64),
     )
@@ -437,11 +436,7 @@ def train(
             training_state.params.value,
         )
     )
-    student_params = _unpmap(
-        (
-            student_training_state.params,
-        )
-    )
+    student_params = _unpmap((student_training_state.params,))
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
     return make_teacher_policy, teacher_params, student_params

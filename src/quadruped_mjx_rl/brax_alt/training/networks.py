@@ -36,7 +36,7 @@ class MLP(linen.Module):
         for i, hidden_size in enumerate(self.layer_sizes):
             hidden = linen.Dense(
                 hidden_size,
-                name=f'hidden_{i}',
+                name=f"hidden_{i}",
                 kernel_init=self.kernel_init,
                 use_bias=self.bias,
             )(hidden)
@@ -53,14 +53,14 @@ def _get_obs_state_size(obs_size: types.ObservationSize, obs_key: str) -> int:
 
 
 def make_encoder_network(
-        param_size: int,
-        obs_size: types.ObservationSize,
-        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-        hidden_layer_sizes: Sequence[int] = (256, 256),
-        activation: ActivationFn = linen.relu,
-        kernel_init: Initializer = jax.nn.initializers.lecun_uniform(),
-        layer_norm: bool = False,
-        obs_key: str = 'privileged_state',
+    param_size: int,
+    obs_size: types.ObservationSize,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    hidden_layer_sizes: Sequence[int] = (256, 256),
+    activation: ActivationFn = linen.relu,
+    kernel_init: Initializer = jax.nn.initializers.lecun_uniform(),
+    layer_norm: bool = False,
+    obs_key: str = "privileged_state",
 ) -> FeedForwardNetwork:
     """Creates a policy network."""
     policy_module = MLP(
@@ -77,20 +77,18 @@ def make_encoder_network(
 
     obs_size = _get_obs_state_size(obs_size, obs_key)
     dummy_obs = jnp.zeros((1, obs_size))
-    return FeedForwardNetwork(
-        init=lambda key: policy_module.init(key, dummy_obs), apply=apply
-    )
+    return FeedForwardNetwork(init=lambda key: policy_module.init(key, dummy_obs), apply=apply)
 
 
 def make_policy_network(
-        param_size: int,
-        input_size: types.ObservationSize,
-        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-        hidden_layer_sizes: Sequence[int] = (256, 256),
-        activation: ActivationFn = linen.relu,
-        kernel_init: Initializer = jax.nn.initializers.lecun_uniform(),
-        layer_norm: bool = False,
-        obs_key: str = 'state',
+    param_size: int,
+    input_size: types.ObservationSize,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    hidden_layer_sizes: Sequence[int] = (256, 256),
+    activation: ActivationFn = linen.relu,
+    kernel_init: Initializer = jax.nn.initializers.lecun_uniform(),
+    layer_norm: bool = False,
+    obs_key: str = "state",
 ) -> FeedForwardNetwork:
     """Creates a policy network."""
     policy_module = MLP(
@@ -108,17 +106,15 @@ def make_policy_network(
 
     input_size = _get_obs_state_size(input_size, obs_key)
     dummy_obs = jnp.zeros((1, input_size))
-    return FeedForwardNetwork(
-        init=lambda key: policy_module.init(key, dummy_obs), apply=apply
-    )
+    return FeedForwardNetwork(init=lambda key: policy_module.init(key, dummy_obs), apply=apply)
 
 
 def make_value_network(
-        input_size: types.ObservationSize,
-        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-        hidden_layer_sizes: Sequence[int] = (256, 256),
-        activation: ActivationFn = linen.relu,
-        obs_key: str = 'state',
+    input_size: types.ObservationSize,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    hidden_layer_sizes: Sequence[int] = (256, 256),
+    activation: ActivationFn = linen.relu,
+    obs_key: str = "state",
 ) -> FeedForwardNetwork:
     """Creates a value network."""
     value_module = MLP(
@@ -135,6 +131,4 @@ def make_value_network(
 
     input_size = _get_obs_state_size(input_size, obs_key)
     dummy_obs = jnp.zeros((1, input_size))
-    return FeedForwardNetwork(
-        init=lambda key: value_module.init(key, dummy_obs), apply=apply
-    )
+    return FeedForwardNetwork(init=lambda key: value_module.init(key, dummy_obs), apply=apply)

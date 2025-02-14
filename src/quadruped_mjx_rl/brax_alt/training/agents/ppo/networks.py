@@ -18,14 +18,12 @@ class PPONetworks:
 def make_inference_fn(ppo_networks: PPONetworks):
     """Creates params and inference function for the PPO agent."""
 
-    def make_policy(
-            params: types.Params, deterministic: bool = False
-    ) -> types.Policy:
+    def make_policy(params: types.Params, deterministic: bool = False) -> types.Policy:
         policy_network = ppo_networks.policy_network
         parametric_action_distribution = ppo_networks.parametric_action_distribution
 
         def policy(
-                observations: types.Observation, key_sample: PRNGKey
+            observations: types.Observation, key_sample: PRNGKey
         ) -> Tuple[types.Action, types.Extra]:
             param_subset = (params[0], params[1])  # normalizer and policy params
             logits = policy_network.apply(*param_subset, observations)
@@ -35,12 +33,10 @@ def make_inference_fn(ppo_networks: PPONetworks):
                 logits, key_sample
             )
             log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-            postprocessed_actions = parametric_action_distribution.postprocess(
-                raw_actions
-            )
+            postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
             return postprocessed_actions, {
-                'log_prob': log_prob,
-                'raw_action': raw_actions,
+                "log_prob": log_prob,
+                "raw_action": raw_actions,
             }
 
         return policy
@@ -49,19 +45,17 @@ def make_inference_fn(ppo_networks: PPONetworks):
 
 
 def make_ppo_networks(
-        observation_size: int,
-        action_size: int,
-        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-        policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
-        value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
-        activation: networks.ActivationFn = linen.swish,
-        policy_obs_key: str = 'state',
-        value_obs_key: str = 'state',
+    observation_size: int,
+    action_size: int,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
+    value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
+    activation: networks.ActivationFn = linen.swish,
+    policy_obs_key: str = "state",
+    value_obs_key: str = "state",
 ) -> PPONetworks:
     """Make PPO networks with preprocessor."""
-    parametric_action_distribution = distribution.NormalTanhDistribution(
-        event_size=action_size
-    )
+    parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
     policy_network = networks.make_policy_network(
         parametric_action_distribution.param_size,
         observation_size,

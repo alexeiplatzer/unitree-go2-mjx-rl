@@ -2,7 +2,7 @@ from quadruped_mjx_rl.training.ppo_simple import train
 
 import paths
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     train(
         rl_config_path=paths.ppo_simple_config,
         robot_config_path=paths.barkour_config,

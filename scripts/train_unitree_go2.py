@@ -3,7 +3,7 @@ from quadruped_mjx_rl.training.ppo_enhanced import train as train_enhanced
 
 import paths
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     train_enhanced(
         rl_config_path=paths.ppo_enhanced_config,
         robot_config_path=paths.unitree_go2_config,

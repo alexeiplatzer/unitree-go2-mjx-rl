@@ -20,4 +20,3 @@ ckpt_path.mkdir(parents=True, exist_ok=True)
 
 ANIMATIONS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "animations"
 ANIMATIONS_DIRECTORY.mkdir(parents=True, exist_ok=True)
-

@@ -349,7 +349,9 @@ class Go2TeacherEnv(PipelineEnv):
     def _reward_energy(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
         return jnp.sum(torques * joint_vels)
 
-    def _reward_energy_expenditure(self, torques: jax.Array, joint_vels: jax.Array) -> jax.Array:
+    def _reward_energy_expenditure(
+        self, torques: jax.Array, joint_vels: jax.Array
+    ) -> jax.Array:
         return jnp.sum(jnp.clip(torques * joint_vels, 0, 1e30))
 
     def _reward_joint_ang_vel(self, joint_vels: jax.Array) -> jax.Array:

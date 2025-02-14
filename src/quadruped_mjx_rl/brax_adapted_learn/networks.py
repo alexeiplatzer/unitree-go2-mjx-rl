@@ -17,13 +17,11 @@ from modules import TeacherStudentActorCritic
 def make_inference_fn(network: TeacherStudentActorCritic):
     """Creates params and inference function for the PPO agent."""
 
-    def make_policy(
-            params: types.Params, deterministic: bool = False
-    ) -> types.Policy:
+    def make_policy(params: types.Params, deterministic: bool = False) -> types.Policy:
         def policy(
-                observations: types.Observation,
-                priveleged_observations: types.Observation,
-                key_sample: PRNGKey
+            observations: types.Observation,
+            priveleged_observations: types.Observation,
+            key_sample: PRNGKey,
         ) -> Tuple[types.Action, types.Extra]:
             logits = network.apply(params, observations, method=network.apply_teacher)
             if deterministic:
@@ -36,8 +34,8 @@ def make_inference_fn(network: TeacherStudentActorCritic):
                 raw_actions
             )
             return postprocessed_actions, {
-                'log_prob': log_prob,
-                'raw_action': raw_actions,
+                "log_prob": log_prob,
+                "raw_action": raw_actions,
             }
 
         return policy

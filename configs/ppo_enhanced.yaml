@@ -5,10 +5,10 @@ model:
   encoder_hidden_sizes: [256, 32]
 
 training:
-  num_timesteps: 1_000
+  num_timesteps: 100_000_000
   num_evals: 10
   reward_scaling: 1
-  episode_length: 100
+  episode_length: 1000
   normalize_observations: True
   action_repeat: 1
   unroll_length: 20
