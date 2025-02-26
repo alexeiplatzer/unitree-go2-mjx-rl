@@ -1,19 +1,21 @@
-scene_file: "scene_mjx.xml"
-initial_keyframe: home
-torso_name: base
-upper_leg_name: thigh
-lower_leg_name: calf
-foot_name: foot
-lower_leg_bodies:
-  front_left: FL_calf
-  rear_left: RL_calf
-  front_right: FR_calf
-  rear_right: RR_calf
-feet_sites:
-  front_left: FL_foot
-  rear_left: RL_foot
-  front_right: FR_foot
-  rear_right: RR_foot
-joints_lower_limits: [-0.5, 0.4, -2.3]
-joints_upper_limits: [0.5, 1.4, -0.85]
-foot_radius: 0.0175
+robot:
+  name: "unitree_go2"
+  scene_file: "scene_mjx.xml"
+  initial_keyframe: home
+  torso_name: base
+  upper_leg_name: thigh
+  lower_leg_name: calf
+  foot_name: foot
+  lower_leg_bodies:
+    front_left: FL_calf
+    rear_left: RL_calf
+    front_right: FR_calf
+    rear_right: RR_calf
+  feet_sites:
+    front_left: FL_foot
+    rear_left: RL_foot
+    front_right: FR_foot
+    rear_right: RR_foot
+  joints_lower_limits: [-0.5, 0.4, -2.3]
+  joints_upper_limits: [0.5, 1.4, -0.85]
+  foot_radius: 0.0175

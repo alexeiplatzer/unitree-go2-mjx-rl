@@ -2,8 +2,9 @@
 
 # Supporting
 from typing import Any, Sequence, List
+from dataclasses import dataclass, field, asdict, fields
 from ml_collections.config_dict import ConfigDict
-from etils.epath import Path
+from etils.epath import Path, PathLike
 
 # Math
 import jax
@@ -20,17 +21,60 @@ from brax.base import Motion, Transform
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
+from .configs import EnvironmentConfig
+from ..robots import RobotConfig
+
+
+@dataclass
+class SimpleEnvironmentConfig(EnvironmentConfig["JoystickEnv"]):
+    name = "ppo_joystick_simple"
+    obs_noise: float = 0.05
+    action_scale: float = 0.3
+    kick_vel: float = 0.05
+
+    @dataclass
+    class RewardConfig:
+        tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
+
+        # The coefficients for all reward terms used for training. All
+        # physical quantities are in SI units, if no otherwise specified,
+        # i.e. joint positions are in rad, positions are measured in meters,
+        # torques in Nm, and time in seconds, and forces in Newtons.
+        @dataclass
+        class ScalesConfig:
+            # Tracking rewards are computed using exp(-delta^2/sigma)
+            # sigma can be a hyperparameter to tune.
+
+            # Track the base x-y velocity (no z-velocity tracking).
+            tracking_lin_vel: float = 1.5
+            # Track the angular velocity along the z-axis (yaw rate).
+            tracking_ang_vel: float = 0.8
+
+            # Regularization terms:
+            lin_vel_z: float = -2.0  # Penalize base velocity in the z direction (L2 penalty).
+            ang_vel_xy: float = -0.05  # Penalize base roll and pitch rate (L2 penalty).
+            orientation: float = -5.0  # Penalize non-zero roll and pitch angles (L2 penalty).
+            torques: float = -0.0002  # L2 regularization of joint torques, |tau|^2.
+            action_rate: float = -0.01  # Penalize changes in actions; encourage smooth actions.
+            feet_air_time: float = 0.2  # Encourage long swing steps (not high clearances).
+            stand_still: float = -0.5  # Encourage no motion at zero command (L2 penalty).
+            termination: float = -1.0  # Early termination penalty.
+            foot_slip: float = -0.1  # Penalize foot slipping on the ground.
+
+        scales: ScalesConfig = field(default_factory=ScalesConfig)
+    rewards: RewardConfig = field(default_factory=RewardConfig)
+
 
 class JoystickEnv(PipelineEnv):
     """Environment for training the go2 quadruped joystick policy in MJX."""
 
     def __init__(
         self,
-        environment_config: ConfigDict,
-        robot_config: ConfigDict,
-        init_scene_path: Path,
+        environment_config: SimpleEnvironmentConfig,
+        robot_config: RobotConfig,
+        init_scene_path: PathLike,
     ):
-        sys = mjcf.load(init_scene_path.as_posix())
+        sys = mjcf.load(init_scene_path)
         self._dt = 0.02  # this environment is 50 fps
         sys = sys.tree_replace({"opt.timestep": 0.004})
 
@@ -41,10 +85,12 @@ class JoystickEnv(PipelineEnv):
             actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(-35.0),
         )
 
-        n_frames = environment_config.get("n_frames", int(self._dt / sys.opt.timestep))
+        # n_frames = environment_config.get("n_frames", int(self._dt / sys.opt.timestep))
+        n_frames = int(self._dt / sys.opt.timestep)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
         self.rewards = environment_config.rewards
+        self.reward_scales = asdict(self.rewards.scales)
 
         self._torso_idx = mujoco.mj_name2id(
             sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, robot_config.torso_name
@@ -110,7 +156,7 @@ class JoystickEnv(PipelineEnv):
             "command": self.sample_command(key),
             "last_contact": jp.zeros(4, dtype=bool),
             "feet_air_time": jp.zeros(4),
-            "rewards": {k: 0.0 for k in self.rewards.scales.keys()},
+            "rewards": {k: 0.0 for k in self.reward_scales.keys()},
             "kick": jp.array([0.0, 0.0]),
             "step": 0,
         }
@@ -192,7 +238,7 @@ class JoystickEnv(PipelineEnv):
             "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
             "termination": self._reward_termination(done, state.info["step"]),
         }
-        rewards = {k: v * self.rewards.scales[k] for k, v in rewards.items()}
+        rewards = {k: v * self.reward_scales[k] for k, v in rewards.items()}
         reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
         # state management

@@ -5,3 +5,4 @@ mediapy
 etils
 ml_collections
 pyyaml
+dacite

@@ -18,7 +18,7 @@ from ..brax_alt.training.agents.teacher import train as teacher_train
 from ..brax_alt.training.agents.teacher import networks as teacher_networks
 
 from .domain_randomization import domain_randomize
-from ..training_environments.go2_teacher import Go2TeacherEnv
+from ..environments.go2_teacher import Go2TeacherEnv
 from ..utils import load_config_dicts
 
 

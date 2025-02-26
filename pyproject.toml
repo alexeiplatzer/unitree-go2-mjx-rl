@@ -20,7 +20,8 @@ dependencies = [
     "brax",
     "mediapy",
     "ml_collections",
-    "pyyaml"
+    "pyyaml",
+    "dacite",
 ]
 
 [project.urls]

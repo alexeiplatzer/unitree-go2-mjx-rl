@@ -7,6 +7,7 @@ ppo_simple_config = CONFIGS_DIRECTORY / "ppo_simple.yaml"
 ppo_enhanced_config = CONFIGS_DIRECTORY / "ppo_enhanced.yaml"
 unitree_go2_config = CONFIGS_DIRECTORY / "unitree_go2_environment.yaml"
 barkour_config = CONFIGS_DIRECTORY / "google_barkour_vb_environment.yaml"
+render_config = CONFIGS_DIRECTORY / "render_simple.yaml"
 
 RESOURCES_DIRECTORY = PROJECT_ROOT_DIRECTORY / "resources"
 UNITREE_GO2_RESOURCES = RESOURCES_DIRECTORY / "unitree_go2"

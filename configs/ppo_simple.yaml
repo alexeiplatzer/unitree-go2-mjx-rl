@@ -1,5 +1,10 @@
 model:
-  hidden_sizes: [128, 128, 128, 128]
+  name: actor_critic
+  modules:
+    - name: policy
+      hidden_layers: [128, 128, 128, 128]
+    - name: value
+      hidden_layers: [256, 256, 256, 256, 256]
 
 training:
   num_timesteps: 100_000_000
@@ -19,6 +24,7 @@ training:
 
 
 environment:
+  name: joystick
   obs_noise: 0.05
   action_scale: 0.3
   kick_vel: 0.05

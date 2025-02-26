@@ -16,7 +16,7 @@ from brax.training.acme import running_statistics
 # Algorithms
 from .brax_alt.training.agents.teacher import networks as teacher_networks
 
-from .training_environments.go2_teacher import Go2TeacherEnv
+from .environments.go2_teacher import Go2TeacherEnv
 from .utils import load_config_dicts
 
 

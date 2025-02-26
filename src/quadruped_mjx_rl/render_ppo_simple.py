@@ -16,7 +16,7 @@ from brax.training.acme import running_statistics
 # Algorithms
 from brax.training.agents.ppo import networks as ppo_networks
 
-from .training_environments.ppo_simple import JoystickEnv
+from .environments.ppo_simple import JoystickEnv
 from .utils import load_config_dicts
 
 

@@ -18,7 +18,7 @@ from brax.training.agents.ppo import train as ppo
 from brax.training.agents.ppo import networks as ppo_networks
 
 from .domain_randomization import domain_randomize
-from ..training_environments.ppo_simple import JoystickEnv
+from ..environments.ppo_simple import JoystickEnv
 from ..utils import load_config_dicts
 
 
