@@ -6,6 +6,7 @@ from etils.epath import PathLike
 from collections.abc import Callable
 import functools
 from dataclasses import dataclass, field
+from typing import TypeVar, Generic
 
 # Math
 import jax
@@ -41,10 +42,12 @@ name_to_rendering_config = {
     "default": lambda: RenderConfig(),
 }
 
+EnvType = TypeVar("EnvType", bound=PipelineEnv)
 
-def render[Env: PipelineEnv](
-    environment: type[Env],
-    env_config: EnvironmentConfig[Env],
+
+def render(
+    environment: type[EnvType],
+    env_config: EnvironmentConfig[EnvType],
     robot_config: RobotConfig,
     init_scene_path: PathLike,
     model_config: ModelConfig,
