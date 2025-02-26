@@ -1,7 +1,7 @@
 from etils.epath import PathLike
 
 from dataclasses import asdict, dataclass
-from enum import StrEnum
+from enum import Enum
 import yaml
 
 from .utils import conditionally_instantiate, load_config_dicts, load_configs_from_dicts
@@ -17,7 +17,7 @@ from .training import TrainingConfig, name_to_training_config
 from .rendering import RenderConfig, name_to_rendering_config
 
 
-class ConfigKey(StrEnum):
+class ConfigKey(str, Enum):
     ENVIRONMENT = "environment"
     ROBOT = "robot"
     MODEL = "model"
