@@ -2,16 +2,19 @@ import yaml
 from enum import StrEnum
 from dacite import from_dict
 from dataclasses import asdict
+from typing import TypeVar, Generic
 
 from etils.epath import PathLike
 from collections.abc import Iterator, Mapping, Callable
 
+ConfigType = TypeVar("ConfigType")
 
-def conditionally_instantiate[Configuration](
-    name_to_factory: Mapping[str, Callable[[], Configuration]],
-    passed_config: Configuration | str | None,
+
+def conditionally_instantiate(
+    name_to_factory: Mapping[str, Callable[[], ConfigType]],
+    passed_config: ConfigType | str | None,
     loaded_config: dict | None = None,
-) -> Configuration | None:
+) -> ConfigType | None:
     """
     Loads a configuration object from given loaded dicts, overwriting with the argument config
     if present.
