@@ -25,7 +25,7 @@ from ..robots import RobotConfig
 
 
 class EnhancedEnvironmentConfig(EnvironmentConfig["Go2TeacherEnv"]):
-    name = "ppo_joystick_enhanced"
+    name: str = "ppo_joystick_enhanced"
 
     @dataclass
     class NoiseConfig:

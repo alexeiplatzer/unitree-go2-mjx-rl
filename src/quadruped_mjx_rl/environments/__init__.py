@@ -2,7 +2,7 @@ from .configs import EnvironmentConfig
 
 # defined environment imports
 from .ppo_simple import JoystickEnv, SimpleEnvironmentConfig
-from .go2_teacher import Go2TeacherEnv
+from .go2_teacher import Go2TeacherEnv, EnhancedEnvironmentConfig
 
 name_to_environment_class = {
     "joystick": JoystickEnv,
@@ -11,4 +11,5 @@ name_to_environment_class = {
 
 name_to_environment = {
     "joystick": lambda: SimpleEnvironmentConfig(name="joystick"),
+    "go2_teacher": lambda: EnhancedEnvironmentConfig(name="go2_teacher"),
 }
