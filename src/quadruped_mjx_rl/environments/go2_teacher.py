@@ -2,6 +2,7 @@ from ml_collections import ConfigDict
 from etils.epath import Path
 from collections.abc import Sequence
 from typing import Any
+from dataclasses import dataclass, field, asdict
 
 # Math
 import jax
@@ -19,13 +20,86 @@ from brax.base import State as PipelineState
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
+from .configs import EnvironmentConfig
+from ..robots import RobotConfig
+
+
+class EnhancedEnvironmentConfig(EnvironmentConfig["Go2TeacherEnv"]):
+    name = "ppo_joystick_enhanced"
+
+    @dataclass
+    class NoiseConfig:
+        obs_noise: float = 0.05
+
+    noise = field(default_factory=NoiseConfig)
+
+    @dataclass
+    class ControlConfig:
+        action_scale: float = 0.3
+
+    control = field(default_factory=ControlConfig)
+
+    @dataclass
+    class CommandConfig:
+        resampling_time: int = 500
+
+    command = field(default_factory=CommandConfig)
+
+    @dataclass
+    class DomainRandConfig:
+        kick_vel: float = 0.05
+        kick_interval: int = 10
+
+    domain_rand = field(default_factory=DomainRandConfig)
+
+    @dataclass
+    class SimConfig:
+        dt: float = 0.02
+        timestep: float = 0.004
+
+    sim = field(default_factory=SimConfig)
+
+    @dataclass
+    class RewardConfig:
+        tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
+        termination_body_height: float = 0.18
+
+        # The coefficients for all reward terms used for training. All
+        # physical quantities are in SI units, if no otherwise specified,
+        # i.e. joint positions are in rad, positions are measured in meters,
+        # torques in Nm, and time in seconds, and forces in Newtons.
+        @dataclass
+        class ScalesConfig:
+            # Tracking rewards are computed using exp(-delta^2/sigma)
+            # sigma can be a hyperparameter to tune.
+
+            # Track the base x-y velocity (no z-velocity tracking).
+            tracking_lin_vel: float = 1.5
+            # Track the angular velocity along the z-axis (yaw rate).
+            tracking_ang_vel: float = 0.8
+
+            # Regularization terms:
+            lin_vel_z: float = -2.0  # Penalize base velocity in the z direction (L2 penalty).
+            ang_vel_xy: float = -0.05  # Penalize base roll and pitch rate (L2 penalty).
+            orientation: float = -5.0  # Penalize non-zero roll and pitch angles (L2 penalty).
+            torques: float = -0.0002  # L2 regularization of joint torques, |tau|^2.
+            action_rate: float = -0.01  # Penalize changes in actions; encourage smooth actions.
+            feet_air_time: float = 0.2  # Encourage long swing steps (not high clearances).
+            stand_still: float = -0.5  # Encourage no motion at zero command (L2 penalty).
+            termination: float = -1.0  # Early termination penalty.
+            foot_slip: float = -0.1  # Penalize foot slipping on the ground.
+
+        scales: ScalesConfig = field(default_factory=ScalesConfig)
+
+    rewards: RewardConfig = field(default_factory=RewardConfig)
+
 
 class Go2TeacherEnv(PipelineEnv):
 
     def __init__(
         self,
-        environment_config: ConfigDict,
-        robot_config: ConfigDict,
+        environment_config: EnhancedEnvironmentConfig,
+        robot_config: RobotConfig,
         init_scene_path: Path,
     ):
         self._dt = environment_config.sim.dt
@@ -49,6 +123,7 @@ class Go2TeacherEnv(PipelineEnv):
         # self._privileged_obs_size = self.privileged_obs.size
 
         self.rewards = environment_config.rewards
+        self.reward_scales = asdict(environment_config.rewards.scales)
 
         self._obs_noise_config = environment_config.noise
 
@@ -108,7 +183,9 @@ class Go2TeacherEnv(PipelineEnv):
         self._nv = sys.nv
         self._nq = sys.nq
 
-    def make_system(self, init_scene_path: Path, environment_config: ConfigDict) -> System:
+    def make_system(
+        self, init_scene_path: Path, environment_config: EnhancedEnvironmentConfig
+    ) -> System:
         sys = mjcf.load(init_scene_path)
         sys = sys.tree_replace({"opt.timestep": environment_config.sim.timestep})
 
@@ -152,7 +229,7 @@ class Go2TeacherEnv(PipelineEnv):
             "command": self.sample_command(key),
             "last_contact": jnp.zeros(shape=4, dtype=jnp.bool),
             "feet_air_time": jnp.zeros(4),
-            "rewards": {k: 0.0 for k in self.rewards.scales.keys()},
+            "rewards": {k: 0.0 for k in self.reward_scales.keys()},
             "kick": jnp.array([0.0, 0.0]),
             "step": 0,
             # "privileged_obs": jnp.zeros(self._privileged_obs_size),
@@ -223,7 +300,7 @@ class Go2TeacherEnv(PipelineEnv):
             # ),
             # "joint_ang_vel": self._reward_joint_ang_vel(pipeline_state.qvel[6:]),
         }
-        rewards = {k: v * self.rewards.scales[k] for k, v in rewards.items()}
+        rewards = {k: v * self.reward_scales[k] for k, v in rewards.items()}
         reward = jnp.clip(sum(rewards.values()) * self.dt, min=0.0, max=10_000.0)
 
         # state management

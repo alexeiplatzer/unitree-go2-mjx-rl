@@ -1,4 +1,4 @@
-from quadruped_mjx_rl.training.ppo_simple import train
+from quadruped_mjx_rl.training import train
 
 import paths
 
