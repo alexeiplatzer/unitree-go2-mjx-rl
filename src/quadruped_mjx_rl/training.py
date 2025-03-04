@@ -2,6 +2,7 @@
 import functools
 from datetime import datetime
 from pathlib import Path
+from typing import Generic, TypeVar
 
 import matplotlib.pyplot as plt
 from etils.epath import PathLike, Path
@@ -55,9 +56,12 @@ class TrainingConfig:
     batch_size: int = 256
 
 
-def train[Env: PipelineEnv](
-    environment: type[Env],
-    env_config: EnvironmentConfig[Env],
+EnvType = TypeVar("EnvType", bound=PipelineEnv)
+
+
+def train(
+    environment: type[EnvType],
+    env_config: EnvironmentConfig[EnvType],
     robot_config: RobotConfig,
     init_scene_path: PathLike,
     model_config: ModelConfig,
