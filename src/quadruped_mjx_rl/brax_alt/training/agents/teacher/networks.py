@@ -79,16 +79,17 @@ def make_student_inference_fn(
         def policy(
             observations: types.Observation, key_sample: PRNGKey
         ) -> Tuple[types.Action, types.Extra]:
-            normalizer_params = teacher_params[0]
+            teacher_normalizer_params = teacher_params[0]
+            student_normalizer_params = student_params[0]
             encoder_params = student_params[1]
             policy_params = teacher_params[2]
             latent_vector = encoder_network.apply(
-                normalizer_params,
+                student_normalizer_params,
                 encoder_params,
                 observations,
             )
             logits = policy_network.apply(
-                normalizer_params,
+                teacher_normalizer_params,
                 policy_params,
                 observations,
                 latent_vector,
