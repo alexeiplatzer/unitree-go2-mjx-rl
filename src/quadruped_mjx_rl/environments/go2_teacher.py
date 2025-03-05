@@ -24,40 +24,41 @@ from .configs import EnvironmentConfig
 from ..robots import RobotConfig
 
 
+@dataclass
 class EnhancedEnvironmentConfig(EnvironmentConfig["Go2TeacherEnv"]):
-    name: str = "ppo_joystick_enhanced"
+    name: str = "go2_teacher"
 
     @dataclass
     class NoiseConfig:
         obs_noise: float = 0.05
 
-    noise = field(default_factory=NoiseConfig)
+    noise: NoiseConfig = field(default_factory=NoiseConfig)
 
     @dataclass
     class ControlConfig:
         action_scale: float = 0.3
 
-    control = field(default_factory=ControlConfig)
+    control: ControlConfig = field(default_factory=ControlConfig)
 
     @dataclass
     class CommandConfig:
         resampling_time: int = 500
 
-    command = field(default_factory=CommandConfig)
+    command: CommandConfig = field(default_factory=CommandConfig)
 
     @dataclass
     class DomainRandConfig:
         kick_vel: float = 0.05
         kick_interval: int = 10
 
-    domain_rand = field(default_factory=DomainRandConfig)
+    domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
 
     @dataclass
     class SimConfig:
         dt: float = 0.02
         timestep: float = 0.004
 
-    sim = field(default_factory=SimConfig)
+    sim: SimConfig = field(default_factory=SimConfig)
 
     @dataclass
     class RewardConfig:

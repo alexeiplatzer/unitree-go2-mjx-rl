@@ -1,4 +1,4 @@
-from typing import Protocol, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from dataclasses import dataclass
 

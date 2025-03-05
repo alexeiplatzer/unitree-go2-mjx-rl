@@ -27,7 +27,7 @@ from ..robots import RobotConfig
 
 @dataclass
 class SimpleEnvironmentConfig(EnvironmentConfig["JoystickEnv"]):
-    name: str = "ppo_joystick_simple"
+    name: str = "joystick"
     obs_noise: float = 0.05
     action_scale: float = 0.3
     kick_vel: float = 0.05

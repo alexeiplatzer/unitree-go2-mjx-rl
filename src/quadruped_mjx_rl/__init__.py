@@ -9,7 +9,6 @@ from .config_utils import RenderConfig
 from .config_utils import ConfigKey, prepare_configs
 from .utils import load_config_dicts
 from .environments import name_to_environment_class
-from .models import get_model_factories_by_name
 
 from .rendering import render as render_from_configs
 from .training import train as train_from_configs
@@ -20,7 +19,7 @@ def render(
     *config_paths: PathLike,
     init_scene_path: PathLike,
     trained_model_path: PathLike,
-    animation_save_path: PathLike | None,
+    animation_save_path: PathLike | dict[str, PathLike] | None,
     environment_config: EnvironmentConfig | str | None = None,
     robot_config: RobotConfig | str | None = None,
     model_config: ModelConfig | str | None = None,
@@ -76,10 +75,6 @@ def render(
 
     environment = name_to_environment_class[final_configs[ConfigKey.ENVIRONMENT].name]
 
-    networks_factory, inference_factory = get_model_factories_by_name(
-        final_configs[ConfigKey.MODEL].name
-    )
-
     # Call the original render function with the resolved configurations.
     render_from_configs(
         environment=environment,
@@ -87,8 +82,6 @@ def render(
         robot_config=final_configs[ConfigKey.ROBOT],
         init_scene_path=init_scene_path,
         model_config=final_configs[ConfigKey.MODEL],
-        make_inference_fn=inference_factory,
-        make_networks_fn=networks_factory,
         trained_model_path=trained_model_path,
         render_config=final_configs[ConfigKey.RENDERING],
         animation_save_path=animation_save_path,
@@ -126,10 +119,6 @@ def train(
 
     environment = name_to_environment_class[final_configs[ConfigKey.ENVIRONMENT].name]
 
-    networks_factory, inference_factory = get_model_factories_by_name(
-        final_configs[ConfigKey.MODEL].name
-    )
-
     training_fn = name_to_training_fn[final_configs[ConfigKey.TRAINING].name]
 
     # Call the original train function with the resolved configurations.
@@ -139,7 +128,7 @@ def train(
         robot_config=final_configs[ConfigKey.ROBOT],
         init_scene_path=init_scene_path,
         model_config=final_configs[ConfigKey.MODEL],
-        make_networks_fn=networks_factory,
+        make_networks_fn=None,
         model_save_path=model_save_path,
         training_config=training_config,
         train_fn=training_fn,

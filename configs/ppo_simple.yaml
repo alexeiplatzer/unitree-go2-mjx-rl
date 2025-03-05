@@ -1,10 +1,8 @@
 model:
   name: actor_critic
   modules:
-    - name: policy
-      hidden_layers: [128, 128, 128, 128]
-    - name: value
-      hidden_layers: [256, 256, 256, 256, 256]
+    policy: 128, 128, 128, 128]
+    value: [256, 256, 256, 256, 256]
 
 training:
   num_timesteps: 100_000_000

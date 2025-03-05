@@ -166,7 +166,7 @@ def make_student_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     # policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
     # value_hidden_layer_sizes: Sequence[int] = (128,) * 5,
-    encoder_hidden_layer_sizes: Sequence[int] = (128,) * 2,
+    adapter_hidden_layer_sizes: Sequence[int] = (128,) * 2,
     activation: networks.ActivationFn = linen.swish,
     # policy_obs_key: str = 'state',
     # value_obs_key: str = 'state',
@@ -180,7 +180,7 @@ def make_student_networks(
         latent_representation_size,
         observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layer_sizes=encoder_hidden_layer_sizes,
+        hidden_layer_sizes=adapter_hidden_layer_sizes,
         activation=activation,
         obs_key=encoder_obs_key,
     )

@@ -10,6 +10,6 @@ name_to_environment_class = {
 }
 
 name_to_environment = {
-    "joystick": lambda: SimpleEnvironmentConfig(name="joystick"),
-    "go2_teacher": lambda: EnhancedEnvironmentConfig(name="go2_teacher"),
+    "joystick": SimpleEnvironmentConfig,
+    "go2_teacher": EnhancedEnvironmentConfig,
 }
