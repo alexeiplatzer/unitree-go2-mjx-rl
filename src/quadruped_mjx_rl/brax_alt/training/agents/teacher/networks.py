@@ -80,7 +80,7 @@ def make_student_inference_fn(
             observations: types.Observation, key_sample: PRNGKey
         ) -> Tuple[types.Action, types.Extra]:
             normalizer_params = teacher_params[0]
-            encoder_params = student_params[0]
+            encoder_params = student_params[1]
             policy_params = teacher_params[2]
             latent_vector = encoder_network.apply(
                 normalizer_params,
