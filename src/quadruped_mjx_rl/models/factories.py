@@ -67,7 +67,7 @@ def load_inference_fn(
             "student": student_inference_factory(teacher_params, student_params),
         }
     elif isinstance(model_config, ActorCriticConfig):
-        ppo_nets = network_factories["ppo"](
+        ppo_nets = network_factories(
             observation_size=1,
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
