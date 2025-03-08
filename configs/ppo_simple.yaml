@@ -1,7 +1,7 @@
 model:
   name: actor_critic
   modules:
-    policy: 128, 128, 128, 128]
+    policy: [128, 128, 128, 128]
     value: [256, 256, 256, 256, 256]
 
 training:
