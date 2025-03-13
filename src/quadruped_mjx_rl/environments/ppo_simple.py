@@ -2,9 +2,8 @@
 
 # Supporting
 from typing import Any, Sequence, List
-from dataclasses import dataclass, field, asdict, fields
-from ml_collections.config_dict import ConfigDict
-from etils.epath import Path, PathLike
+from dataclasses import dataclass, field, asdict
+from etils.epath import PathLike
 
 # Math
 import jax

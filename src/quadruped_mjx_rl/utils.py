@@ -1,8 +1,7 @@
 import yaml
-from enum import StrEnum
 from dacite import from_dict
 from dataclasses import asdict
-from typing import TypeVar, Generic
+from typing import TypeVar
 
 from etils.epath import PathLike
 from collections.abc import Iterator, Mapping, Callable
