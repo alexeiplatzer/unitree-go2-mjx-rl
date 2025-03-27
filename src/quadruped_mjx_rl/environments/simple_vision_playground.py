@@ -307,7 +307,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
             motor_targets, self.joints_lower_limits, self.joints_upper_limits
         )
         # TODO: not sure if the states get messed up
-        pipeline_state = pipeline_step(self._mjx_model, state, motor_targets)
+        pipeline_state = pipeline_step(self._mjx_model, state.data, motor_targets)
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_angles = pipeline_state.q[7:]
         joint_vel = pipeline_state.qd[6:]
