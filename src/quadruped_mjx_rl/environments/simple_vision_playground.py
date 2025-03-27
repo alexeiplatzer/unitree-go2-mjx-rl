@@ -190,7 +190,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
                 batch_render_view_width=vision_config.render_width,
                 batch_render_view_height=vision_config.render_height,
                 enabled_geom_groups=np.asarray(vision_config.enabled_geom_groups),
-                enabled_cameras=None,  # Use all cameras.  # TODO: check cameras
+                enabled_cameras=np.asarray([1]),  # TODO: check cameras
                 add_cam_debug_geo=False,
                 use_rasterizer=vision_config.use_rasterizer,
                 viz_gpu_hdls=None,
