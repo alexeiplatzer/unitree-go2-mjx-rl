@@ -282,13 +282,13 @@ class QuadrupedVisionEnvironment(MjxEnv):
             render_token, rgb, _ = self.renderer.init(pipeline_state, self._mjx_model)
             state_info.update({'render_token': render_token})
 
-            obs = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            obs = adjust_brightness(obs, brightness)
-            obs = {'pixels/view_0': obs}
+            obs_0 = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
+            obs_0 = adjust_brightness(obs_0, brightness)
 
-            obs = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-            obs = adjust_brightness(obs, brightness)
-            obs = {'pixels/view_1': obs}
+            obs_1 = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+            obs_1 = adjust_brightness(obs_1, brightness)
+
+            obs = {'pixels/view_0': obs_0, 'pixels/view_1': obs_1}
 
         reward, done = jnp.zeros(2)
 
