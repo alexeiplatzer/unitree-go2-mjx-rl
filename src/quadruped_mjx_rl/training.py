@@ -71,7 +71,8 @@ class TrainingConfigVisionPPO:
     discounting: float = 0.97
     learning_rate: float = 0.0005
     entropy_cost: float = 0.005
-    num_envs: int = 1024
+    num_envs: int = 512
+    num_eval_envs: int = 512
     batch_size: int = 256
     max_grad_norm: float = 1.0
     # num_resets_per_eval: int = 1
