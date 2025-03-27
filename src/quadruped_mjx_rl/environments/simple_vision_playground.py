@@ -388,7 +388,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
 
         state.metrics.update({f"reward/{k}": v for k, v in rewards.items()})
 
-        state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
+        state = state.replace(data=pipeline_state, obs=obs, reward=reward, done=done)
         return state
 
     def _get_obs(
