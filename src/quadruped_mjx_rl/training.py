@@ -89,7 +89,6 @@ def train(
     # init_scene_path: PathLike,
     env,
     model_config: ModelConfig,
-    make_networks_fn: Callable,
     training_config: TrainingConfig | TrainingConfigVisionPPO,
     train_fn: Callable,
     model_save_path: PathLike,
