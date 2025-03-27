@@ -25,7 +25,7 @@ from brax.training.agents.ppo import train as ppo_train
 
 from quadruped_mjx_rl.environments import EnvironmentConfig, VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.models import ModelConfig
+from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
 
 name_to_training_config = {
@@ -94,6 +94,7 @@ def train(
     train_fn: Callable,
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
+    vision: bool = False,
     # vision_config: VisionConfig | None = None,
 ):
     if checkpoints_save_path is not None:
@@ -132,17 +133,10 @@ def train(
     #     init_scene_path=init_scene_path,
     # )
 
-    modules_hidden_layers = {
-        f"{module.name}_hidden_layer_sizes": tuple(module.hidden_layers)
-        for module in model_config.modules
-    }
-    make_networks_factory = functools.partial(
-        make_networks_fn,
-        **modules_hidden_layers,
-    )
+    network_factory = get_networks_factory(model_config, vision=vision)
     train_fn = functools.partial(
         train_fn,
-        network_factory=make_networks_factory,
+        network_factory=network_factory,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
@@ -170,7 +164,7 @@ def train(
     #     init_scene_path=init_scene_path,
     # )
     make_inference_fn, params, metrics = train_fn(
-        environment=env, progress_fn=progress, # eval_env=eval_env
+        environment=env, progress_fn=progress,  # eval_env=eval_env
     )
 
     print(f"time to jit: {times[1] - times[0]}")

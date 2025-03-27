@@ -12,6 +12,7 @@ from typing import TypeVar, Generic
 import jax
 import jax.numpy as jp
 import mediapy as media
+import numpy as np
 
 # Brax
 from brax import envs
@@ -44,27 +45,29 @@ EnvType = TypeVar("EnvType", bound=PipelineEnv)
 
 
 def render(
-    environment: type[EnvType],
-    env_config: EnvironmentConfig[EnvType],
-    robot_config: RobotConfig,
-    init_scene_path: PathLike,
+    # environment: type[EnvType],
+    # env_config: EnvironmentConfig[EnvType],
+    # robot_config: RobotConfig,
+    # init_scene_path: PathLike,
+    env,
     model_config: ModelConfig,
     trained_model_path: PathLike,
     render_config: RenderConfig,
     animation_save_path: PathLike | dict[str, PathLike] | None,
+    vision: bool = False,
 ):
     # Environment
-    envs.register_environment(env_config.name, environment)
-    env = envs.get_environment(
-        env_config.name,
-        environment_config=env_config,
-        robot_config=robot_config,
-        init_scene_path=init_scene_path,
-    )
+    # envs.register_environment(env_config.name, environment)
+    # env = envs.get_environment(
+    #     env_config.name,
+    #     environment_config=env_config,
+    #     robot_config=robot_config,
+    #     init_scene_path=init_scene_path,
+    # )
 
     # Inference function
     ppo_inference_fn = load_inference_fn(
-        trained_model_path, model_config, action_size=env.action_size
+        trained_model_path, model_config, action_size=env.action_size, vision=vision
     )
 
     # Commands
