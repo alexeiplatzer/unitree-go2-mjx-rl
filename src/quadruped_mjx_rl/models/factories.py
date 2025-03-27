@@ -6,6 +6,7 @@ from brax.training.acme import running_statistics
 from brax.io import model
 
 from brax.training.agents.ppo import networks as ppo_networks
+from brax.training.agents.ppo import networks_vision as ppo_networks_vision
 
 from ..brax_alt.training.agents.teacher import networks as teacher_networks
 
@@ -14,6 +15,7 @@ from .configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
 
 def get_networks_factory(
     model_config: ModelConfig,
+    vision: bool = False
 ):
     if isinstance(model_config, TeacherStudentConfig):
         teacher_factory = partial(
@@ -30,11 +32,18 @@ def get_networks_factory(
         )
         return {"teacher": teacher_factory, "student": student_factory}
     elif isinstance(model_config, ActorCriticConfig):
-        return partial(
-            ppo_networks.make_ppo_networks,
-            policy_hidden_layer_sizes=model_config.modules.policy,
-            value_hidden_layer_sizes=model_config.modules.value,
-        )
+        if vision:
+            return partial(
+                ppo_networks_vision.make_ppo_networks_vision,
+                policy_hidden_layer_sizes=model_config.modules.policy,
+                value_hidden_layer_sizes=model_config.modules.value,
+            )
+        else:
+            return partial(
+                ppo_networks.make_ppo_networks,
+                policy_hidden_layer_sizes=model_config.modules.policy,
+                value_hidden_layer_sizes=model_config.modules.value,
+            )
     else:
         raise NotImplementedError
 
@@ -43,9 +52,10 @@ def load_inference_fn(
     model_path: PathLike,
     model_config: ModelConfig,
     action_size: int,
+    vision: bool = False,
 ):
     params = model.load_params(model_path)
-    network_factories = get_networks_factory(model_config)
+    network_factories = get_networks_factory(model_config, vision=vision)
     if isinstance(model_config, TeacherStudentConfig):
         teacher_params, student_params = params
         teacher_nets = network_factories["teacher"](

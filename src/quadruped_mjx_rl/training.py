@@ -23,7 +23,7 @@ from brax.io import model
 # Algorithms
 from brax.training.agents.ppo import train as ppo_train
 
-from quadruped_mjx_rl.environments import EnvironmentConfig
+from quadruped_mjx_rl.environments import EnvironmentConfig, VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.models import ModelConfig
 from quadruped_mjx_rl.domain_randomization import domain_randomize
@@ -59,36 +59,42 @@ class TrainingConfig:
 @dataclass
 class TrainingConfigVisionPPO:
     name: str = "ppo_vision"
-    num_timesteps: int = 100_000_000
-    num_evals: int = 10
+    madrona_backend: bool = True
+    # wrap_env: bool = False
+    num_timesteps: int = 1_000_000
+    num_evals: int = 5
     reward_scaling: int = 1
     episode_length: int = 1000
     normalize_observations: bool = True
     action_repeat: int = 1
-    unroll_length: int = 20
-    num_minibatches: int = 32
-    num_updates_per_batch: int = 4
+    unroll_length: int = 10
+    num_minibatches: int = 8
+    num_updates_per_batch: int = 8
     discounting: float = 0.97
-    learning_rate: float = 0.0004
-    entropy_cost: float = 0.01
-    num_envs: int = 8192
+    learning_rate: float = 0.0005
+    entropy_cost: float = 0.005
+    num_envs: int = 1024
     batch_size: int = 256
+    max_grad_norm: float = 1.0
+    # num_resets_per_eval: int = 1
 
 
 EnvType = TypeVar("EnvType", bound=PipelineEnv)
 
 
 def train(
-    environment: type[EnvType],
-    env_config: EnvironmentConfig[EnvType],
-    robot_config: RobotConfig,
-    init_scene_path: PathLike,
+    # environment: type[EnvType],
+    # env_config: EnvironmentConfig[EnvType],
+    # robot_config: RobotConfig,
+    # init_scene_path: PathLike,
+    env,
     model_config: ModelConfig,
     make_networks_fn: Callable,
-    training_config: TrainingConfig,
+    training_config: TrainingConfig | TrainingConfigVisionPPO,
     train_fn: Callable,
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
+    # vision_config: VisionConfig | None = None,
 ):
     if checkpoints_save_path is not None:
         checkpoints_save_path = Path(checkpoints_save_path)
@@ -118,13 +124,13 @@ def train(
         plt.errorbar(x_data, y_data, yerr=ydataerr)
         plt.show()
 
-    envs.register_environment(env_config.name, environment)
-    env = envs.get_environment(
-        env_config.name,
-        environment_config=env_config,
-        robot_config=robot_config,
-        init_scene_path=init_scene_path,
-    )
+    # envs.register_environment(env_config.name, environment)
+    # env = envs.get_environment(
+    #     env_config.name,
+    #     environment_config=env_config,
+    #     robot_config=robot_config,
+    #     init_scene_path=init_scene_path,
+    # )
 
     modules_hidden_layers = {
         f"{module.name}_hidden_layer_sizes": tuple(module.hidden_layers)
@@ -151,25 +157,25 @@ def train(
 
     # Reset environments since internals may be overwritten by tracers from the
     # domain randomization function.
-    env = envs.get_environment(
-        env_config.name,
-        environment_config=env_config,
-        robot_config=robot_config,
-        init_scene_path=init_scene_path,
-    )
-    eval_env = envs.get_environment(
-        env_config.name,
-        environment_config=env_config,
-        robot_config=robot_config,
-        init_scene_path=init_scene_path,
-    )
+    # env = envs.get_environment(
+    #     env_config.name,
+    #     environment_config=env_config,
+    #     robot_config=robot_config,
+    #     init_scene_path=init_scene_path,
+    # )
+    # eval_env = envs.get_environment(
+    #     env_config.name,
+    #     environment_config=env_config,
+    #     robot_config=robot_config,
+    #     init_scene_path=init_scene_path,
+    # )
     make_inference_fn, params, metrics = train_fn(
-        environment=env, progress_fn=progress, eval_env=eval_env
+        environment=env, progress_fn=progress, # eval_env=eval_env
     )
 
     print(f"time to jit: {times[1] - times[0]}")
     print(f"time to train: {times[-1] - times[1]}")
 
-    # Save and reload params.
+    # Save params
     model.save_params(model_save_path, params)
-    params = model.load_params(model_save_path)
+    # params = model.load_params(model_save_path)

@@ -27,7 +27,7 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvironmentConfig(EnvironmentConfig["Go2TeacherEnv"]):
+class QuadrupedVisionEnvConfig(EnvironmentConfig["Go2TeacherEnv"]):
     name: str = "quadruped_vision"
     use_vision: bool = True
 
@@ -105,7 +105,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
 
     def __init__(
         self,
-        environment_config: QuadrupedVisionEnvironmentConfig,
+        environment_config: QuadrupedVisionEnvConfig,
         vision_config: VisionConfig,
         robot_config: RobotConfig,
         init_scene_path: PathLike,
@@ -198,7 +198,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
 
 
     def make_system(
-        self, init_scene_path: PathLike, environment_config: QuadrupedVisionEnvironmentConfig
+        self, init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
     ) -> System:
         sys = mjcf.load(init_scene_path)
         sys = sys.tree_replace({"opt.timestep": self._sim_dt})
