@@ -19,6 +19,15 @@
   <worldbody>
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+    <!-- Added red cube for camera angle testing -->
+    <geom name="red_cube" pos="2 0 0.5" size="0.5 0.5 0.5" type="box" rgba="1 0 0 1"/>
+    <geom name="yellow_cube" pos="2 2 0.5" size="0.5 0.5 0.5" type="box" rgba="1 1 0 1"/>
+    <geom name="green_cube" pos="0 2 0.5" size="0.5 0.5 0.5" type="box" rgba="0 1 0 1"/>
+    <geom name="cyan_cube" pos="-2 2 0.5" size="0.5 0.5 0.5" type="box" rgba="0 1 1 1"/>
+    <geom name="blue_cube" pos="-2 0 0.5" size="0.5 0.5 0.5" type="box" rgba="0 0 1 1"/>
+    <geom name="magenta_cube" pos="-2 -2 0.5" size="0.5 0.5 0.5" type="box" rgba="1 0 1 1"/>
+    <geom name="white_cube" pos="0 -2 0.5" size="0.5 0.5 0.5" type="box" rgba="1 1 1 1"/>
+    <geom name="black_cube" pos="2 -2 0.5" size="0.5 0.5 0.5" type="box" rgba="0 0 0 1"/>
   </worldbody>
 
   <keyframe>
