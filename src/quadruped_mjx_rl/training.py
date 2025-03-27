@@ -39,7 +39,6 @@ name_to_training_fn = {
 
 @dataclass
 class TrainingConfig:
-    name: str = "simple_ppo"
     num_timesteps: int = 100_000_000
     num_evals: int = 10
     reward_scaling: int = 1
@@ -58,7 +57,6 @@ class TrainingConfig:
 
 @dataclass
 class TrainingConfigVisionPPO:
-    name: str = "ppo_vision"
     madrona_backend: bool = True
     # wrap_env: bool = False
     num_timesteps: int = 1_000_000
