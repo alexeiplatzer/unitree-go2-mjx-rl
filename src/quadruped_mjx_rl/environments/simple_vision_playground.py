@@ -443,7 +443,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
     def _kick_robot(self, state: State, kick: jax.Array) -> State:
         qvel = state.data.qvel
         qvel = qvel.at[:2].set(kick * self._kick_vel + qvel[:2])
-        return state.tree_replace({"pipeline_state.qvel": qvel})
+        return state.tree_replace({"data.qvel": qvel})
 
     def _check_termination(self, pipeline_state) -> jax.Array:
         # done if joint limits are reached or robot is falling
