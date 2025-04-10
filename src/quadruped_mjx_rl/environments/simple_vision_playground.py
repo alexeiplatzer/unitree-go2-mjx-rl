@@ -15,7 +15,7 @@ from brax.base import System, Motion, Transform
 from brax.mjx.pipeline import init as pipeline_init
 from brax.mjx.pipeline import step as pipeline_step
 
-from mujoco_playground import MjxEnv, State
+from ..playground_alt.mjx_env import MjxEnv, State
 
 from ..robots import RobotConfig
 from .configs import EnvironmentConfig, VisionConfig

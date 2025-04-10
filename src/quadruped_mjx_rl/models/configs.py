@@ -30,7 +30,19 @@ class TeacherStudentConfig(ActorCriticConfig):
     latent_size: int = 16
 
 
-name_to_model = {
-    "actor_critic": ActorCriticConfig,
-    "teacher_student": TeacherStudentConfig,
-}
+def _names_and_config_classes() -> dict[str, type[ModelConfig]]:
+    return {
+        "actor_critic": ActorCriticConfig,
+        "teacher_student": TeacherStudentConfig,
+    }
+
+
+def list_model_classes() -> list[str]:
+    return list(_names_and_config_classes().keys())
+
+
+def get_model_config_class(model_class: str) -> type[ModelConfig]:
+    if model_class in _names_and_config_classes():
+        return _names_and_config_classes()[model_class]
+    else:
+        return ModelConfig
