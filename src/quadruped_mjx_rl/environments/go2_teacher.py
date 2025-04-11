@@ -20,65 +20,31 @@ from brax.base import State as PipelineState
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
-from .configs import EnvironmentConfig
-from ..robots import RobotConfig
+from quadruped_mjx_rl.configs import RobotConfig
+from quadruped_mjx_rl.configs import EnvironmentConfig
+from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+
+
+_ENVIRONMENT_CLASS = "Go2Teacher"
 
 
 @dataclass
 class EnhancedEnvironmentConfig(EnvironmentConfig["Go2TeacherEnv"]):
-    name: str = "go2_teacher"
+    environment_class: str = _ENVIRONMENT_CLASS
 
     @dataclass
-    class NoiseConfig:
-        obs_noise: float = 0.05
-
-    noise: NoiseConfig = field(default_factory=NoiseConfig)
-
-    @dataclass
-    class ControlConfig:
-        action_scale: float = 0.3
-
-    control: ControlConfig = field(default_factory=ControlConfig)
-
-    @dataclass
-    class CommandConfig:
-        resampling_time: int = 500
-
-    command: CommandConfig = field(default_factory=CommandConfig)
-
-    @dataclass
-    class DomainRandConfig:
+    class DomainRandConfig(EnvironmentConfig.DomainRandConfig):
         kick_vel: float = 0.05
         kick_interval: int = 10
 
     domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
 
     @dataclass
-    class SimConfig:
-        dt: float = 0.02
-        timestep: float = 0.004
-
-    sim: SimConfig = field(default_factory=SimConfig)
-
-    @dataclass
-    class RewardConfig:
-        tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
+    class RewardConfig(EnvironmentConfig.RewardConfig):
         termination_body_height: float = 0.18
 
-        # The coefficients for all reward terms used for training. All
-        # physical quantities are in SI units, if no otherwise specified,
-        # i.e. joint positions are in rad, positions are measured in meters,
-        # torques in Nm, and time in seconds, and forces in Newtons.
         @dataclass
-        class ScalesConfig:
-            # Tracking rewards are computed using exp(-delta^2/sigma)
-            # sigma can be a hyperparameter to tune.
-
-            # Track the base x-y velocity (no z-velocity tracking).
-            tracking_lin_vel: float = 1.5
-            # Track the angular velocity along the z-axis (yaw rate).
-            tracking_ang_vel: float = 0.8
-
+        class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
             # Regularization terms:
             lin_vel_z: float = -2.0  # Penalize base velocity in the z direction (L2 penalty).
             ang_vel_xy: float = -0.05  # Penalize base roll and pitch rate (L2 penalty).
@@ -501,3 +467,6 @@ class Go2TeacherEnv(PipelineEnv):
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = EnhancedEnvironmentConfig

@@ -1,12 +1,11 @@
 from etils.epath import PathLike
-from collections.abc import Callable
 
-from .config_utils import EnvironmentConfig
-from .config_utils import RobotConfig
-from .config_utils import ModelConfig
-from .config_utils import TrainingConfig
-from .config_utils import RenderConfig
-from .config_utils import ConfigKey, prepare_configs
+from quadruped_mjx_rl.configs.config_utils import EnvironmentConfig
+from quadruped_mjx_rl.configs.config_utils import RobotConfig
+from quadruped_mjx_rl.configs.config_utils import ModelConfig
+from quadruped_mjx_rl.configs.config_utils import TrainingConfig
+from quadruped_mjx_rl.configs.config_utils import RenderConfig
+from quadruped_mjx_rl.configs.config_utils import ConfigKey, prepare_configs
 from .utils import load_config_dicts
 from .environments import name_to_environment_class
 

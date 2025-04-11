@@ -23,59 +23,18 @@ from brax.io import model
 # Algorithms
 from brax.training.agents.ppo import train as ppo_train
 
-from quadruped_mjx_rl.environments import EnvironmentConfig, VisionConfig
-from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
+from quadruped_mjx_rl.configs import EnvironmentConfig, VisionConfig
+from quadruped_mjx_rl.configs import RobotConfig
+from quadruped_mjx_rl.configs import ModelConfig
+from quadruped_mjx_rl.configs import TrainingConfig
+from quadruped_mjx_rl.configs.config_classes import TrainingConfigVisionPPO
+from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
 
-name_to_training_config = {
-    "simple_ppo": lambda: TrainingConfig(),
+
+training_functions = {
+    "ppo": ppo_train,
 }
-
-name_to_training_fn = {
-    "simple_ppo": ppo_train,
-}
-
-
-@dataclass
-class TrainingConfig:
-    num_timesteps: int = 100_000_000
-    num_evals: int = 10
-    reward_scaling: int = 1
-    episode_length: int = 1000
-    normalize_observations: bool = True
-    action_repeat: int = 1
-    unroll_length: int = 20
-    num_minibatches: int = 32
-    num_updates_per_batch: int = 4
-    discounting: float = 0.97
-    learning_rate: float = 0.0004
-    entropy_cost: float = 0.01
-    num_envs: int = 8192
-    batch_size: int = 256
-
-
-@dataclass
-class TrainingConfigVisionPPO:
-    madrona_backend: bool = True
-    # wrap_env: bool = False
-    num_timesteps: int = 1_000_000
-    num_evals: int = 5
-    reward_scaling: int = 1
-    episode_length: int = 1000
-    normalize_observations: bool = True
-    action_repeat: int = 1
-    unroll_length: int = 10
-    num_minibatches: int = 8
-    num_updates_per_batch: int = 8
-    discounting: float = 0.97
-    learning_rate: float = 0.0005
-    entropy_cost: float = 0.005
-    num_envs: int = 512
-    num_eval_envs: int = 512
-    batch_size: int = 256
-    max_grad_norm: float = 1.0
-    # num_resets_per_eval: int = 1
 
 
 EnvType = TypeVar("EnvType", bound=PipelineEnv)

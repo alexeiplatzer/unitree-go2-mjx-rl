@@ -20,13 +20,17 @@ from brax.base import Motion, Transform
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 
-from .configs import EnvironmentConfig
-from ..robots import RobotConfig
+from quadruped_mjx_rl.configs import EnvironmentConfig
+from quadruped_mjx_rl.configs import RobotConfig
+from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+
+
+_ENVIRONMENT_CLASS = "Joystick"
 
 
 @dataclass
 class SimpleEnvironmentConfig(EnvironmentConfig["JoystickEnv"]):
-    name: str = "joystick"
+    environment_class: str = _ENVIRONMENT_CLASS
     obs_noise: float = 0.05
     action_scale: float = 0.3
     kick_vel: float = 0.05
@@ -380,3 +384,6 @@ class JoystickEnv(PipelineEnv):
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = SimpleEnvironmentConfig

@@ -17,8 +17,13 @@ from brax.mjx.pipeline import step as pipeline_step
 
 from ..playground_alt.mjx_env import MjxEnv, State
 
-from ..robots import RobotConfig
-from .configs import EnvironmentConfig, VisionConfig
+from quadruped_mjx_rl.configs import RobotConfig
+from quadruped_mjx_rl.configs import EnvironmentConfig
+from quadruped_mjx_rl.configs import VisionConfig
+from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+
+
+_ENVIRONMENT_CLASS = "QuadrupedVision"
 
 
 def adjust_brightness(img, scale):
@@ -28,7 +33,7 @@ def adjust_brightness(img, scale):
 
 @dataclass
 class QuadrupedVisionEnvConfig(EnvironmentConfig["Go2TeacherEnv"]):
-    name: str = "quadruped_vision"
+    environment_class = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
     @dataclass
@@ -559,3 +564,6 @@ class QuadrupedVisionEnvironment(MjxEnv):
     # ) -> Sequence[np.ndarray]:
     #     camera = camera or "track"
     #     return super().render(trajectory, camera=camera, width=width, height=height)
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig

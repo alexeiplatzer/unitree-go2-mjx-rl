@@ -1,45 +1,26 @@
 # Import all necessary packages
 
 # Supporting
-from typing import Protocol
 from etils.epath import PathLike
 from collections.abc import Callable
 from functools import partial
-from dataclasses import dataclass, field
-from typing import TypeVar, Generic
+from typing import TypeVar
 
 # Math
 import jax
 import jax.numpy as jp
 import mediapy as media
-import numpy as np
 
 # Brax
 from brax import envs
 from brax.envs.base import PipelineEnv
 
-from .environments import EnvironmentConfig
-from .robots import RobotConfig
-from .models import ModelConfig, load_inference_fn
+from quadruped_mjx_rl.configs import EnvironmentConfig
+from quadruped_mjx_rl.configs import RobotConfig
+from quadruped_mjx_rl.configs import ModelConfig
+from quadruped_mjx_rl.configs import RenderConfig
+from quadruped_mjx_rl.models import load_inference_fn
 
-
-@dataclass
-class RenderConfig:
-    name: str = "default"
-    episode_length: int = 1000
-    render_every: int = 2
-    seed: int = 0
-    n_steps: int = 500
-    command: dict[str, float] = field(default_factory=lambda: {
-        "x_vel": 0.5,
-        "y_vel": 0.0,
-        "ang_vel": 0.0,
-    })
-
-
-name_to_rendering_config = {
-    "default": RenderConfig,
-}
 
 EnvType = TypeVar("EnvType", bound=PipelineEnv)
 

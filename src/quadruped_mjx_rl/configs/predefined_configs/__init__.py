@@ -1,0 +1,1 @@
+from quadruped_mjx_rl.configs.predefined_configs.robots import predefined_robot_configs

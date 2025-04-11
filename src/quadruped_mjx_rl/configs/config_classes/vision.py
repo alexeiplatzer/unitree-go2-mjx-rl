@@ -1,15 +1,4 @@
-from typing import Generic, TypeVar
-
 from dataclasses import dataclass, field
-
-from brax.envs import PipelineEnv
-
-EnvType = TypeVar("EnvType", bound=PipelineEnv)
-
-
-@dataclass
-class EnvironmentConfig(Generic[EnvType]):
-    name: str
 
 
 @dataclass
@@ -20,3 +9,9 @@ class VisionConfig:
     render_height: int = 64
     use_rasterizer: bool = False
     enabled_geom_groups: list[int] = field(default_factory=lambda: [0, 1, 2])
+    vision_class: str = "default"
+
+
+vision_config_classes = {
+    "default": VisionConfig,
+}

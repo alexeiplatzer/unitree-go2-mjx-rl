@@ -10,7 +10,9 @@ from brax.training.agents.ppo import networks_vision as ppo_networks_vision
 
 from ..brax_alt.training.agents.teacher import networks as teacher_networks
 
-from .configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
+from quadruped_mjx_rl.configs.config_classes import ModelConfig
+from quadruped_mjx_rl.configs.config_classes import ActorCriticConfig
+from quadruped_mjx_rl.configs.config_classes import TeacherStudentConfig
 
 
 def get_networks_factory(
