@@ -11,10 +11,10 @@ EnvType = TypeVar("EnvType", bound=PipelineEnv)
 class EnvironmentConfig(Generic[EnvType]):
 
     @dataclass
-    class NoiseConfig:
-        obs_noise: float = 0.05
+    class ObservationNoiseConfig:
+        general_noise: float = 0.05
 
-    noise: NoiseConfig = field(default_factory=NoiseConfig)
+    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
 
     @dataclass
     class ControlConfig:
@@ -26,6 +26,16 @@ class EnvironmentConfig(Generic[EnvType]):
     class CommandConfig:
         resampling_time: int = 500
 
+        @dataclass
+        class RangesConfig:
+            # min max [m/s]
+            lin_vel_x: tuple[float, float] = field(default_factory=lambda: (-0.6, 1.5))
+            lin_vel_y: tuple[float, float] = field(default_factory=lambda: (-0.8, 0.8))
+            # min max [rad/s]
+            ang_vel_yaw: tuple[float, float] = field(default_factory=lambda: (-0.7, 0.7))
+
+        ranges: RangesConfig = field(default_factory=RangesConfig)
+
     command: CommandConfig = field(default_factory=CommandConfig)
 
     @dataclass
@@ -36,14 +46,21 @@ class EnvironmentConfig(Generic[EnvType]):
 
     @dataclass
     class SimConfig:
-        dt: float = 0.02
-        timestep: float = 0.004
+        ctrl_dt: float = 0.02
+        sim_dt: float = 0.004
+
+        @dataclass
+        class OverrideConfig:
+            pass
+
+        override: OverrideConfig = field(default_factory=OverrideConfig)
 
     sim: SimConfig = field(default_factory=SimConfig)
 
     @dataclass
     class RewardConfig:
         tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
+        termination_body_height: float = 0.18
 
         # The coefficients for all reward terms used for training. All
         # physical quantities are in SI units, if no otherwise specified,

@@ -69,8 +69,8 @@ class Go2TeacherEnv(PipelineEnv):
         robot_config: RobotConfig,
         init_scene_path: Path,
     ):
-        self._dt = environment_config.sim.dt
-        n_frames = int(environment_config.sim.dt / environment_config.sim.timestep)
+        self._dt = environment_config.sim.ctrl_dt
+        n_frames = int(environment_config.sim.ctrl_dt / environment_config.sim.sim_dt)
         sys = self.make_system(init_scene_path, environment_config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
@@ -92,7 +92,7 @@ class Go2TeacherEnv(PipelineEnv):
         self.rewards = environment_config.rewards
         self.reward_scales = asdict(environment_config.rewards.scales)
 
-        self._obs_noise_config = environment_config.noise
+        self._obs_noise_config = environment_config.observation_noise
 
         self._action_scale = environment_config.control.action_scale
         self._resampling_time = environment_config.command.resampling_time
@@ -154,7 +154,7 @@ class Go2TeacherEnv(PipelineEnv):
         self, init_scene_path: Path, environment_config: EnhancedEnvironmentConfig
     ) -> System:
         sys = mjcf.load(init_scene_path)
-        sys = sys.tree_replace({"opt.timestep": environment_config.sim.timestep})
+        sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
 
         # override menagerie params for smoother policy
         sys = sys.replace(
