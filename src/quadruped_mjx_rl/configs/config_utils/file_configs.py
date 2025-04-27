@@ -43,7 +43,7 @@ def config_from_dict(
     loaded_config: dict,
 ) -> ConfigType:
     """
-    Creates a config of the correct class form a given dict
+    Creates a config of the correct class from a given dict
     """
     config_class_name = loaded_config.get(f"{config_key.value}_class", "default")
     config_class = config_key.to_config_class_resolver()[config_class_name]
@@ -62,9 +62,9 @@ def load_configs_from_dicts(keywords: list[str], *loaded_configs: dict):
     return keyword_to_config
 
 
-def load_config_dicts(*args: PathLike, map_dicts: Callable[dict, ...] = None) -> Iterator[dict]:
+def load_config_dicts(*args: PathLike, map_dicts: Callable[[dict], ...] = None) -> Iterator[dict]:
     """
-    Loads yaml files into dicts, applies a map function if provided.
+    Loads YAML files into dicts, applies a map function if provided.
     """
     for path in args:
         with open(path) as f:
@@ -77,7 +77,7 @@ def save_configs(
     *configs: AnyConfig,
 ):
     """
-    Saves all configs to a yaml file, each config under an appropriate top level key.
+    Saves all configs to a YAML file, each config under an appropriate top level key.
     """
     final_dict = {
         ConfigKey.from_config_base_class(type(config)).value(): asdict(config)
