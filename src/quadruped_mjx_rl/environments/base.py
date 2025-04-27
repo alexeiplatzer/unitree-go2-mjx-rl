@@ -108,7 +108,7 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         sys = mjcf.load(init_scene_path)
         sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
 
-        return self._override_menagerie_params(sys)
+        return self._override_menagerie_params(sys, environment_config)
 
     def _override_menagerie_params(
         self, sys: System, environment_config: EnvironmentConfig
