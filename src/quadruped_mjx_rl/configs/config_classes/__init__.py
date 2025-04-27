@@ -14,7 +14,7 @@ from quadruped_mjx_rl.configs.config_classes.models import TeacherStudentConfig
 from quadruped_mjx_rl.configs.config_classes.environments import EnvironmentConfig
 
 from quadruped_mjx_rl.configs.config_classes.training import TrainingConfig
-from quadruped_mjx_rl.configs.config_classes.training import TrainingConfigVisionPPO
+from quadruped_mjx_rl.configs.config_classes.training import TrainingWithVisionConfig
 
 from quadruped_mjx_rl.configs.config_classes.rendering import RenderConfig
 

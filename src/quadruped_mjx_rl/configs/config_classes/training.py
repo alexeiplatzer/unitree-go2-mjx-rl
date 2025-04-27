@@ -21,9 +21,7 @@ class TrainingConfig:
 
 
 @dataclass
-class TrainingConfigVisionPPO:
-    madrona_backend: bool = True
-    # wrap_env: bool = False
+class TrainingWithVisionConfig(TrainingConfig):
     num_timesteps: int = 1_000_000
     num_evals: int = 5
     reward_scaling: int = 1
@@ -37,11 +35,15 @@ class TrainingConfigVisionPPO:
     learning_rate: float = 0.0005
     entropy_cost: float = 0.005
     num_envs: int = 512
-    num_eval_envs: int = 512
     batch_size: int = 256
+    training_class: str = "PPO_Vision"
+
+
+    madrona_backend: bool = True
+    # wrap_env: bool = False
+    num_eval_envs: int = 512
     max_grad_norm: float = 1.0
     # num_resets_per_eval: int = 1
-    training_class: str = "PPO_Vision"
 
 
 training_config_classes = {

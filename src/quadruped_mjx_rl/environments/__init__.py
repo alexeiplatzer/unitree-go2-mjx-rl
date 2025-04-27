@@ -2,3 +2,9 @@
 from .ppo_simple_legacy import JoystickEnv, SimpleEnvironmentConfig
 from .ppo_enhanced_legacy import Go2TeacherEnv, EnhancedEnvironmentConfig
 from .simple_vision_playground import QuadrupedVisionEnvironment, QuadrupedVisionEnvConfig
+
+from quadruped_mjx_rl.environments.base import QuadrupedJoystickBaseEnv
+from quadruped_mjx_rl.environments.ppo_enhanced import EnhancedEnvironmentConfig
+from quadruped_mjx_rl.environments.ppo_enhanced import QuadrupedJoystickEnhancedEnv
+from quadruped_mjx_rl.environments.ppo_teacher_student import TeacherStudentEnvironmentConfig
+from quadruped_mjx_rl.environments.ppo_teacher_student import QuadrupedJoystickTeacherStudentEnv
