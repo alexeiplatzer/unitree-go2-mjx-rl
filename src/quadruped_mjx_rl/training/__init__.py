@@ -1,1 +1,1 @@
-from .training import train
+from .utils import train
