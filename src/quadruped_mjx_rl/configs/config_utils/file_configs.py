@@ -81,6 +81,22 @@ def save_configs(
     """
     Saves all configs to a YAML file, each config under an appropriate top level key.
     """
+    # temp
+    final_dict = {}
+    for config in configs:
+        try:
+            final_dict[
+                ConfigKey.from_config_base_class(
+                    type(
+                        config
+                    )
+                ).value
+            ] = asdict(
+                config
+            )
+        except Exception as e:
+            print(f"Error saving config: {config}")
+            raise e
     final_dict = {
         ConfigKey.from_config_base_class(type(config)).value: asdict(config)
         for config in configs
