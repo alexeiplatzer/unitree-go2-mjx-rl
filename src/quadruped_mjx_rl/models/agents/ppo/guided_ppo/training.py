@@ -101,6 +101,7 @@ def train(
     restore_checkpoint_path: str | None = None,
     restore_params=None,
     restore_value_fn: bool = True,
+    **absorbed_kwargs,
 ):
     # Check arguments
     assert batch_size * num_minibatches % num_envs == 0
