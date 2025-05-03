@@ -33,4 +33,5 @@ class TeacherStudentConfig(ActorCriticConfig):
 model_config_classes = {
     "ActorCritic": ActorCriticConfig,
     "TeacherStudent": TeacherStudentConfig,
+    "default": ActorCriticConfig,
 }

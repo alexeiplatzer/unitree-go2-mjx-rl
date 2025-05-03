@@ -27,7 +27,7 @@ from quadruped_mjx_rl.configs import EnvironmentConfig, VisionConfig
 from quadruped_mjx_rl.configs import RobotConfig
 from quadruped_mjx_rl.configs import ModelConfig
 from quadruped_mjx_rl.configs import TrainingConfig
-from quadruped_mjx_rl.configs.config_classes import TrainingConfigVisionPPO
+from quadruped_mjx_rl.configs.config_classes import TrainingWithVisionConfig
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
 
@@ -47,7 +47,7 @@ def train(
     # init_scene_path: PathLike,
     env,
     model_config: ModelConfig,
-    training_config: TrainingConfig | TrainingConfigVisionPPO,
+    training_config: TrainingConfig | TrainingWithVisionConfig,
     train_fn: Callable,
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,

@@ -29,4 +29,5 @@ class RobotConfig:
 
 robot_config_classes = {
     "Quadruped": RobotConfig,
+    "default": RobotConfig,
 }

@@ -81,7 +81,6 @@ class EnvironmentConfig(Generic[EnvType]):
     rewards: RewardConfig = field(default_factory=RewardConfig)
 
     environment_class: str = "default"
-    _environment_class: type = EnvType
 
 
 environment_config_classes = {

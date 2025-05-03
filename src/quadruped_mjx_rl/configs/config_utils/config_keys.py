@@ -46,7 +46,7 @@ class ConfigKey(str, Enum):
             return inv_dict[config_class]
         except KeyError:
             for supertype in config_class.__mro__:
-                if supertype in ConfigKey.__members__:
+                if supertype in inv_dict:
                     return inv_dict[supertype]
             raise KeyError(f"Could not find config key for {config_class}")
 

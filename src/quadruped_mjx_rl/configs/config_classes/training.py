@@ -46,6 +46,7 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 
 training_config_classes = {
+    "default": TrainingConfig,
     "PPO": TrainingConfig,
     "PPO_Vision": TrainingWithVisionConfig,
 }
