@@ -188,6 +188,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
         self._use_vision = environment_config.use_vision
         if self._use_vision:
             from madrona_mjx.renderer import BatchRenderer
+
             self.renderer = BatchRenderer(
                 m=self._mjx_model,
                 gpu_id=vision_config.gpu_id,
@@ -200,7 +201,6 @@ class QuadrupedVisionEnvironment(MjxEnv):
                 use_rasterizer=vision_config.use_rasterizer,
                 viz_gpu_hdls=None,
             )
-
 
     def make_system(
         self, init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
@@ -217,9 +217,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
 
         # TODO: verify that this works
         floor_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
-        sys = sys.replace(
-            geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0])
-        )
+        sys = sys.replace(geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0]))
 
         return sys
 
@@ -282,10 +280,10 @@ class QuadrupedVisionEnvironment(MjxEnv):
                 minval=self._obs_noise_config.brightness[0],
                 maxval=self._obs_noise_config.brightness[1],
             )
-            state_info.update({'brightness': brightness})
+            state_info.update({"brightness": brightness})
 
             render_token, rgb, _ = self.renderer.init(pipeline_state, self._mjx_model)
-            state_info.update({'render_token': render_token})
+            state_info.update({"render_token": render_token})
 
             obs_0 = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
             obs_0 = adjust_brightness(obs_0, brightness)
@@ -293,7 +291,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
             # obs_1 = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
             # obs_1 = adjust_brightness(obs_1, brightness)
 
-            obs = {'pixels/view_0': obs_0}
+            obs = {"pixels/view_0": obs_0}
 
         reward, done = jnp.zeros(2)
 
@@ -325,10 +323,10 @@ class QuadrupedVisionEnvironment(MjxEnv):
         if not self._use_vision:
             obs = self._get_obs(pipeline_state, state.info, state.obs["state_history"])
         else:
-            _, rgb, _ = self.renderer.render(state.info['render_token'], pipeline_state)
+            _, rgb, _ = self.renderer.render(state.info["render_token"], pipeline_state)
             obs = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            obs = adjust_brightness(obs, state.info['brightness'])
-            obs = {'pixels/view_0': obs}
+            obs = adjust_brightness(obs, state.info["brightness"])
+            obs = {"pixels/view_0": obs}
 
         done = self._check_termination(pipeline_state)
 
@@ -502,18 +500,14 @@ class QuadrupedVisionEnvironment(MjxEnv):
         # Penalize changes in actions
         return jnp.sum(jnp.square(act - last_act))
 
-    def _reward_tracking_lin_vel(
-        self, commands: jax.Array, x, xd
-    ) -> jax.Array:
+    def _reward_tracking_lin_vel(self, commands: jax.Array, x, xd) -> jax.Array:
         # Tracking of linear velocity commands (xy axes)
         local_vel = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
         lin_vel_error = jnp.sum(jnp.square(commands[:2] - local_vel[:2]))
         lin_vel_reward = jnp.exp(-lin_vel_error / self.rewards.tracking_sigma)
         return lin_vel_reward
 
-    def _reward_tracking_ang_vel(
-        self, commands: jax.Array, x, xd
-    ) -> jax.Array:
+    def _reward_tracking_ang_vel(self, commands: jax.Array, x, xd) -> jax.Array:
         # Tracking of angular velocity commands (yaw)
         base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         ang_vel_error = jnp.square(commands[2] - base_ang_vel[2])
@@ -537,9 +531,7 @@ class QuadrupedVisionEnvironment(MjxEnv):
             math.normalize(commands[:2])[1] < 0.1
         )
 
-    def _reward_foot_slip(
-        self, pipeline_state, contact_filt: jax.Array
-    ) -> jax.Array:
+    def _reward_foot_slip(self, pipeline_state, contact_filt: jax.Array) -> jax.Array:
         # get velocities at feet which are offset from lower legs
         # pytype: disable=attribute-error
         pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position

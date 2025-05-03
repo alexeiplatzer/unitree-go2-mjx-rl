@@ -163,9 +163,7 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         for k in self.reward_scales.keys():
             metrics[f"reward/{k}"] = jnp.zeros(())
 
-        return State(
-            pipeline_state, obs, reward, done, metrics, state_info
-        )
+        return State(pipeline_state, obs, reward, done, metrics, state_info)
 
     def step(self, state: State, action: jax.Array) -> State:
         rng, cmd_rng = jax.random.split(state.info["rng"], 2)

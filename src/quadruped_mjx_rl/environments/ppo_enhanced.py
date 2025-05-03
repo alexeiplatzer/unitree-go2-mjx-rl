@@ -143,9 +143,8 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
         )
 
         # clip, noise
-        obs_noise = (
-            self._obs_noise_config.general_noise
-            * jax.random.uniform(state_info["rng"], obs.shape, minval=-1, maxval=1)
+        obs_noise = self._obs_noise_config.general_noise * jax.random.uniform(
+            state_info["rng"], obs.shape, minval=-1, maxval=1
         )
         obs = jnp.clip(obs, -100.0, 100.0) + obs_noise
 
@@ -180,9 +179,7 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
         rewards["orientation"] = self._reward_orientation(x)
         rewards["torques"] = self._reward_torques(pipeline_state.qfrc_actuator)
         rewards["action_rate"] = self._reward_action_rate(action, state_info["last_act"])
-        rewards["stand_still"] = self._reward_stand_still(
-            state_info["command"], joint_angles
-        )
+        rewards["stand_still"] = self._reward_stand_still(state_info["command"], joint_angles)
         rewards["feet_air_time"] = self._reward_feet_air_time(
             state_info["feet_air_time"], first_contact, state_info["command"]
         )

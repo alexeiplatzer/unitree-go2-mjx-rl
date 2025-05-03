@@ -29,9 +29,7 @@ class State:
     metrics: Dict[str, jax.Array]
     info: Dict[str, Any]
 
-    def tree_replace(
-        self, params: Dict[str, Optional[jax.typing.ArrayLike]]
-    ) -> "State":
+    def tree_replace(self, params: Dict[str, Optional[jax.typing.ArrayLike]]) -> "State":
         new = self
         for k, v in params.items():
             new = _tree_replace(new, k.split("."), v)
@@ -54,9 +52,7 @@ def _tree_replace(
     if len(attr) == 1:
         return base.replace(**{attr[0]: val})
 
-    return base.replace(
-        **{attr[0]: _tree_replace(getattr(base, attr[0]), attr[1:], val)}
-    )
+    return base.replace(**{attr[0]: _tree_replace(getattr(base, attr[0]), attr[1:], val)})
 
 
 class MjxEnv(abc.ABC):
@@ -132,9 +128,7 @@ class MjxEnv(abc.ABC):
         width: int = 320,
         camera: Optional[str] = None,
         scene_option: Optional[mujoco.MjvOption] = None,
-        modify_scene_fns: Optional[
-            Sequence[Callable[[mujoco.MjvScene], None]]
-        ] = None,
+        modify_scene_fns: Optional[Sequence[Callable[[mujoco.MjvScene], None]]] = None,
     ) -> Sequence[np.ndarray]:
         return render_array(
             self.mj_model,
@@ -158,9 +152,7 @@ def render_array(
     width: int = 640,
     camera: Optional[str] = None,
     scene_option: Optional[mujoco.MjvOption] = None,
-    modify_scene_fns: Optional[
-        Sequence[Callable[[mujoco.MjvScene], None]]
-    ] = None,
+    modify_scene_fns: Optional[Sequence[Callable[[mujoco.MjvScene], None]]] = None,
     hfield_data: Optional[jax.Array] = None,
 ):
     """Renders a trajectory as an array of images."""
@@ -197,14 +189,12 @@ def render_array(
     return out
 
 
-def get_sensor_data(
-    model: mujoco.MjModel, data: mjx.Data, sensor_name: str
-) -> jax.Array:
+def get_sensor_data(model: mujoco.MjModel, data: mjx.Data, sensor_name: str) -> jax.Array:
     """Gets sensor data given sensor name."""
     sensor_id = model.sensor(sensor_name).id
     sensor_adr = model.sensor_adr[sensor_id]
     sensor_dim = model.sensor_dim[sensor_id]
-    return data.sensordata[sensor_adr: sensor_adr + sensor_dim]
+    return data.sensordata[sensor_adr : sensor_adr + sensor_dim]
 
 
 def dof_width(joint_type: Union[int, mujoco.mjtJoint]) -> int:
@@ -221,9 +211,7 @@ def qpos_width(joint_type: Union[int, mujoco.mjtJoint]) -> int:
     return {0: 7, 1: 4, 2: 1, 3: 1}[joint_type]
 
 
-def get_qpos_ids(
-    model: mujoco.MjModel, joint_names: Sequence[str]
-) -> np.ndarray:
+def get_qpos_ids(model: mujoco.MjModel, joint_names: Sequence[str]) -> np.ndarray:
     index_list: list[int] = []
     for jnt_name in joint_names:
         jnt = model.joint(jnt_name).id
@@ -234,9 +222,7 @@ def get_qpos_ids(
     return np.array(index_list)
 
 
-def get_qvel_ids(
-    model: mujoco.MjModel, joint_names: Sequence[str]
-) -> np.ndarray:
+def get_qvel_ids(model: mujoco.MjModel, joint_names: Sequence[str]) -> np.ndarray:
     index_list: list[int] = []
     for jnt_name in joint_names:
         jnt = model.joint(jnt_name).id

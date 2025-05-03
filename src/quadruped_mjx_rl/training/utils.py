@@ -63,6 +63,7 @@ def train(
             save_args = orbax_utils.save_args_from_target(parameters)
             path = checkpoints_save_path / f"{current_step}"
             orbax_checkpointer.save(path, parameters, force=True, save_args=save_args)
+
     else:
         policy_params_fn = lambda *args: None
 
@@ -121,7 +122,8 @@ def train(
     #     init_scene_path=init_scene_path,
     # )
     make_inference_fn, params, metrics = train_fn(
-        environment=env, progress_fn=progress,  # eval_env=eval_env
+        environment=env,
+        progress_fn=progress,  # eval_env=eval_env
     )
 
     print(f"time to jit: {times[1] - times[0]}")

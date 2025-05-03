@@ -59,7 +59,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
     ) -> jax.Array | dict[str, jax.Array]:
         assert isinstance(obs, dict)
         obs_history = super()._get_obs(pipeline_state, state_info, obs["state_history"])
-        last_obs = obs_history[: 31]
+        last_obs = obs_history[:31]
 
         privileged_obs = jnp.concatenate(
             [

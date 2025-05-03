@@ -20,12 +20,7 @@ from quadruped_mjx_rl.configs.config_classes import vision_config_classes
 
 
 AnyConfig = (
-    EnvironmentConfig
-    | RobotConfig
-    | ModelConfig
-    | TrainingConfig
-    | RenderConfig
-    | VisionConfig
+    EnvironmentConfig | RobotConfig | ModelConfig | TrainingConfig | RenderConfig | VisionConfig
 )
 
 
@@ -69,4 +64,3 @@ config_class_resolvers = {
     ConfigKey.RENDERING: rendering_config_classes,
     ConfigKey.VISION: vision_config_classes,
 }
-

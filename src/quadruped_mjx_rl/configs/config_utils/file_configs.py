@@ -62,7 +62,9 @@ def load_configs_from_dicts(keywords: list[str], *loaded_configs: dict):
     return keyword_to_config
 
 
-def load_config_dicts(*args: PathLike, map_dicts: Callable[[dict], ...] = None) -> Iterator[dict]:
+def load_config_dicts(
+    *args: PathLike, map_dicts: Callable[[dict], ...] = None
+) -> Iterator[dict]:
     """
     Loads YAML files into dicts, applies a map function if provided.
     """

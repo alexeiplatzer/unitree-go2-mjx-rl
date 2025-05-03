@@ -15,10 +15,7 @@ from quadruped_mjx_rl.configs.config_classes import ActorCriticConfig
 from quadruped_mjx_rl.configs.config_classes import TeacherStudentConfig
 
 
-def get_networks_factory(
-    model_config: ModelConfig,
-    vision: bool = False
-):
+def get_networks_factory(model_config: ModelConfig, vision: bool = False):
     if isinstance(model_config, TeacherStudentConfig):
         teacher_factory = partial(
             teacher_networks.make_teacher_networks,

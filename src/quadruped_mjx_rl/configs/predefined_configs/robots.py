@@ -1,4 +1,3 @@
-
 from quadruped_mjx_rl.configs.config_classes import RobotConfig
 
 

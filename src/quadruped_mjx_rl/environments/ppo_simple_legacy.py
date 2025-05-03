@@ -65,6 +65,7 @@ class SimpleEnvironmentConfig(EnvironmentConfig["JoystickEnv"]):
             foot_slip: float = -0.1  # Penalize foot slipping on the ground.
 
         scales: ScalesConfig = field(default_factory=ScalesConfig)
+
     rewards: RewardConfig = field(default_factory=RewardConfig)
 
 

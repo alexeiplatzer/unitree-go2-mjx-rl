@@ -1,12 +1,15 @@
-from typing import Sequence, Tuple
-
-from brax.training import distribution
-from ... import networks
+from collections.abc import Sequence, Mapping
 from brax.training import types
+from brax.training.types import Params
 from brax.training.types import PRNGKey
 import flax
 from flax import linen
-from jax import numpy as jnp
+import jax
+import jax.numpy as jnp
+
+from quadruped_mjx_rl.models import networks
+from quadruped_mjx_rl.models import modules
+from brax.training import distribution
 
 
 @flax.struct.dataclass
@@ -22,6 +25,20 @@ class StudentNetworks:
     encoder_network: networks.FeedForwardNetwork
 
 
+@flax.struct.dataclass
+class TeacherNetworkParams:
+    """Contains training state for the learner."""
+
+    encoder: Params
+    policy: Params
+    value: Params
+
+
+@flax.struct.dataclass
+class StudentNetworkParams:
+    encoder: Params
+
+
 def make_teacher_inference_fn(teacher_networks: TeacherNetworks):
     """Creates params and inference function for the Teacher agent."""
 
@@ -32,7 +49,7 @@ def make_teacher_inference_fn(teacher_networks: TeacherNetworks):
 
         def policy(
             observations: types.Observation, key_sample: PRNGKey
-        ) -> Tuple[types.Action, types.Extra]:
+        ) -> tuple[types.Action, types.Extra]:
             normalizer_params = params[0]
             encoder_params = params[1]
             policy_params = params[2]
@@ -42,8 +59,7 @@ def make_teacher_inference_fn(teacher_networks: TeacherNetworks):
             logits = policy_network.apply(
                 normalizer_params,
                 policy_params,
-                observations,
-                latent_vector,
+                observations | {"latent": latent_vector},
             )
             if deterministic:
                 return teacher_networks.parametric_action_distribution.mode(logits), {}
@@ -68,8 +84,7 @@ def make_student_inference_fn(
     """Creates params and inference function for the Student agent."""
 
     def make_policy(
-        teacher_params: types.Params,
-        student_params: types.Params,
+        teacher_student_params: types.Params,
         deterministic: bool = False,
     ) -> types.Policy:
         encoder_network = student_networks.encoder_network
@@ -78,21 +93,19 @@ def make_student_inference_fn(
 
         def policy(
             observations: types.Observation, key_sample: PRNGKey
-        ) -> Tuple[types.Action, types.Extra]:
-            teacher_normalizer_params = teacher_params[0]
-            student_normalizer_params = student_params[0]
-            encoder_params = student_params[1]
-            policy_params = teacher_params[2]
+        ) -> tuple[types.Action, types.Extra]:
+            normalizer_params = teacher_student_params[0]
+            encoder_params = teacher_student_params[1]
+            policy_params = teacher_student_params[2]
             latent_vector = encoder_network.apply(
-                student_normalizer_params,
+                normalizer_params,
                 encoder_params,
                 observations,
             )
             logits = policy_network.apply(
                 teacher_normalizer_params,
                 policy_params,
-                observations,
-                latent_vector,
+                observations | {"latent": latent_vector},
             )
             if deterministic:
                 return teacher_networks.parametric_action_distribution.mode(logits), {}
@@ -112,43 +125,67 @@ def make_student_inference_fn(
 
 
 def make_teacher_networks(
-    observation_size: int,
-    privileged_observation_size: int,
+    observation_size: types.ObservationSize,
     action_size: int,
-    latent_representation_size: int = 32,
-    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    preprocess_observations_fn: types.PreprocessObservationFn = (
+        types.identity_observation_preprocessor
+    ),
     policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
     value_hidden_layer_sizes: Sequence[int] = (128,) * 5,
     encoder_hidden_layer_sizes: Sequence[int] = (128,) * 2,
-    activation: networks.ActivationFn = linen.swish,
+    latent_representation_size: int = 32,
+    activation: modules.ActivationFn = linen.swish,
     policy_obs_key: str = "state",
     value_obs_key: str = "state",
     encoder_obs_key: str = "privileged_state",
+    latent_obs_key: str = "latent",
 ) -> TeacherNetworks:
     """Make Teacher networks with preprocessor."""
+
+    if not isinstance(observation_size, Mapping):
+        raise TypeError(
+            f"Environment observations must be a dictionary (Mapping),"
+            f" got {type(observation_size)}"
+        )
+    required_keys = {'state', 'privileged_state', 'state_history'}
+    if not required_keys.issubset(observation_size.keys()):
+        raise ValueError(
+            f"Environment observation dict missing required keys. "
+            f"Expected: {required_keys}, Got: {observation_size.keys()}"
+        )
+
+    observation_size |= {"latent": latent_representation_size}
+
     parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
-    encoder_network = networks.make_encoder_network(
-        latent_representation_size,
-        privileged_observation_size,
-        preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layer_sizes=encoder_hidden_layer_sizes,
+    encoder_module = modules.MLP(
+        layer_sizes=list(encoder_hidden_layer_sizes) + [latent_representation_size],
         activation=activation,
-        obs_key=encoder_obs_key,
     )
-    policy_network = networks.make_policy_network(
-        parametric_action_distribution.param_size,
-        observation_size + latent_representation_size,
+    encoder_network = networks.make_network(
+        module=encoder_module,
+        obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layer_sizes=policy_hidden_layer_sizes,
-        activation=activation,
-        obs_key=policy_obs_key,
+        obs_keys=encoder_obs_key,
     )
-    value_network = networks.make_value_network(
-        observation_size + latent_representation_size,
-        preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layer_sizes=value_hidden_layer_sizes,
+    policy_module = modules.MLP(
+        layer_sizes=list(policy_hidden_layer_sizes) + [action_size],
         activation=activation,
-        obs_key=value_obs_key,
+    )
+    policy_network = networks.make_network(
+        module=policy_module,
+        obs_size=observation_size,
+        preprocess_observations_fn=preprocess_observations_fn,
+        obs_keys=(policy_obs_key, latent_obs_key),
+    )
+    value_module = modules.MLP(
+        layer_sizes=list(value_hidden_layer_sizes) + [1],
+        activation=activation,
+    )
+    value_network = networks.make_network(
+        module=value_module,
+        obs_size=observation_size,
+        preprocess_observations_fn=preprocess_observations_fn,
+        obs_keys=(value_obs_key, latent_obs_key),
     )
 
     return TeacherNetworks(
@@ -160,30 +197,25 @@ def make_teacher_networks(
 
 
 def make_student_networks(
-    observation_size: int,
-    # privileged_observation_size: int,
-    # action_size: int,
+    observation_size: types.ObservationSize,
     latent_representation_size: int = 32,
-    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-    # policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
-    # value_hidden_layer_sizes: Sequence[int] = (128,) * 5,
+    preprocess_observations_fn: types.PreprocessObservationFn = (
+        types.identity_observation_preprocessor
+    ),
     adapter_hidden_layer_sizes: Sequence[int] = (128,) * 2,
-    activation: networks.ActivationFn = linen.swish,
-    # policy_obs_key: str = 'state',
-    # value_obs_key: str = 'state',
+    activation: modules.ActivationFn = linen.swish,
     encoder_obs_key: str = "state_history",
 ) -> StudentNetworks:
     """Make Student networks with preprocessor."""
-    # parametric_action_distribution = distribution.NormalTanhDistribution(
-    #     event_size=action_size
-    # )
-    encoder_network = networks.make_encoder_network(
-        latent_representation_size,
-        observation_size,
-        preprocess_observations_fn=preprocess_observations_fn,
-        hidden_layer_sizes=adapter_hidden_layer_sizes,
+    encoder_module = modules.MLP(
+        layer_sizes=list(adapter_hidden_layer_sizes) + [latent_representation_size],
         activation=activation,
-        obs_key=encoder_obs_key,
+    )
+    encoder_network = networks.make_network(
+        module=encoder_module,
+        obs_size=observation_size,
+        preprocess_observations_fn=preprocess_observations_fn,
+        obs_keys=encoder_obs_key,
     )
 
     return StudentNetworks(

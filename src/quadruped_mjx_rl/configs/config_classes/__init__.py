@@ -19,4 +19,3 @@ from quadruped_mjx_rl.configs.config_classes.training import TrainingWithVisionC
 from quadruped_mjx_rl.configs.config_classes.rendering import RenderConfig
 
 from quadruped_mjx_rl.configs.config_classes.vision import VisionConfig
-

@@ -38,7 +38,6 @@ class TrainingWithVisionConfig(TrainingConfig):
     batch_size: int = 256
     training_class: str = "PPO_Vision"
 
-
     madrona_backend: bool = True
     # wrap_env: bool = False
     num_eval_envs: int = 512
