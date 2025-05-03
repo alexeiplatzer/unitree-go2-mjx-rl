@@ -1,13 +1,12 @@
-from typing import Any, Tuple
-
 from brax.training import types
-from . import networks as teacher_networks
 from brax.training.types import Params
 import flax
 import optax
 import jax
 import jax.numpy as jnp
 
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import TeacherNetworks
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import StudentNetworks
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import TeacherNetworkParams
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import StudentNetworkParams
 from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
@@ -15,17 +14,17 @@ from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
 
 def compute_teacher_loss(
     params: TeacherNetworkParams,
-    normalizer_params: Any,
+    normalizer_params,
     data: types.Transition,
     rng: jnp.ndarray,
-    teacher_network: teacher_networks.TeacherNetworks,
+    teacher_network: TeacherNetworks,
     entropy_cost: float = 1e-4,
     discounting: float = 0.9,
     reward_scaling: float = 1.0,
     gae_lambda: float = 0.95,
     clipping_epsilon: float = 0.3,
     normalize_advantage: bool = True,
-) -> Tuple[jnp.ndarray, types.Metrics]:
+) -> tuple[jnp.ndarray, types.Metrics]:
     """Computes PPO loss.
 
     Args:
@@ -114,11 +113,11 @@ def compute_teacher_loss(
 def compute_student_loss(
     student_params: StudentNetworkParams,
     teacher_params: TeacherNetworkParams,
-    normalizer_params: Any,
+    normalizer_params,
     data: types.Transition,
-    teacher_network: teacher_networks.TeacherNetworks,
-    student_network: teacher_networks.StudentNetworks,
-) -> Tuple[jnp.ndarray, types.Metrics]:
+    teacher_network: TeacherNetworks,
+    student_network: StudentNetworks,
+) -> tuple[jnp.ndarray, types.Metrics]:
     """Computes Adaptation module loss."""
 
     encoder_apply = teacher_network.encoder_network.apply
