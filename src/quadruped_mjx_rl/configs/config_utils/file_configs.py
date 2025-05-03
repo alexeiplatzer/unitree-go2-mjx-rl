@@ -82,7 +82,7 @@ def save_configs(
     Saves all configs to a YAML file, each config under an appropriate top level key.
     """
     final_dict = {
-        ConfigKey.from_config_base_class(type(config)).value(): asdict(config)
+        ConfigKey.from_config_base_class(type(config)).value: asdict(config)
         for config in configs
     }
     with open(save_file_path, "w") as f:
