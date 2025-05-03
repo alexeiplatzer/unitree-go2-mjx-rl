@@ -44,11 +44,11 @@ class ConfigKey(str, Enum):
         inv_dict = _invert_dict(config_base_classes)
         try:
             return inv_dict[config_class]
-        except TypeError:
+        except KeyError:
             for supertype in config_class.__mro__:
                 if supertype in ConfigKey:
                     return inv_dict[supertype]
-            raise TypeError(f"Could not find config key for {config_class}")
+            raise KeyError(f"Could not find config key for {config_class}")
 
     def to_config_class_resolver(self) -> dict[str, type[AnyConfig]]:
         return config_class_resolvers[self]
