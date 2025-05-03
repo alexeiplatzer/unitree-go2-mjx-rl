@@ -8,7 +8,7 @@ from brax.io import model
 from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.agents.ppo import networks_vision as ppo_networks_vision
 
-from ..brax_alt.training.agents.teacher import networks as teacher_networks
+from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
 
 from quadruped_mjx_rl.configs.config_classes import ModelConfig
 from quadruped_mjx_rl.configs.config_classes import ActorCriticConfig
@@ -18,14 +18,14 @@ from quadruped_mjx_rl.configs.config_classes import TeacherStudentConfig
 def get_networks_factory(model_config: ModelConfig, vision: bool = False):
     if isinstance(model_config, TeacherStudentConfig):
         teacher_factory = partial(
-            teacher_networks.make_teacher_networks,
+            guided_networks.make_teacher_networks,
             policy_hidden_layer_sizes=model_config.modules.policy,
             value_hidden_layer_sizes=model_config.modules.value,
             latent_representation_size=model_config.latent_size,
             encoder_hidden_layer_sizes=model_config.modules.encoder,
         )
         student_factory = partial(
-            teacher_networks.make_student_networks,
+            guided_networks.make_student_networks,
             latent_representation_size=model_config.latent_size,
             adapter_hidden_layer_sizes=model_config.modules.adapter,
         )
@@ -67,8 +67,8 @@ def load_inference_fn(
             observation_size=1,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        teacher_inference_factory = teacher_networks.make_teacher_inference_fn(teacher_nets)
-        student_inference_factory = teacher_networks.make_student_inference_fn(
+        teacher_inference_factory = guided_networks.make_teacher_inference_fn(teacher_nets)
+        student_inference_factory = guided_networks.make_student_inference_fn(
             teacher_nets, student_nets
         )
         return {
