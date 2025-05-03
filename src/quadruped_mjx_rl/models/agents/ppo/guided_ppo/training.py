@@ -99,7 +99,7 @@ def train(
     # checkpointing
     save_checkpoint_path: str | None = None,
     restore_checkpoint_path: str | None = None,
-    restore_params: ... | None = None,
+    restore_params=None,
     restore_value_fn: bool = True,
 ):
     # Check arguments
