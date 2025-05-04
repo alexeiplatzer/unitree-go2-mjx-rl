@@ -160,7 +160,7 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
         action: jax.Array,
         done: jax.Array,
     ):
-        rewards = super()._get_rewards(pipeline_state, state_info, action)
+        rewards = super()._get_rewards(pipeline_state, state_info, action, done)
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_angles = pipeline_state.q[7:]
         joint_vel = pipeline_state.qd[6:]
