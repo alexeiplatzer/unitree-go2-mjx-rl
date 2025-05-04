@@ -92,13 +92,15 @@ def train(
     # )
 
     network_factory = get_networks_factory(model_config, vision=vision)
+    training_params = asdict(training_config)
+    training_params.pop("training_class")
     train_fn = functools.partial(
         train_fn,
         network_factory=network_factory,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
-        **asdict(training_config),
+        **training_params,
     )
 
     x_data = []
