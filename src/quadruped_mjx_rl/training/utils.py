@@ -32,20 +32,8 @@ from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
 
 
-training_functions = {
-    "ppo": ppo_train,
-}
-
-
-EnvType = TypeVar("EnvType", bound=PipelineEnv)
-
-
 def train(
-    # environment: type[EnvType],
-    # env_config: EnvironmentConfig[EnvType],
-    # robot_config: RobotConfig,
-    # init_scene_path: PathLike,
-    env,
+    env_factory: Callable[[], PipelineEnv],
     model_config: ModelConfig,
     training_config: TrainingConfig | TrainingWithVisionConfig,
     train_fn: Callable,
@@ -83,6 +71,7 @@ def train(
         plt.errorbar(x_data, y_data, yerr=ydataerr)
         plt.show()
 
+    # VVV not sure if needed!!!
     # envs.register_environment(env_config.name, environment)
     # env = envs.get_environment(
     #     env_config.name,
@@ -111,6 +100,8 @@ def train(
 
     # Reset environments since internals may be overwritten by tracers from the
     # domain randomization function.
+    env = env_factory()
+    eval_env = env_factory()
     # env = envs.get_environment(
     #     env_config.name,
     #     environment_config=env_config,
@@ -125,7 +116,8 @@ def train(
     # )
     make_inference_fn, params, metrics = train_fn(
         environment=env,
-        progress_fn=progress,  # eval_env=eval_env
+        progress_fn=progress,
+        eval_env=eval_env,
     )
 
     print(f"time to jit: {times[1] - times[0]}")
