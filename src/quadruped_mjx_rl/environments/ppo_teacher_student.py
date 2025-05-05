@@ -20,6 +20,7 @@ from brax.envs.base import State
 from quadruped_mjx_rl.configs import EnvironmentConfig
 from quadruped_mjx_rl.configs import RobotConfig
 from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+from quadruped_mjx_rl.environments.ppo_enhanced import EnhancedEnvironmentConfig
 from quadruped_mjx_rl.environments.ppo_enhanced import QuadrupedJoystickEnhancedEnv
 
 
@@ -27,7 +28,10 @@ _ENVIRONMENT_CLASS = "TeacherStudent"
 
 
 @dataclass
-class TeacherStudentEnvironmentConfig(EnvironmentConfig["QuadrupedJoystickTeacherStudentEnv"]):
+class TeacherStudentEnvironmentConfig(
+    EnhancedEnvironmentConfig,
+    EnvironmentConfig["QuadrupedJoystickTeacherStudentEnv"],
+):
     environment_class: str = _ENVIRONMENT_CLASS
 
 
