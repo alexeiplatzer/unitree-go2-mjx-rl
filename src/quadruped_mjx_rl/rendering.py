@@ -22,15 +22,8 @@ from quadruped_mjx_rl.configs import RenderConfig
 from quadruped_mjx_rl.models import load_inference_fn
 
 
-EnvType = TypeVar("EnvType", bound=PipelineEnv)
-
-
 def render(
-    # environment: type[EnvType],
-    # env_config: EnvironmentConfig[EnvType],
-    # robot_config: RobotConfig,
-    # init_scene_path: PathLike,
-    env,
+    env_factory: Callable[[], PipelineEnv],
     model_config: ModelConfig,
     trained_model_path: PathLike,
     render_config: RenderConfig,
@@ -38,13 +31,7 @@ def render(
     vision: bool = False,
 ):
     # Environment
-    # envs.register_environment(env_config.name, environment)
-    # env = envs.get_environment(
-    #     env_config.name,
-    #     environment_config=env_config,
-    #     robot_config=robot_config,
-    #     init_scene_path=init_scene_path,
-    # )
+    env = env_factory()
 
     # Inference function
     ppo_inference_fn = load_inference_fn(
