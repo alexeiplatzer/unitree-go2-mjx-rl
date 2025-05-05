@@ -103,7 +103,7 @@ def make_student_inference_fn(
                 observations,
             )
             logits = policy_network.apply(
-                teacher_normalizer_params,
+                normalizer_params,
                 policy_params,
                 observations | {"latent": latent_vector},
             )

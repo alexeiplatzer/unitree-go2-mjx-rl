@@ -434,12 +434,12 @@ def train(
 
     # Initialize model params and training state.
     teacher_init_params = TeacherNetworkParams(
-        encoder=ppo_networks.TeacherNetworks.policy_network.init(key_encoder),
-        policy=ppo_networks.TeacherNetwork.policy_network.init(key_policy),
-        value=ppo_networks.TeacherNetwork.value_network.init(key_value),
+        encoder=teacher_network.TeacherNetworks.policy_network.init(key_encoder),
+        policy=teacher_network.TeacherNetwork.policy_network.init(key_policy),
+        value=teacher_network.TeacherNetwork.value_network.init(key_value),
     )
     student_init_params = StudentNetworkParams(
-        encoder=ppo_networks.StudentNetworks.encoder_network.init(key_adapter),
+        encoder=student_network.StudentNetworks.encoder_network.init(key_adapter),
     )
 
     obs_shape = jax.tree_util.tree_map(
