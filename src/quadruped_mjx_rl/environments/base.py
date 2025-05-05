@@ -123,20 +123,20 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         lin_vel_x = jax.random.uniform(
             key=key1,
             shape=(1,),
-            minval=self._command_ranges.lin_vel_x[0],
-            maxval=self._command_ranges.lin_vel_x[1],
+            minval=self._command_ranges.lin_vel_x_min,
+            maxval=self._command_ranges.lin_vel_x_max,
         )
         lin_vel_y = jax.random.uniform(
             key=key2,
             shape=(1,),
-            minval=self._command_ranges.lin_vel_y[0],
-            maxval=self._command_ranges.lin_vel_y[1],
+            minval=self._command_ranges.lin_vel_y_min,
+            maxval=self._command_ranges.lin_vel_y_max,
         )
         ang_vel_yaw = jax.random.uniform(
             key=key3,
             shape=(1,),
-            minval=self._command_ranges.ang_vel_yaw[0],
-            maxval=self._command_ranges.ang_vel_yaw[1],
+            minval=self._command_ranges.ang_vel_yaw_min,
+            maxval=self._command_ranges.ang_vel_yaw_max,
         )
         new_command = jnp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
         return new_command
