@@ -195,7 +195,6 @@ def train(
 
     student_network = student_network_factory(
         observation_size=obs_shape,
-        action_size=env.action_size,
         preprocess_observations_fn=preprocess_fn,
     )
     make_student_policy = ppo_networks.make_student_inference_fn(
