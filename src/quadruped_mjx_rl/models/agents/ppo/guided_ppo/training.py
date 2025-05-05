@@ -434,9 +434,9 @@ def train(
 
     # Initialize model params and training state.
     teacher_init_params = TeacherNetworkParams(
-        encoder=teacher_network.TeacherNetworks.policy_network.init(key_encoder),
-        policy=teacher_network.TeacherNetwork.policy_network.init(key_policy),
-        value=teacher_network.TeacherNetwork.value_network.init(key_value),
+        encoder=teacher_network.policy_network.init(key_encoder),
+        policy=teacher_network.policy_network.init(key_policy),
+        value=teacher_network.value_network.init(key_value),
     )
     student_init_params = StudentNetworkParams(
         encoder=student_network.StudentNetworks.encoder_network.init(key_adapter),
