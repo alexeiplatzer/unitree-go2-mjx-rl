@@ -29,10 +29,13 @@ class EnvironmentConfig(Generic[EnvType]):
         @dataclass
         class RangesConfig:
             # min max [m/s]
-            lin_vel_x: tuple[float, float] = field(default_factory=lambda: (-0.6, 1.5))
-            lin_vel_y: tuple[float, float] = field(default_factory=lambda: (-0.8, 0.8))
+            lin_vel_x_min: float = -0.6
+            lin_vel_x_max: float = 1.5
+            lin_vel_y_min: float = -0.8
+            lin_vel_y_max: float = 0.8
             # min max [rad/s]
-            ang_vel_yaw: tuple[float, float] = field(default_factory=lambda: (-0.7, 0.7))
+            ang_vel_yaw_min: float = -0.7
+            ang_vel_yaw_max: float = 0.7
 
         ranges: RangesConfig = field(default_factory=RangesConfig)
 
