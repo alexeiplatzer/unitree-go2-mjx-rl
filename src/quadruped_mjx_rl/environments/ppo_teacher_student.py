@@ -61,7 +61,8 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
         state_info: dict[str, Any],
         obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        assert isinstance(obs, dict)
+        if isinstance(obs, jax.Array): # temp fix for first observation, inherited from base
+            obs = {"state_history": obs}
         obs_history = super()._get_obs(pipeline_state, state_info, obs["state_history"])
         last_obs = obs_history[:31]
 
