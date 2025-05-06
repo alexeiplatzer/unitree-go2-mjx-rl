@@ -11,5 +11,5 @@ from quadruped_mjx_rl.training import TrainingConfig
 from quadruped_mjx_rl.robotic_vision import vision_config_classes
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 
-from config_keys import ConfigKey, AnyConfig
-from file_configs import save_configs, prepare_configs
+from quadruped_mjx_rl.config_utils.config_keys import ConfigKey, AnyConfig
+from quadruped_mjx_rl.config_utils.file_configs import save_configs, prepare_configs
