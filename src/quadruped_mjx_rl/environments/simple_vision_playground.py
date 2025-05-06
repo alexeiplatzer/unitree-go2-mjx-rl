@@ -17,10 +17,10 @@ from brax.mjx.pipeline import step as pipeline_step
 
 from ..playground_alt.mjx_env import MjxEnv, State
 
-from quadruped_mjx_rl.configs import RobotConfig
-from quadruped_mjx_rl.configs import EnvironmentConfig
-from quadruped_mjx_rl.configs import VisionConfig
-from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.environments import EnvironmentConfig
+from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments import environment_config_classes
 
 
 _ENVIRONMENT_CLASS = "QuadrupedVision"
