@@ -1,7 +1,7 @@
-"""Quadruped Joytick environment adapted for PPO training."""
+"""Quadruped Joystick environment adapted for PPO training."""
 
+# Typing
 from dataclasses import dataclass, field
-from typing import Any
 
 # Supporting
 from etils.epath import Path
@@ -17,17 +17,16 @@ from brax.base import State as PipelineState
 from brax.envs.base import State
 
 
-from quadruped_mjx_rl.configs import EnvironmentConfig
-from quadruped_mjx_rl.configs import RobotConfig
-from quadruped_mjx_rl.configs.config_classes import environment_config_classes
-from quadruped_mjx_rl.environments.base import QuadrupedJoystickBaseEnv
+from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.environments.base import EnvironmentConfig, QuadrupedJoystickBaseEnv
+from quadruped_mjx_rl.environments.base import environment_config_classes
 
 
 _ENVIRONMENT_CLASS = "Enhanced"
 
 
 @dataclass
-class EnhancedEnvironmentConfig(EnvironmentConfig["QuadrupedJoystickEnhancedEnv"]):
+class EnhancedEnvironmentConfig(EnvironmentConfig):
     environment_class: str = _ENVIRONMENT_CLASS
 
     @dataclass
@@ -67,6 +66,9 @@ class EnhancedEnvironmentConfig(EnvironmentConfig["QuadrupedJoystickEnhancedEnv"
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = EnhancedEnvironmentConfig
 
 
 class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
@@ -123,7 +125,7 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, Any],
+        state_info: dict[str, ...],
         obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         assert isinstance(obs, jax.Array)
@@ -261,6 +263,3 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done & (step < self._resampling_time)
-
-
-environment_config_classes[_ENVIRONMENT_CLASS] = EnhancedEnvironmentConfig

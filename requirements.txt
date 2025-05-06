@@ -6,3 +6,8 @@ etils
 ml_collections
 pyyaml
 dacite
+jax
+numpy
+flax
+matplotlib
+orbax

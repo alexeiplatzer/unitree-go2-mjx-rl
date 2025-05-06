@@ -1,14 +1,13 @@
+from collections.abc import Callable, Iterator
+from dataclasses import asdict
+
 import yaml
 from dacite import from_dict
-from dataclasses import asdict
-from typing import TypeVar
-
 from etils.epath import PathLike
-from collections.abc import Iterator, Callable
 
-from .config_keys import AnyConfig, ConfigKey
-
-ConfigType = TypeVar("ConfigType")
+from quadruped_mjx_rl.config_utils.config_keys import AnyConfig, ConfigKey
+from quadruped_mjx_rl.config_utils.config_keys import config_class_to_key
+from quadruped_mjx_rl.config_utils.config_keys import key_to_resolver
 
 
 def prepare_configs(
@@ -18,9 +17,9 @@ def prepare_configs(
 ) -> dict[ConfigKey, AnyConfig | None]:
     """
     Prepares All configs from provided files and config objects.
-    :param config_paths: Paths of YAML files to search configs in
-    :param check_configs: A list of configs that must be present, throws an exception if not
-    :param configs: Manually specified configs to override configs from the files if present
+    :param config_paths: Paths of YAML files to search configs in.
+    :param check_configs: A list of configs that must be present, throws an exception if not.
+    :param configs: Manually specified configs to override configs from the files if present.
     :return: A dict containing the final config for every Config Key.
     """
     loaded_dicts = load_config_dicts(*config_paths)
@@ -41,16 +40,16 @@ def prepare_configs(
 def config_from_dict(
     config_key: ConfigKey,
     loaded_config: dict,
-) -> ConfigType:
+) -> AnyConfig:
     """
     Creates a config of the correct class from a given dict
     """
     config_class_name = loaded_config.get(f"{config_key.value}_class", "default")
-    config_class = config_key.to_config_class_resolver()[config_class_name]
+    config_class = key_to_resolver[config_key][config_class_name]
     return from_dict(config_class, loaded_config)
 
 
-def load_configs_from_dicts(keywords: list[str], *loaded_configs: dict):
+def load_configs_from_dicts(keywords: list[str], *loaded_configs: dict) -> dict[str, dict]:
     """
     Looks for entries under the provided keywords at the top level in each loaded dict,
     then stores them all in a dict entry under this keyword and returns the resulting dict.
@@ -81,24 +80,8 @@ def save_configs(
     """
     Saves all configs to a YAML file, each config under an appropriate top level key.
     """
-    # temp
-    final_dict = {}
-    for config in configs:
-        try:
-            final_dict[
-                ConfigKey.from_config_base_class(
-                    type(
-                        config
-                    )
-                ).value
-            ] = asdict(
-                config
-            )
-        except Exception as e:
-            print(f"Error saving config: {config}")
-            raise e
     final_dict = {
-        ConfigKey.from_config_base_class(type(config)).value: asdict(config)
+        config_class_to_key(type(config)).value: asdict(config)
         for config in configs
     }
     with open(save_file_path, "w") as f:

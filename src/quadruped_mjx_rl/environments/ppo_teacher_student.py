@@ -17,22 +17,21 @@ from brax.base import State as PipelineState
 from brax.envs.base import State
 
 
-from quadruped_mjx_rl.configs import EnvironmentConfig
-from quadruped_mjx_rl.configs import RobotConfig
-from quadruped_mjx_rl.configs.config_classes import environment_config_classes
+from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.ppo_enhanced import EnhancedEnvironmentConfig
 from quadruped_mjx_rl.environments.ppo_enhanced import QuadrupedJoystickEnhancedEnv
+from quadruped_mjx_rl.environments.base import environment_config_classes
 
 
 _ENVIRONMENT_CLASS = "TeacherStudent"
 
 
 @dataclass
-class TeacherStudentEnvironmentConfig(
-    EnhancedEnvironmentConfig,
-    EnvironmentConfig["QuadrupedJoystickTeacherStudentEnv"],
-):
+class TeacherStudentEnvironmentConfig(EnhancedEnvironmentConfig):
     environment_class: str = _ENVIRONMENT_CLASS
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = TeacherStudentEnvironmentConfig
 
 
 class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
@@ -84,6 +83,3 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
         }
 
         return obs
-
-
-environment_config_classes[_ENVIRONMENT_CLASS] = TeacherStudentEnvironmentConfig
