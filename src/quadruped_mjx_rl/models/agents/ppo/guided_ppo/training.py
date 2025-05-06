@@ -439,7 +439,7 @@ def train(
         value=teacher_network.value_network.init(key_value),
     )
     student_init_params = StudentNetworkParams(
-        encoder=student_network.StudentNetworks.encoder_network.init(key_adapter),
+        encoder=student_network.encoder_network.init(key_adapter),
     )
 
     obs_shape = jax.tree_util.tree_map(
