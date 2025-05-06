@@ -32,7 +32,7 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(EnvironmentConfig["Go2TeacherEnv"]):
+class QuadrupedVisionEnvConfig(EnvironmentConfig):
     environment_class = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
@@ -104,6 +104,9 @@ class QuadrupedVisionEnvConfig(EnvironmentConfig["Go2TeacherEnv"]):
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
+
+
+environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig
 
 
 class QuadrupedVisionEnvironment(MjxEnv):
@@ -556,6 +559,3 @@ class QuadrupedVisionEnvironment(MjxEnv):
     # ) -> Sequence[np.ndarray]:
     #     camera = camera or "track"
     #     return super().render(trajectory, camera=camera, width=width, height=height)
-
-
-environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig
