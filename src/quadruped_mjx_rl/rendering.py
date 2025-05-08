@@ -119,7 +119,7 @@ def render_rollout(
         if i % render_every == 0:
             rollout.append(state.pipeline_state)
 
-    rendering = env.render(rollout, camera=camera)  # necessary
+    # rendering = env.render(rollout, camera=camera)  # necessary?
     if save_path is not None:
         media.write_video(
             save_path,

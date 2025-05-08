@@ -37,6 +37,7 @@ def make_network(
             types.identity_observation_preprocessor
     ),
     obs_keys: str | tuple[str, ...] = "state",
+    squeeze_output: bool = False,
 ):
     def preprocess_by_key(obs, processor_params, obs_key=obs_keys):
         return preprocess_observations_fn(
@@ -46,6 +47,7 @@ def make_network(
     def preprocess_multiple_obs(obs, processor_params):
         obs = [
             preprocess_by_key(obs, processor_params, obs_key)
+            if obs_key != "latent" else obs[obs_key]
             for obs_key in obs_keys
         ]
         return jnp.concatenate(obs, axis=-1)
@@ -59,10 +61,14 @@ def make_network(
             obs_size = _get_obs_state_size(obs_size, obs_keys)
     else:
         preprocess_observations = preprocess_observations_fn
+        obs_size = _get_obs_state_size(obs_size, obs_keys)
 
     def apply(processor_params, params, obs):
         obs = preprocess_observations(obs, processor_params)
-        return module.apply(params, obs)
+        out = module.apply(params, obs)
+        if squeeze_output:
+            return jnp.squeeze(out, axis=-1)
+        return out
 
     dummy_obs = jnp.zeros((1, obs_size))
     return FeedForwardNetwork(init=lambda key: module.init(key, dummy_obs), apply=apply)

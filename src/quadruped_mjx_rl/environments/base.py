@@ -360,3 +360,8 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
+
+
+configs_to_env_classes = {
+    EnvironmentConfig: QuadrupedJoystickBaseEnv,
+}

@@ -28,6 +28,7 @@ dependencies = [
     "flax",
     "matplotlib",
     "orbax",
+    "tqdm",
 ]
 
 [project.urls]

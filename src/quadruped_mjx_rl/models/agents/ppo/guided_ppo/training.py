@@ -205,8 +205,7 @@ def train(
     def make_optmizer(learning_rate: float):
         opt = optax.adam(learning_rate=learning_rate)
         return opt if max_grad_norm is None else optax.chain(
-            optax.clip_by_global_norm(max_grad_norm),
-            optax.adam(learning_rate=learning_rate),
+            optax.clip_by_global_norm(max_grad_norm), opt,
         )
 
     teacher_optimizer = make_optmizer(teacher_learning_rate)
@@ -255,15 +254,11 @@ def train(
             optimizer_state=t_opt_state,
         )
 
-        def student_step(
-            carry,
-            data: types.Transition,
-            normalizer_params: running_statistics.RunningStatisticsState,
-        ):
+        def student_step(carry, unused_t):
             s_opt_state, s_params = carry
             (s_loss, s_metrics), s_params, s_opt_state = student_gradient_update_fn(
                 s_params,
-                t_params,
+                jax.lax.stop_gradient(t_params),
                 normalizer_params,
                 data,
                 optimizer_state=s_opt_state,
@@ -271,9 +266,9 @@ def train(
             return (s_opt_state, s_params), s_metrics
 
         (s_opt_state, s_params), s_metrics = jax.lax.scan(
-            functools.partial(student_step, normalizer_params=normalizer_params),
+            student_step,
             (s_opt_state, s_params),
-            data,
+            (),
             length=student_steps_per_teacher_step,
         )
 
@@ -434,7 +429,7 @@ def train(
 
     # Initialize model params and training state.
     teacher_init_params = TeacherNetworkParams(
-        encoder=teacher_network.policy_network.init(key_encoder),
+        encoder=teacher_network.encoder_network.init(key_encoder),
         policy=teacher_network.policy_network.init(key_policy),
         value=teacher_network.value_network.init(key_value),
     )

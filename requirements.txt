@@ -11,3 +11,4 @@ numpy
 flax
 matplotlib
 orbax
+tqdm

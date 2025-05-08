@@ -21,6 +21,7 @@ from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.ppo_enhanced import EnhancedEnvironmentConfig
 from quadruped_mjx_rl.environments.ppo_enhanced import QuadrupedJoystickEnhancedEnv
 from quadruped_mjx_rl.environments.base import environment_config_classes
+from quadruped_mjx_rl.environments.base import configs_to_env_classes
 
 
 _ENVIRONMENT_CLASS = "TeacherStudent"
@@ -83,3 +84,6 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
         }
 
         return obs
+
+
+configs_to_env_classes[TeacherStudentEnvironmentConfig] = QuadrupedJoystickTeacherStudentEnv

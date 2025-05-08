@@ -168,7 +168,9 @@ def make_teacher_networks(
         obs_keys=encoder_obs_key,
     )
     policy_module = modules.MLP(
-        layer_sizes=list(policy_hidden_layer_sizes) + [action_size],
+        layer_sizes=(
+            list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]
+        ),
         activation=activation,
     )
     policy_network = networks.make_network(
@@ -186,6 +188,7 @@ def make_teacher_networks(
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
         obs_keys=(value_obs_key, latent_obs_key),
+        squeeze_output=True,
     )
 
     return TeacherNetworks(

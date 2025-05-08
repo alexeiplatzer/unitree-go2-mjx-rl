@@ -57,8 +57,9 @@ def compute_teacher_loss(
     policy_logits = policy_apply(
         normalizer_params, params.policy, observations
     )
-
-    baseline = value_apply(normalizer_params, params.value, data.observation, latent_vector)
+    baseline = value_apply(
+        normalizer_params, params.value, observations
+    )
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
     terminal_latent = encoder_apply(normalizer_params, params.encoder, terminal_obs)
     terminal_input = terminal_obs | {"latent": terminal_latent}

@@ -20,6 +20,7 @@ from brax.envs.base import State
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.base import EnvironmentConfig, QuadrupedJoystickBaseEnv
 from quadruped_mjx_rl.environments.base import environment_config_classes
+from quadruped_mjx_rl.environments.base import configs_to_env_classes
 
 
 _ENVIRONMENT_CLASS = "Enhanced"
@@ -263,3 +264,6 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done & (step < self._resampling_time)
+
+
+configs_to_env_classes[EnhancedEnvironmentConfig] = QuadrupedJoystickEnhancedEnv

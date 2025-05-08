@@ -5,12 +5,11 @@ from functools import partial
 from brax.training.acme import running_statistics
 from brax.io import model
 
-from brax.training.agents.ppo import networks as ppo_networks
-from brax.training.agents.ppo import networks_vision as ppo_networks_vision
-
-from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
-
 from quadruped_mjx_rl.models.configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
+from quadruped_mjx_rl.models.architectures import raw_actor_critic as raw_networks
+from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
+from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 
 
 def get_networks_factory(model_config: ModelConfig, vision: bool = False):
@@ -30,14 +29,15 @@ def get_networks_factory(model_config: ModelConfig, vision: bool = False):
         return {"teacher": teacher_factory, "student": student_factory}
     elif isinstance(model_config, ActorCriticConfig):
         if vision:
-            return partial(
-                ppo_networks_vision.make_ppo_networks_vision,
-                policy_hidden_layer_sizes=model_config.modules.policy,
-                value_hidden_layer_sizes=model_config.modules.value,
-            )
+            # return partial(
+            #     ppo_networks_vision.make_ppo_networks_vision,
+            #     policy_hidden_layer_sizes=model_config.modules.policy,
+            #     value_hidden_layer_sizes=model_config.modules.value,
+            # )
+            raise NotImplementedError
         else:
             return partial(
-                ppo_networks.make_ppo_networks,
+                raw_networks.make_networks,
                 policy_hidden_layer_sizes=model_config.modules.policy,
                 value_hidden_layer_sizes=model_config.modules.value,
             )
@@ -79,7 +79,7 @@ def load_inference_fn(
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        ppo_inference_factory = ppo_networks.make_inference_fn(ppo_nets)
+        ppo_inference_factory = raw_networks.make_inference_fn(ppo_nets)
         return ppo_inference_factory(params)
     else:
         raise NotImplementedError

@@ -69,7 +69,9 @@ def make_networks(
     """Make Actor Critic networks with preprocessor."""
     parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
     policy_module = modules.MLP(
-        layer_sizes=list(policy_hidden_layer_sizes) + [action_size],
+        layer_sizes=(
+            list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]
+        ),
         activation=activation,
     )
     policy_network = networks.make_network(
@@ -87,6 +89,7 @@ def make_networks(
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
         obs_keys=value_obs_key,
+        squeeze_output=True,
     )
 
     return ActorCriticNetworks(

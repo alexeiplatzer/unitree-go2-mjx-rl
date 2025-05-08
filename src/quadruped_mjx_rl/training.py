@@ -23,10 +23,15 @@ from brax.training.agents.ppo import train as ppo_train
 
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig
-from quadruped_mjx_rl.environments import EnvironmentConfig
-from quadruped_mjx_rl.models import ModelConfig
-from quadruped_mjx_rl.models import get_networks_factory
+from quadruped_mjx_rl.environments import EnvironmentConfig, configs_to_env_classes
+from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
+
+from quadruped_mjx_rl.models.configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
+from quadruped_mjx_rl.models.architectures import raw_actor_critic as raw_networks
+from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
+from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 
 
 @dataclass
@@ -83,12 +88,11 @@ training_config_classes = {
 def train(
     env_factory: Callable[[], PipelineEnv],
     model_config: ModelConfig,
-    training_config: TrainingConfig | TrainingWithVisionConfig,
-    train_fn: Callable,
+    training_config: TrainingConfig,
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
     vision: bool = False,
-    # vision_config: VisionConfig | None = None,
+    vision_config: VisionConfig | None = None,
 ):
     if checkpoints_save_path is not None:
         checkpoints_save_path = Path(checkpoints_save_path)
@@ -119,25 +123,12 @@ def train(
         plt.errorbar(x_data, y_data, yerr=ydataerr)
         plt.show()
 
-    # VVV not sure if needed!!!
-    # envs.register_environment(env_config.name, environment)
-    # env = envs.get_environment(
-    #     env_config.name,
-    #     environment_config=env_config,
-    #     robot_config=robot_config,
-    #     init_scene_path=init_scene_path,
-    # )
-
-    network_factory = get_networks_factory(model_config, vision=vision)
-    training_params = asdict(training_config)
-    training_params.pop("training_class")
+    train_fn_proto = get_training_fn(model_config, training_config, vision=vision)
     train_fn = functools.partial(
-        train_fn,
-        network_factory=network_factory,
+        train_fn_proto,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
-        **training_params,
     )
 
     x_data = []
@@ -150,18 +141,6 @@ def train(
     # domain randomization function.
     env = env_factory()
     eval_env = env_factory()
-    # env = envs.get_environment(
-    #     env_config.name,
-    #     environment_config=env_config,
-    #     robot_config=robot_config,
-    #     init_scene_path=init_scene_path,
-    # )
-    # eval_env = envs.get_environment(
-    #     env_config.name,
-    #     environment_config=env_config,
-    #     robot_config=robot_config,
-    #     init_scene_path=init_scene_path,
-    # )
     make_inference_fn, params, metrics = train_fn(
         environment=env,
         progress_fn=progress,
@@ -174,3 +153,32 @@ def train(
     # Save params
     model.save_params(model_save_path, params)
     # params = model.load_params(model_save_path)
+
+
+def get_training_fn(
+    model_config: ModelConfig,
+    training_config: TrainingConfig,
+    vision: bool = False,
+):
+    networks_factory = get_networks_factory(model_config, vision=vision)
+    training_params = asdict(training_config)
+    training_params.pop("training_class")
+    learning_rate = training_params.pop("learning_rate")
+    if isinstance(model_config, TeacherStudentConfig):
+        return functools.partial(
+            guided_ppo_train,
+            teacher_networks_factory=networks_factory["teacher"],
+            student_networks_factory=networks_factory["student"],
+            teacher_learning_rate=learning_rate,
+            student_learning_rate=learning_rate,
+            **training_params,
+        )
+    elif isinstance(model_config, ActorCriticConfig):
+        return functools.partial(
+            raw_ppo_train,
+            networks_factory=networks_factory,
+            learning_rate=learning_rate,
+            **training_params,
+        )
+    else:
+        raise NotImplementedError

@@ -1,10 +1,10 @@
 rendering:
-  name: default
   command:
+    ang_vel: 0.0
     x_vel: 0.5
     y_vel: 0.0
-    ang_vel: 0.0
+  episode_length: 1000
   n_steps: 500
   render_every: 2
+  rendering_class: default
   seed: 0
-  episode_length: 1000
