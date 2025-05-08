@@ -7,6 +7,7 @@ import functools
 from datetime import datetime
 import matplotlib.pyplot as plt
 from etils.epath import PathLike, Path
+import logging
 
 
 # Math
@@ -86,7 +87,7 @@ training_config_classes = {
 
 
 def train(
-    env_factory: Callable[[], PipelineEnv],
+    env_factory: Callable[..., PipelineEnv],
     model_config: ModelConfig,
     training_config: TrainingConfig,
     model_save_path: PathLike,
@@ -123,9 +124,9 @@ def train(
         plt.errorbar(x_data, y_data, yerr=ydataerr)
         plt.show()
 
-    train_fn_proto = get_training_fn(model_config, training_config, vision=vision)
+    train_fn = get_training_fn(model_config, training_config, vision=vision)
     train_fn = functools.partial(
-        train_fn_proto,
+        train_fn,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
@@ -139,8 +140,21 @@ def train(
 
     # Reset environments since internals may be overwritten by tracers from the
     # domain randomization function.
-    env = env_factory()
-    eval_env = env_factory()
+    if vision:
+        if vision_config is None:
+            raise ValueError("vision_config must be provided when vision is True")
+        if vision_config.render_batch_size != training_config.num_envs:
+            logging.warning(
+                "All batch sizes must coincide when using vision. "
+                "Render batch size must be equal to num_envs. "
+                "Setting render_batch_size to num_envs."
+            )
+            vision_config.render_batch_size = training_config.num_envs
+        env = env_factory(vision_config=vision_config)
+        eval_env = None
+    else:
+        env = env_factory()
+        eval_env = env_factory()
     make_inference_fn, params, metrics = train_fn(
         environment=env,
         progress_fn=progress,
@@ -164,6 +178,14 @@ def get_training_fn(
     training_params = asdict(training_config)
     training_params.pop("training_class")
     learning_rate = training_params.pop("learning_rate")
+    if vision and training_params.get("num_eval_envs", 0) != training_params["num_envs"]:
+        # batch sizes should coincide when using vision
+        logging.warning(
+            "All batch sizes must coincide when using vision. "
+            "Number of eval envs must be equal to num_envs. "
+            "Setting num_eval_envs to num_envs."
+        )
+        training_params["num_eval_envs"] = training_params["num_envs"]
     if isinstance(model_config, TeacherStudentConfig):
         return functools.partial(
             guided_ppo_train,

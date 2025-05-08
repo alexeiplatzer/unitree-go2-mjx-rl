@@ -235,8 +235,7 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
             "command": self.sample_command(key),
         }
 
-        obs_history = jnp.zeros(15 * 31)  # store 15 steps of history
-        obs = self._get_obs(pipeline_state, state_info, obs_history)
+        obs = self._init_obs(pipeline_state, state_info)
 
         reward, done = jnp.zeros(2)
 
@@ -298,13 +297,20 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_targets)
         return pipeline_state
 
+    def _init_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, ...],
+    ) -> jax.Array | dict[str, jax.Array]:
+        return jnp.zeros(1)
+
     def _get_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
-        obs: jax.Array | dict[str, jax.Array],
+        last_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        return obs
+        return last_obs
 
     def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
         # done if joint limits are reached or robot is falling

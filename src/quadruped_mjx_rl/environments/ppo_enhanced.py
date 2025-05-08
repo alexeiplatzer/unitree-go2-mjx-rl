@@ -4,7 +4,7 @@
 from dataclasses import dataclass, field
 
 # Supporting
-from etils.epath import Path
+from etils.epath import PathLike
 
 # Math
 import jax
@@ -78,7 +78,7 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
         self,
         environment_config: EnhancedEnvironmentConfig,
         robot_config: RobotConfig,
-        init_scene_path: Path,
+        init_scene_path: PathLike,
     ):
         super().__init__(environment_config, robot_config, init_scene_path)
 
@@ -123,14 +123,22 @@ class QuadrupedJoystickEnhancedEnv(QuadrupedJoystickBaseEnv):
 
         return state
 
+    def _init_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, ...],
+    ) -> jax.Array | dict[str, jax.Array]:
+        obs_history = jnp.zeros(15 * 31)  # store 15 steps of history
+        return self._get_obs(pipeline_state, state_info, obs_history)
+
     def _get_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
-        obs: jax.Array | dict[str, jax.Array],
+        last_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        assert isinstance(obs, jax.Array)
-        obs_history = obs
+        assert isinstance(last_obs, jax.Array)
+        obs_history = last_obs
 
         inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
         local_rpyrate = math.rotate(pipeline_state.xd.ang[0], inv_torso_rot)

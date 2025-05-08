@@ -1,10 +1,9 @@
 """Quadruped Joytick environment adapted for PPO training."""
 
 from dataclasses import dataclass, field
-from typing import Any
 
 # Supporting
-from etils.epath import Path
+from etils.epath import PathLike
 
 # Math
 import jax
@@ -41,7 +40,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
         self,
         environment_config: TeacherStudentEnvironmentConfig,
         robot_config: RobotConfig,
-        init_scene_path: Path,
+        init_scene_path: PathLike,
     ):
         super().__init__(environment_config, robot_config, init_scene_path)
 
@@ -58,13 +57,13 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, Any],
-        obs: jax.Array | dict[str, jax.Array],
+        state_info: dict[str, ...],
+        last_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        if isinstance(obs, jax.Array): # temp fix for first observation, inherited from base
-            obs = {"state_history": obs}
-        obs_history = super()._get_obs(pipeline_state, state_info, obs["state_history"])
-        last_obs = obs_history[:31]
+        if isinstance(last_obs, jax.Array):
+            last_obs = {"state_history": last_obs}
+        obs_history = super()._get_obs(pipeline_state, state_info, last_obs["state_history"])
+        current_obs = obs_history[:31]
 
         privileged_obs = jnp.concatenate(
             [
@@ -78,7 +77,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickEnhancedEnv):
         )
 
         obs = {
-            "state": last_obs,
+            "state": current_obs,
             "state_history": obs_history,
             "privileged_state": privileged_obs,
         }
