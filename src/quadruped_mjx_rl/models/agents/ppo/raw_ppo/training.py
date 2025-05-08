@@ -91,7 +91,6 @@ def train(
     restore_checkpoint_path: str | None = None,
     restore_params=None,
     restore_value_fn: bool = True,
-    **absorbed_kwargs,
 ):
     """PPO training.
 
@@ -223,6 +222,8 @@ def train(
         key_env,
         wrap_env_fn,
         randomization_fn,
+        vision=madrona_backend,
+        num_vision_envs=num_envs,
     )
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
@@ -490,6 +491,8 @@ def train(
         key_env=eval_key,
         wrap_env_fn=wrap_env_fn,
         randomization_fn=randomization_fn,
+        vision=madrona_backend,
+        num_vision_envs=num_envs,
     )
     evaluator = acting.Evaluator(
         eval_env,

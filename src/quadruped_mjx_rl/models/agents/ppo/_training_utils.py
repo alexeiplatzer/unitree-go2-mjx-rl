@@ -14,7 +14,7 @@ from brax.training.types import PRNGKey
 
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import StudentNetworkParams
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import TeacherNetworkParams
-
+from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
 Metrics = types.Metrics
 
@@ -79,6 +79,8 @@ def maybe_wrap_env(
     randomization_fn: Callable[
         [base.System, jnp.ndarray], tuple[base.System, base.System]
     ] | None = None,
+    vision: bool = False,
+    num_vision_envs: int = 1,
 ):
     """Wraps the environment for training/eval if wrap_env is True."""
     if not wrap_env:
@@ -92,6 +94,8 @@ def maybe_wrap_env(
         randomization_rng = jax.random.split(key_env, randomization_batch_size)
         v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
     wrap_for_training = wrap_env_fn or envs.training.wrap
+    if vision:
+        env = MadronaWrapper(env, num_vision_envs, randomization_fn)
     return wrap_for_training(
         env,
         episode_length=episode_length,

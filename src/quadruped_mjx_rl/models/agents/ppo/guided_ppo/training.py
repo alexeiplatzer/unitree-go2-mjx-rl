@@ -101,7 +101,6 @@ def train(
     restore_checkpoint_path: str | None = None,
     restore_params=None,
     restore_value_fn: bool = True,
-    **absorbed_kwargs,
 ):
     # Check arguments
     assert batch_size * num_minibatches % num_envs == 0
@@ -162,6 +161,8 @@ def train(
         key_env,
         wrap_env_fn,
         randomization_fn,
+        vision=madrona_backend,
+        num_vision_envs=num_envs,
     )
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
@@ -493,6 +494,8 @@ def train(
         key_env=eval_key,
         wrap_env_fn=wrap_env_fn,
         randomization_fn=randomization_fn,
+        vision=madrona_backend,
+        num_vision_envs=num_envs,
     )
     teacher_evaluator = acting.Evaluator(
         eval_env,
@@ -616,7 +619,7 @@ def train(
             f"Total steps {total_steps} is less than `num_timesteps`=" f" {num_timesteps}."
         )
 
-    # If there were no mistakes the training_state should still be identical on all
+    # If there were no mistakes, the training_state should still be identical on all
     # devices.
     pmap.assert_is_replicated(training_state)
     teacher_params = utils.unpmap(

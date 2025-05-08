@@ -18,9 +18,11 @@ from brax.mjx.pipeline import step as pipeline_step
 from ..playground_alt.mjx_env import MjxEnv, State
 
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments import EnvironmentConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig
-from quadruped_mjx_rl.environments import environment_config_classes
+from quadruped_mjx_rl.environments.base import environment_config_classes
+from quadruped_mjx_rl.environments.base import configs_to_env_classes
+from quadruped_mjx_rl.environments.ppo_teacher_student import TeacherStudentEnvironmentConfig
+from quadruped_mjx_rl.environments.ppo_teacher_student import QuadrupedJoystickTeacherStudentEnv
 
 
 _ENVIRONMENT_CLASS = "QuadrupedVision"
@@ -32,31 +34,31 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(EnvironmentConfig):
+class QuadrupedVisionEnvConfig(TeacherStudentEnvironmentConfig):
     environment_class = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
     @dataclass
-    class ObservationNoiseConfig:
+    class ObservationNoiseConfig(TeacherStudentEnvironmentConfig.ObservationNoiseConfig):
         general_noise: float = 0.05
         brightness: tuple[float, float] = field(default_factory=lambda: [1.0, 1.0])
 
     obs_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
 
     @dataclass
-    class ControlConfig:
+    class ControlConfig(TeacherStudentEnvironmentConfig.ControlConfig):
         action_scale: float = 0.3
 
     control: ControlConfig = field(default_factory=ControlConfig)
 
     @dataclass
-    class CommandConfig:
+    class CommandConfig(TeacherStudentEnvironmentConfig.CommandConfig):
         episode_length: int = 500
 
     command: CommandConfig = field(default_factory=CommandConfig)
 
     @dataclass
-    class DomainRandConfig:
+    class DomainRandConfig(TeacherStudentEnvironmentConfig.DomainRandConfig):
         kick_vel: float = 0.05
         kick_interval: int = 10
 
@@ -114,9 +116,9 @@ class QuadrupedVisionEnvironment(MjxEnv):
     def __init__(
         self,
         environment_config: QuadrupedVisionEnvConfig,
-        vision_config: VisionConfig,
         robot_config: RobotConfig,
         init_scene_path: PathLike,
+        vision_config: VisionConfig,
     ):
         super().__init__(config_dict.ConfigDict(asdict(environment_config.sim)))
 
@@ -559,3 +561,6 @@ class QuadrupedVisionEnvironment(MjxEnv):
     # ) -> Sequence[np.ndarray]:
     #     camera = camera or "track"
     #     return super().render(trajectory, camera=camera, width=width, height=height)
+
+
+configs_to_env_classes[QuadrupedVisionEnvConfig] = QuadrupedVisionEnvironment
