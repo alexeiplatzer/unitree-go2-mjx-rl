@@ -189,8 +189,8 @@ def get_training_fn(
     if isinstance(model_config, TeacherStudentConfig):
         return functools.partial(
             guided_ppo_train,
-            teacher_networks_factory=networks_factory["teacher"],
-            student_networks_factory=networks_factory["student"],
+            teacher_network_factory=networks_factory["teacher"],
+            student_network_factory=networks_factory["student"],
             teacher_learning_rate=learning_rate,
             student_learning_rate=learning_rate,
             **training_params,
@@ -198,7 +198,7 @@ def get_training_fn(
     elif isinstance(model_config, ActorCriticConfig):
         return functools.partial(
             raw_ppo_train,
-            networks_factory=networks_factory,
+            network_factory=networks_factory,
             learning_rate=learning_rate,
             **training_params,
         )
