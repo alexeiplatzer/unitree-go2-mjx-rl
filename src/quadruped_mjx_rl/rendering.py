@@ -11,6 +11,7 @@ from etils.epath import PathLike
 
 from quadruped_mjx_rl.models import load_inference_fn
 from quadruped_mjx_rl.models import ModelConfig
+from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
 
 @dataclass
@@ -62,6 +63,8 @@ def render(
         episode_length=render_config.episode_length,
         action_repeat=1,
     )
+    if vision:
+        demo_env = MadronaWrapper(demo_env, 1)
 
     render_fn = partial(
         render_rollout,
