@@ -34,7 +34,7 @@ def make_network(
     module: linen.Module,
     obs_size: types.ObservationSize,
     preprocess_observations_fn: types.PreprocessObservationFn = (
-            types.identity_observation_preprocessor
+        types.identity_observation_preprocessor
     ),
     obs_keys: str | tuple[str, ...] = "state",
     squeeze_output: bool = False,
@@ -46,8 +46,11 @@ def make_network(
 
     def preprocess_multiple_obs(obs, processor_params):
         obs = [
-            preprocess_by_key(obs, processor_params, obs_key)
-            if obs_key != "latent" else obs[obs_key]
+            (
+                preprocess_by_key(obs, processor_params, obs_key)
+                if obs_key != "latent"
+                else obs[obs_key]
+            )
             for obs_key in obs_keys
         ]
         return jnp.concatenate(obs, axis=-1)

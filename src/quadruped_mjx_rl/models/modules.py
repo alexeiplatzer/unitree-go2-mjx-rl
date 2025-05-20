@@ -42,6 +42,7 @@ class CNN(linen.Module):
     num_filters: Sequence[int]
     kernel_sizes: Sequence[tuple]
     strides: Sequence[tuple]
+    dense_layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     use_bias: bool = True
 
@@ -59,4 +60,9 @@ class CNN(linen.Module):
             )(hidden)
 
             hidden = self.activation(hidden)
-        return hidden
+        hidden = hidden.reshape((hidden.shape[0], -1))
+        return MLP(
+            layer_sizes=self.dense_layer_sizes,
+            activation=self.activation,
+            bias=self.use_bias,
+        )(hidden)

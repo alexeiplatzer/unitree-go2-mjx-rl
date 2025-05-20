@@ -132,6 +132,7 @@ def make_teacher_networks(
     ),
     policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
     value_hidden_layer_sizes: Sequence[int] = (128,) * 5,
+    encoder_convolutional_layer_sizes: Sequence[int] | None = None,
     encoder_hidden_layer_sizes: Sequence[int] = (128,) * 2,
     latent_representation_size: int = 32,
     activation: modules.ActivationFn = linen.swish,
@@ -147,7 +148,7 @@ def make_teacher_networks(
             f"Environment observations must be a dictionary (Mapping),"
             f" got {type(observation_size)}"
         )
-    required_keys = {'state', 'privileged_state', 'state_history'}
+    required_keys = {"state", "privileged_state", "state_history"}
     if not required_keys.issubset(observation_size.keys()):
         raise ValueError(
             f"Environment observation dict missing required keys. "
@@ -157,10 +158,19 @@ def make_teacher_networks(
     observation_size |= {"latent": latent_representation_size}
 
     parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
-    encoder_module = modules.MLP(
-        layer_sizes=list(encoder_hidden_layer_sizes) + [latent_representation_size],
-        activation=activation,
-    )
+    if encoder_convolutional_layer_sizes is not None:
+        encoder_module = modules.CNN(
+            num_filters=list(encoder_convolutional_layer_sizes),
+            kernel_sizes=[(3,)] * len(encoder_convolutional_layer_sizes),
+            strides=[(1,)] * len(encoder_convolutional_layer_sizes),
+            dense_layer_sizes=list(encoder_hidden_layer_sizes),
+            activation=activation,
+        )
+    else:
+        encoder_module = modules.MLP(
+            layer_sizes=list(encoder_hidden_layer_sizes) + [latent_representation_size],
+            activation=activation,
+        )
     encoder_network = networks.make_network(
         module=encoder_module,
         obs_size=observation_size,
@@ -205,15 +215,25 @@ def make_student_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
+    adapter_convolutional_layer_sizes: Sequence[int] | None = None,
     adapter_hidden_layer_sizes: Sequence[int] = (128,) * 2,
     activation: modules.ActivationFn = linen.swish,
     encoder_obs_key: str = "state_history",
 ) -> StudentNetworks:
     """Make Student networks with preprocessor."""
-    encoder_module = modules.MLP(
-        layer_sizes=list(adapter_hidden_layer_sizes) + [latent_representation_size],
-        activation=activation,
-    )
+    if adapter_convolutional_layer_sizes is not None:
+        encoder_module = modules.CNN(
+            num_filters=list(adapter_convolutional_layer_sizes),
+            kernel_sizes=[(3,)] * len(adapter_convolutional_layer_sizes),
+            strides=[(1,)] * len(adapter_convolutional_layer_sizes),
+            dense_layer_sizes=list(adapter_hidden_layer_sizes),
+            activation=activation,
+        )
+    else:
+        encoder_module = modules.MLP(
+            layer_sizes=list(adapter_hidden_layer_sizes) + [latent_representation_size],
+            activation=activation,
+        )
     encoder_network = networks.make_network(
         module=encoder_module,
         obs_size=observation_size,

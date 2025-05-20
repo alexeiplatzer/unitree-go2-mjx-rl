@@ -1,26 +1,16 @@
-# Import all necessary packages
-
-# Supporting
-from etils.epath import PathLike
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from functools import partial
-from typing import TypeVar
 
-# Math
 import jax
 import jax.numpy as jp
 import mediapy as media
-
-# Brax
 from brax import envs
 from brax.envs.base import PipelineEnv
+from etils.epath import PathLike
 
-from quadruped_mjx_rl.environments import EnvironmentConfig
-from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.models import ModelConfig
 from quadruped_mjx_rl.models import load_inference_fn
-
-from dataclasses import dataclass, field
+from quadruped_mjx_rl.models import ModelConfig
 
 
 @dataclass
@@ -57,7 +47,7 @@ def render(
 
     # Inference function
     ppo_inference_fn = load_inference_fn(
-        trained_model_path, model_config, action_size=env.action_size, vision=vision
+        trained_model_path, model_config, action_size=env.action_size
     )
 
     # Commands

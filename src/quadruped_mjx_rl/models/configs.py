@@ -30,8 +30,24 @@ class TeacherStudentConfig(ActorCriticConfig):
     model_class: str = "TeacherStudent"
 
 
+@dataclass
+class TeacherStudentVisionConfig(TeacherStudentConfig):
+    @dataclass
+    class TeacherStudentVisionModulesConfig(ActorCriticConfig.ActorCriticModulesConfig):
+        encoder_convolutional: list[int] = field(default_factory=lambda: [32, 64, 64])
+        encoder_dense: list[int] = field(default_factory=lambda: [256, 256])
+        adapter_convolutional: list[int] = field(default_factory=lambda: [32, 64, 64])
+        adapter_dense: list[int] = field(default_factory=lambda: [256, 256])
+
+    modules: TeacherStudentVisionModulesConfig = field(
+        default_factory=TeacherStudentVisionModulesConfig
+    )
+    model_class: str = "TeacherStudentVision"
+
+
 model_config_classes = {
     "ActorCritic": ActorCriticConfig,
     "TeacherStudent": TeacherStudentConfig,
+    "TeacherStudentVision": TeacherStudentVisionConfig,
     "default": ActorCriticConfig,
 }

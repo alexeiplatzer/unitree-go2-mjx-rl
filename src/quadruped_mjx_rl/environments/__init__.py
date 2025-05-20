@@ -20,16 +20,14 @@ def get_env_factory(
     init_scene_path: PathLike,
     env_config: EnvironmentConfig,
 ):
-    def env_factory(vision_config: VisionConfig | None = None):
-        if vision_config is not None:
-            env_maker = partial(env_class, vision_config=vision_config)
-        else:
-            env_maker = env_class
-        return env_maker(
+    def env_factory(**kwargs):
+        return env_class(
             robot_config=robot_config,
             init_scene_path=init_scene_path,
             environment_config=env_config,
+            **kwargs,
         )
 
     env_class = configs_to_env_classes[type(env_config)]
-    return env_factory
+    uses_vision = isinstance(env_config, QuadrupedVisionEnvConfig) and env_config.use_vision
+    return env_factory, uses_vision

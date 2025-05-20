@@ -3,6 +3,7 @@ from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.training import train
 
 import jax
+
 # from jax import config
 # config.update("jax_debug_nans", True)
 # config.update("jax_enable_x64", True)

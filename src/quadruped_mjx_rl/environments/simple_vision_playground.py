@@ -30,72 +30,9 @@ class QuadrupedVisionEnvConfig(TeacherStudentEnvironmentConfig):
 
     @dataclass
     class ObservationNoiseConfig(TeacherStudentEnvironmentConfig.ObservationNoiseConfig):
-        general_noise: float = 0.05
-        brightness: tuple[float, float] = field(default_factory=lambda: [1.0, 1.0])
+        brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
 
     obs_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
-
-    @dataclass
-    class ControlConfig(TeacherStudentEnvironmentConfig.ControlConfig):
-        action_scale: float = 0.3
-
-    control: ControlConfig = field(default_factory=ControlConfig)
-
-    @dataclass
-    class CommandConfig(TeacherStudentEnvironmentConfig.CommandConfig):
-        episode_length: int = 500
-
-    command: CommandConfig = field(default_factory=CommandConfig)
-
-    @dataclass
-    class DomainRandConfig(TeacherStudentEnvironmentConfig.DomainRandConfig):
-        kick_vel: float = 0.05
-        kick_interval: int = 10
-
-    domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
-
-    @dataclass
-    class SimConfig:
-        ctrl_dt: float = 0.02
-        sim_dt: float = 0.004
-        Kp: float = 35.0
-        Kd: float = 0.5
-
-    sim: SimConfig = field(default_factory=SimConfig)
-
-    @dataclass
-    class RewardConfig:
-        tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
-        termination_body_height: float = 0.18
-
-        # The coefficients for all reward terms used for training. All
-        # physical quantities are in SI units, if no otherwise specified,
-        # i.e. joint positions are in rad, positions are measured in meters,
-        # torques in Nm, and time in seconds, and forces in Newtons.
-        @dataclass
-        class ScalesConfig:
-            # Tracking rewards are computed using exp(-delta^2/sigma)
-            # sigma can be a hyperparameter to tune.
-
-            # Track the base x-y velocity (no z-velocity tracking).
-            tracking_lin_vel: float = 1.5
-            # Track the angular velocity along the z-axis (yaw rate).
-            tracking_ang_vel: float = 0.8
-
-            # Regularization terms:
-            lin_vel_z: float = -2.0  # Penalize base velocity in the z direction (L2 penalty).
-            ang_vel_xy: float = -0.05  # Penalize base roll and pitch rate (L2 penalty).
-            orientation: float = -5.0  # Penalize non-zero roll and pitch angles (L2 penalty).
-            torques: float = -0.0002  # L2 regularization of joint torques, |tau|^2.
-            action_rate: float = -0.01  # Penalize changes in actions; encourage smooth actions.
-            feet_air_time: float = 0.2  # Encourage long swing steps (not high clearances).
-            stand_still: float = -0.5  # Encourage no motion at zero command (L2 penalty).
-            termination: float = -1.0  # Early termination penalty.
-            foot_slip: float = -0.1  # Penalize foot slipping on the ground.
-
-        scales: ScalesConfig = field(default_factory=ScalesConfig)
-
-    rewards: RewardConfig = field(default_factory=RewardConfig)
 
 
 environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig
@@ -108,12 +45,15 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
         environment_config: QuadrupedVisionEnvConfig,
         robot_config: RobotConfig,
         init_scene_path: PathLike,
-        vision_config: VisionConfig,
+        vision_config: VisionConfig | None = None,
     ):
         super().__init__(environment_config, robot_config, init_scene_path)
 
         self._use_vision = environment_config.use_vision
         if self._use_vision:
+            if vision_config is None:
+                raise ValueError("Use vision set to true, VisionConfig not provided.")
+
             from madrona_mjx.renderer import BatchRenderer
 
             self.renderer = BatchRenderer(
@@ -123,7 +63,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
                 batch_render_view_width=vision_config.render_width,
                 batch_render_view_height=vision_config.render_height,
                 enabled_geom_groups=np.asarray(vision_config.enabled_geom_groups),
-                enabled_cameras=np.asarray([0]),  # TODO: check cameras
+                enabled_cameras=np.asarray(vision_config.enabled_cameras),
                 add_cam_debug_geo=False,
                 use_rasterizer=vision_config.use_rasterizer,
                 viz_gpu_hdls=None,
@@ -157,16 +97,13 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
             )
             state_info["brightness"] = brightness
 
-            render_token, rgb, _ = self.renderer.init(pipeline_state, self.sys)
+            render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
             state_info["render_token"] = render_token
 
-            obs_0 = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            obs_0 = adjust_brightness(obs_0, brightness)
+            rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+            rgb_adjusted = adjust_brightness(rgb_norm, brightness)
 
-            # obs_1 = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-            # obs_1 = adjust_brightness(obs_1, brightness)
-
-            obs = {"pixels/view_0": obs_0}
+            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[2]}
 
         return obs
 
@@ -179,10 +116,10 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
         if not self._use_vision:
             obs = super()._get_obs(pipeline_state, state_info, last_obs)
         else:
-            _, rgb, _ = self.renderer.render(state_info["render_token"], pipeline_state)
-            obs = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            obs = adjust_brightness(obs, state_info["brightness"])
-            obs = {"pixels/view_0": obs}
+            _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
+            rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
+            rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
+            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[2]}
         return obs
 
 

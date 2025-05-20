@@ -279,9 +279,9 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         )
 
         # log total displacement as a proxy metric
-        state.metrics["total_dist"] = math.normalize(
-            pipeline_state.x.pos[self._torso_idx - 1]
-        )[1]
+        state.metrics["total_dist"] = math.normalize(pipeline_state.x.pos[self._torso_idx - 1])[
+            1
+        ]
 
         state.metrics.update({f"reward/{k}": v for k, v in rewards.items()})
 

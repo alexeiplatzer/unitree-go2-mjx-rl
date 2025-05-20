@@ -54,18 +54,12 @@ def compute_teacher_loss(
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
     latent_vector = encoder_apply(normalizer_params, params.encoder, data.observation)
     observations = data.observation | {"latent": latent_vector}
-    policy_logits = policy_apply(
-        normalizer_params, params.policy, observations
-    )
-    baseline = value_apply(
-        normalizer_params, params.value, observations
-    )
+    policy_logits = policy_apply(normalizer_params, params.policy, observations)
+    baseline = value_apply(normalizer_params, params.value, observations)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
     terminal_latent = encoder_apply(normalizer_params, params.encoder, terminal_obs)
     terminal_input = terminal_obs | {"latent": terminal_latent}
-    bootstrap_value = value_apply(
-        normalizer_params, params.value, terminal_input
-    )
+    bootstrap_value = value_apply(normalizer_params, params.value, terminal_input)
 
     rewards = data.reward * reward_scaling
     truncation = data.extras["state_extras"]["truncation"]

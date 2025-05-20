@@ -1,18 +1,48 @@
-from collections.abc import Callable
 from etils.epath import PathLike
 from functools import partial
 
 from brax.training.acme import running_statistics
 from brax.io import model
 
-from quadruped_mjx_rl.models.configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
-from quadruped_mjx_rl.models.architectures import raw_actor_critic as raw_networks
-from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
-from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
+from quadruped_mjx_rl.models.configs import (
+    ModelConfig,
+    ActorCriticConfig,
+    TeacherStudentConfig,
+    TeacherStudentVisionConfig,
+)
+from quadruped_mjx_rl.models.architectures import (
+    raw_actor_critic as raw_networks,
+    guided_actor_critic as guided_networks,
+    ActorCriticNetworks,
+    StudentNetworks,
+    TeacherNetworks,
+)
 
 
-def get_networks_factory(model_config: ModelConfig, vision: bool = False):
+def get_networks_factory(
+    model_config: ModelConfig,
+) -> (
+    dict[str, partial[TeacherNetworks] | partial[StudentNetworks]]
+    | partial[ActorCriticNetworks]
+):
+    if isinstance(model_config, TeacherStudentVisionConfig):
+        teacher_factory = partial(
+            guided_networks.make_teacher_networks,
+            policy_hidden_layer_sizes=model_config.modules.policy,
+            value_hidden_layer_sizes=model_config.modules.value,
+            latent_representation_size=model_config.latent_size,
+            encoder_hidden_layer_sizes=model_config.modules.encoder_dense,
+            encoder_convolutional_layer_sizes=model_config.modules.encoder_convolutional,
+            encoder_obs_key="pixels/view_terrain",
+        )
+        student_factory = partial(
+            guided_networks.make_student_networks,
+            latent_representation_size=model_config.latent_size,
+            adapter_hidden_layer_sizes=model_config.modules.adapter_dense,
+            adapter_convolutional_layer_sizes=model_config.modules.adapter_convolutional,
+            encoder_obs_key="pixels/view_frontal_ego",
+        )
+        return {"teacher": teacher_factory, "student": student_factory}
     if isinstance(model_config, TeacherStudentConfig):
         teacher_factory = partial(
             guided_networks.make_teacher_networks,
@@ -27,32 +57,22 @@ def get_networks_factory(model_config: ModelConfig, vision: bool = False):
             adapter_hidden_layer_sizes=model_config.modules.adapter,
         )
         return {"teacher": teacher_factory, "student": student_factory}
-    elif isinstance(model_config, ActorCriticConfig):
-        if vision:
-            # return partial(
-            #     ppo_networks_vision.make_ppo_networks_vision,
-            #     policy_hidden_layer_sizes=model_config.modules.policy,
-            #     value_hidden_layer_sizes=model_config.modules.value,
-            # )
-            raise NotImplementedError
-        else:
-            return partial(
-                raw_networks.make_networks,
-                policy_hidden_layer_sizes=model_config.modules.policy,
-                value_hidden_layer_sizes=model_config.modules.value,
-            )
-    else:
-        raise NotImplementedError
+    if isinstance(model_config, ActorCriticConfig):
+        return partial(
+            raw_networks.make_networks,
+            policy_hidden_layer_sizes=model_config.modules.policy,
+            value_hidden_layer_sizes=model_config.modules.value,
+        )
+    raise NotImplementedError
 
 
 def load_inference_fn(
     model_path: PathLike,
     model_config: ModelConfig,
     action_size: int,
-    vision: bool = False,
 ):
     params = model.load_params(model_path)
-    network_factories = get_networks_factory(model_config, vision=vision)
+    network_factories = get_networks_factory(model_config)
     if isinstance(model_config, TeacherStudentConfig):
         teacher_params, student_params = params
         teacher_nets = network_factories["teacher"](
@@ -66,6 +86,7 @@ def load_inference_fn(
             preprocess_observations_fn=running_statistics.normalize,
         )
         teacher_inference_factory = guided_networks.make_teacher_inference_fn(teacher_nets)
+        assert isinstance(student_nets, StudentNetworks)
         student_inference_factory = guided_networks.make_student_inference_fn(
             teacher_nets, student_nets
         )

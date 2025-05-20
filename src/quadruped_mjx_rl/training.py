@@ -1,38 +1,22 @@
-# Typing
-from dataclasses import dataclass, asdict
-from collections.abc import Callable
-
-# Supporting
 import functools
-from datetime import datetime
-import matplotlib.pyplot as plt
-from etils.epath import PathLike, Path
 import logging
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import datetime
 
-
-# Math
+import matplotlib.pyplot as plt
+from brax.envs.base import PipelineEnv
+from brax.io import model
+from etils.epath import Path, PathLike
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
-# Brax
-from brax import envs
-from brax.envs.base import PipelineEnv
-from brax.io import model
-
-# Algorithms
-from brax.training.agents.ppo import train as ppo_train
-
-from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.robotic_vision import VisionConfig
-from quadruped_mjx_rl.environments import EnvironmentConfig, configs_to_env_classes
-from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
 from quadruped_mjx_rl.domain_randomization import domain_randomize
-
-from quadruped_mjx_rl.models.configs import ModelConfig, ActorCriticConfig, TeacherStudentConfig
-from quadruped_mjx_rl.models.architectures import raw_actor_critic as raw_networks
-from quadruped_mjx_rl.models.architectures import guided_actor_critic as guided_networks
-from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
+from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.models.configs import ActorCriticConfig, ModelConfig, TeacherStudentConfig
+from quadruped_mjx_rl.robotic_vision import VisionConfig
 
 
 @dataclass
@@ -58,16 +42,10 @@ class TrainingConfig:
 class TrainingWithVisionConfig(TrainingConfig):
     num_timesteps: int = 1_000_000
     num_evals: int = 5
-    reward_scaling: int = 1
-    episode_length: int = 1000
-    normalize_observations: bool = True
     action_repeat: int = 1
-    unroll_length: int = 10
+    unroll_length: int = 20
     num_minibatches: int = 8
     num_updates_per_batch: int = 8
-    discounting: float = 0.97
-    learning_rate: float = 0.0005
-    entropy_cost: float = 0.005
     num_envs: int = 512
     batch_size: int = 256
     training_class: str = "PPO_Vision"
@@ -174,7 +152,7 @@ def get_training_fn(
     training_config: TrainingConfig,
     vision: bool = False,
 ):
-    networks_factory = get_networks_factory(model_config, vision=vision)
+    networks_factory = get_networks_factory(model_config)
     training_params = asdict(training_config)
     training_params.pop("training_class")
     learning_rate = training_params.pop("learning_rate")

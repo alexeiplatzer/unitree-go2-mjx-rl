@@ -173,7 +173,7 @@ def train(
         raise TypeError(
             f"Environment observations must be a dictionary (Mapping), got {type(env_state.obs)}"
         )
-    required_keys = {'state', 'privileged_state', 'state_history'}
+    required_keys = {"state", "privileged_state", "state_history"}
     if not required_keys.issubset(env_state.obs.keys()):
         raise ValueError(
             f"Environment observation dict missing required keys. "
@@ -205,8 +205,13 @@ def train(
     # --- Optimizers ---
     def make_optmizer(learning_rate: float):
         opt = optax.adam(learning_rate=learning_rate)
-        return opt if max_grad_norm is None else optax.chain(
-            optax.clip_by_global_norm(max_grad_norm), opt,
+        return (
+            opt
+            if max_grad_norm is None
+            else optax.chain(
+                optax.clip_by_global_norm(max_grad_norm),
+                opt,
+            )
         )
 
     teacher_optimizer = make_optmizer(teacher_learning_rate)
@@ -416,10 +421,10 @@ def train(
         epoch_training_time = time.time() - t
         training_walltime += epoch_training_time
         sps = (
-                  num_training_steps_per_epoch
-                  * env_step_per_training_step
-                  * max(num_resets_per_eval, 1)
-              ) / epoch_training_time
+            num_training_steps_per_epoch
+            * env_step_per_training_step
+            * max(num_resets_per_eval, 1)
+        ) / epoch_training_time
         metrics = {
             "training/sps": sps,
             "training/walltime": training_walltime,

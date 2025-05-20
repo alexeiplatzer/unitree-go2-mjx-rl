@@ -10,9 +10,7 @@ from brax.envs.base import Wrapper, Env, State
 from brax.envs.wrappers.training import DomainRandomizationVmapWrapper
 
 
-def _identity_vision_randomization_fn(
-    sys: System, num_worlds: int
-) -> tuple[System, System]:
+def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[System, System]:
     """Tile the necessary fields for the Madrona memory buffer copy."""
     in_axes = jax.tree_util.tree_map(lambda x: None, sys)
     in_axes = in_axes.tree_replace(
@@ -128,5 +126,3 @@ class MadronaWrapper(Wrapper):
     def step(self, state: State, action: jax.Array) -> State:
         """Run one timestep of the environment's dynamics."""
         return self.env.step(state, action)
-
-

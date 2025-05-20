@@ -76,9 +76,9 @@ def maybe_wrap_env(
     device_count: int,
     key_env: PRNGKey,
     wrap_env_fn: Callable | None = None,
-    randomization_fn: Callable[
-        [base.System, jnp.ndarray], tuple[base.System, base.System]
-    ] | None = None,
+    randomization_fn: (
+        Callable[[base.System, jnp.ndarray], tuple[base.System, base.System]] | None
+    ) = None,
     vision: bool = False,
     num_vision_envs: int = 1,
 ):
