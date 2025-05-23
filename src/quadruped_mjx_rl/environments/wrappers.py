@@ -7,7 +7,47 @@ from jax import numpy as jnp
 
 from brax.base import System
 from brax.envs.base import Wrapper, Env, State
-from brax.envs.wrappers.training import DomainRandomizationVmapWrapper
+from brax.envs.wrappers.training import (
+    VmapWrapper,
+    DomainRandomizationVmapWrapper,
+    EpisodeWrapper,
+    AutoResetWrapper,
+)
+
+
+def wrap_for_training(
+    env: Env,
+    episode_length: int = 1000,
+    action_repeat: int = 1,
+    randomization_fn: Callable[[System], tuple[System, System]] | None = None,
+    vision: bool = False,
+    num_vision_envs: int = 1,
+) -> Wrapper:
+    """Common wrapper pattern for all training agents.
+
+  Args:
+      env: environment to be wrapped
+      episode_length: length of episode
+      action_repeat: how many repeated actions to take per step
+      randomization_fn: randomization function that produces a vectorized system
+          and in_axes to vmap over
+      vision: whether the environment will be vision-based
+      num_vision_envs: number of environments the renderer should generate,
+          should equal the number of batched envs
+
+  Returns:
+      An environment that is wrapped with Episode and AutoReset wrappers.  If the
+      environment did not already have batch dimensions, it is additionally Vmap-wrapped.
+  """
+    if vision:
+        env = MadronaWrapper(env, num_vision_envs, randomization_fn)
+    elif randomization_fn is None:
+        env = VmapWrapper(env)
+    else:
+        env = DomainRandomizationVmapWrapper(env, randomization_fn)
+    env = EpisodeWrapper(env, episode_length, action_repeat)
+    env = AutoResetWrapper(env)
+    return env
 
 
 def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[System, System]:

@@ -9,12 +9,11 @@ from brax import base
 from brax import envs
 from brax.training import types
 from brax.training.acme import running_statistics
-from brax.training.types import Params
 from brax.training.types import PRNGKey
 
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import StudentNetworkParams
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import TeacherNetworkParams
-from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
+from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 
 Metrics = types.Metrics
 
@@ -93,14 +92,14 @@ def maybe_wrap_env(
         # all devices get the same randomization rng
         randomization_rng = jax.random.split(key_env, randomization_batch_size)
         v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
-    wrap_for_training = wrap_env_fn or envs.training.wrap
-    if vision:
-        env = MadronaWrapper(env, num_vision_envs, v_randomization_fn)
-    return wrap_for_training(
+    wrap = wrap_env_fn or wrap_for_training
+    return wrap(
         env,
         episode_length=episode_length,
         action_repeat=action_repeat,
         randomization_fn=v_randomization_fn,
+        vision=vision,
+        num_vision_envs=num_vision_envs,
     )
 
 
