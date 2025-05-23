@@ -103,7 +103,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
             rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
             rgb_adjusted = adjust_brightness(rgb_norm, brightness)
 
-            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[2]}
+            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
 
         return obs
 
@@ -119,7 +119,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
             rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
-            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[2]}
+            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
         return obs
 
 
