@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 @dataclass
 class VisionConfig:
     gpu_id: int = 0
-    render_batch_size: int = 1024
+    render_batch_size: int = 512
     render_width: int = 128
     render_height: int = 64
     use_rasterizer: bool = False

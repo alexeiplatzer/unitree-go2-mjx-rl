@@ -121,13 +121,13 @@ def train(
     if vision:
         if vision_config is None:
             raise ValueError("vision_config must be provided when vision is True")
-        if vision_config.render_batch_size != training_config.num_envs:
-            logging.warning(
-                "All batch sizes must coincide when using vision. "
-                "Render batch size must be equal to num_envs. "
-                "Setting render_batch_size to num_envs."
-            )
-            vision_config.render_batch_size = training_config.num_envs
+        # if vision_config.render_batch_size != training_config.num_envs:
+        #     logging.warning(
+        #         "All batch sizes must coincide when using vision. "
+        #         "Render batch size must be equal to num_envs. "
+        #         "Setting render_batch_size to num_envs."
+        #     )
+        #     vision_config.render_batch_size = training_config.num_envs
         env = env_factory(vision_config=vision_config)
         eval_env = None
     else:
