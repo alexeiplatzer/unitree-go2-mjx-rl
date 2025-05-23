@@ -223,7 +223,6 @@ def train(
         wrap_env_fn,
         randomization_fn,
         vision=madrona_backend,
-        num_vision_envs=num_envs,
     )
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
@@ -492,7 +491,6 @@ def train(
         wrap_env_fn=wrap_env_fn,
         randomization_fn=randomization_fn,
         vision=madrona_backend,
-        num_vision_envs=num_envs,
     )
     evaluator = acting.Evaluator(
         eval_env,

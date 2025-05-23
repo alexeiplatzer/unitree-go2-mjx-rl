@@ -79,7 +79,6 @@ def maybe_wrap_env(
         Callable[[base.System, jnp.ndarray], tuple[base.System, base.System]] | None
     ) = None,
     vision: bool = False,
-    num_vision_envs: int = 1,
 ):
     """Wraps the environment for training/eval if wrap_env is True."""
     if not wrap_env:
@@ -87,8 +86,9 @@ def maybe_wrap_env(
     if episode_length is None:
         raise ValueError("episode_length must be specified in train")
     v_randomization_fn = None
+    randomization_batch_size = num_envs // device_count
     if randomization_fn is not None:
-        randomization_batch_size = num_envs // device_count
+        # randomization_batch_size = num_envs // device_count
         # all devices get the same randomization rng
         randomization_rng = jax.random.split(key_env, randomization_batch_size)
         v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
@@ -99,7 +99,7 @@ def maybe_wrap_env(
         action_repeat=action_repeat,
         randomization_fn=v_randomization_fn,
         vision=vision,
-        num_vision_envs=num_vision_envs,
+        num_vision_envs=randomization_batch_size,
     )
 
 
