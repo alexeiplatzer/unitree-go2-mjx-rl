@@ -1,9 +1,6 @@
 ## Todo list
 
-- [ ] define appropriate cameras in mjcf
 - [ ] visualise cameras output
-- [ ] add vision support to notebook
-- [ ] add teacher observations to vision environments
 - [ ] try training full setup
 - [ ] try training partial setups
 - [ ] add training checkpoints

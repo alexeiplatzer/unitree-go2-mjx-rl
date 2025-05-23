@@ -25,14 +25,14 @@ def adjust_brightness(img, scale):
 
 @dataclass
 class QuadrupedVisionEnvConfig(TeacherStudentEnvironmentConfig):
-    environment_class = _ENVIRONMENT_CLASS
+    environment_class: str = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
     @dataclass
     class ObservationNoiseConfig(TeacherStudentEnvironmentConfig.ObservationNoiseConfig):
         brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
 
-    obs_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
+    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
 
 
 environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig

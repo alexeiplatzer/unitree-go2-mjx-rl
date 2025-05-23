@@ -40,7 +40,7 @@ environment:
       Kd: 0.5
       Kp: 35.0
     sim_dt: 0.004
-  use_vision: false
+  use_vision: true
 model:
   latent_size: 256
   model_class: TeacherStudentVision

@@ -15,7 +15,7 @@ import paths
 if __name__ == "__main__":
     configs = prepare_configs(
         paths.CONFIGS_DIRECTORY / "unitree_go2.yaml",
-        paths.CONFIGS_DIRECTORY / "guided_ppo.yaml",
+        paths.CONFIGS_DIRECTORY / "vision_ppo.yaml",
     )
     env_factory, uses_vision = get_env_factory(
         robot_config=configs[ConfigKey.ROBOT],
