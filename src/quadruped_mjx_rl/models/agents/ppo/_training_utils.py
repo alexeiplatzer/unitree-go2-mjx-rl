@@ -95,7 +95,7 @@ def maybe_wrap_env(
         v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
     wrap_for_training = wrap_env_fn or envs.training.wrap
     if vision:
-        env = MadronaWrapper(env, num_vision_envs, randomization_fn)
+        env = MadronaWrapper(env, num_vision_envs, v_randomization_fn)
     return wrap_for_training(
         env,
         episode_length=episode_length,
