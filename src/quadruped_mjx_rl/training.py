@@ -46,13 +46,13 @@ class TrainingWithVisionConfig(TrainingConfig):
     unroll_length: int = 20
     num_minibatches: int = 8
     num_updates_per_batch: int = 8
-    num_envs: int = 512
+    num_envs: int = 256
     batch_size: int = 256
     training_class: str = "PPO_Vision"
 
     madrona_backend: bool = True
     # wrap_env: bool = False
-    num_eval_envs: int = 512
+    num_eval_envs: int = 256
     max_grad_norm: float = 1.0
     # num_resets_per_eval: int = 1
 
