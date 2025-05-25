@@ -83,9 +83,8 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
-        if not self._use_vision:
-            obs = super()._init_obs(pipeline_state, state_info)
-        else:
+        obs = super()._init_obs(pipeline_state, state_info)
+        if self._use_vision:
             rng = state_info["rng"]
             rng_brightness, rng = jax.random.split(rng)
             state_info["rng"] = rng
@@ -103,7 +102,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
             rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
             rgb_adjusted = adjust_brightness(rgb_norm, brightness)
 
-            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
+            obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
 
         return obs
 
@@ -113,13 +112,12 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
         state_info: dict[str, ...],
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
-        if not self._use_vision:
-            obs = super()._get_obs(pipeline_state, state_info, last_obs)
-        else:
+        obs = super()._get_obs(pipeline_state, state_info, last_obs)
+        if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
             rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
-            obs = {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
+            obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
         return obs
 
 
