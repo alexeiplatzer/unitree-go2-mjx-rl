@@ -1,8 +1,7 @@
-"""Base environment for training quadruped joystick policies in MJX."""
-
 # Typing
 from dataclasses import dataclass, field, asdict
 from collections.abc import Sequence
+from abc import ABC, abstractmethod
 
 # Math
 import jax
@@ -26,62 +25,47 @@ from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass
-class EnvironmentConfig:
-
+class EnvironmentConfig(ABC):
     @dataclass
     class ObservationNoiseConfig:
-        general_noise: float = 0.05
+        pass
 
-    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
+    observation_noise: ObservationNoiseConfig
 
     @dataclass
     class ControlConfig:
-        action_scale: float = 0.3
+        action_scale: float | list[float]
 
-    control: ControlConfig = field(default_factory=ControlConfig)
+    control: ControlConfig
 
     @dataclass
     class CommandConfig:
-        resampling_time: int = 500
+        pass
 
-        @dataclass
-        class RangesConfig:
-            # min max [m/s]
-            lin_vel_x_min: float = -0.6
-            lin_vel_x_max: float = 1.5
-            lin_vel_y_min: float = -0.8
-            lin_vel_y_max: float = 0.8
-            # min max [rad/s]
-            ang_vel_yaw_min: float = -0.7
-            ang_vel_yaw_max: float = 0.7
-
-        ranges: RangesConfig = field(default_factory=RangesConfig)
-
-    command: CommandConfig = field(default_factory=CommandConfig)
+    command: CommandConfig
 
     @dataclass
     class DomainRandConfig:
         pass
 
-    domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
+    domain_rand: DomainRandConfig
 
     @dataclass
     class SimConfig:
-        ctrl_dt: float = 0.02
-        sim_dt: float = 0.004
+        ctrl_dt: float
+        sim_dt: float
 
         @dataclass
         class OverrideConfig:
-            pass
+            Kp: float
 
-        override: OverrideConfig = field(default_factory=OverrideConfig)
+        override: OverrideConfig
 
-    sim: SimConfig = field(default_factory=SimConfig)
+    sim: SimConfig
 
     @dataclass
     class RewardConfig:
-        tracking_sigma: float = 0.25  # Used in tracking reward: exp(-error^2/sigma).
-        termination_body_height: float = 0.18
+        termination_body_height: float
 
         # The coefficients for all reward terms used for training. All
         # physical quantities are in SI units, if not otherwise specified,
@@ -89,17 +73,11 @@ class EnvironmentConfig:
         # torques in Nm, and time in seconds, and forces in Newtons.
         @dataclass
         class ScalesConfig:
-            # Tracking rewards are computed using exp(-delta^2/sigma)
-            # sigma can be a hyperparameter to tune.
+            pass
 
-            # Track the base x-y velocity (no z-velocity tracking).
-            tracking_lin_vel: float = 1.5
-            # Track the angular velocity along the z-axis (yaw rate).
-            tracking_ang_vel: float = 0.8
+        scales: ScalesConfig
 
-        scales: ScalesConfig = field(default_factory=ScalesConfig)
-
-    rewards: RewardConfig = field(default_factory=RewardConfig)
+    rewards: RewardConfig
 
     environment_class: str = "default"
 
@@ -109,8 +87,8 @@ environment_config_classes = {
 }
 
 
-class QuadrupedJoystickBaseEnv(PipelineEnv):
-    """base environment for training the go2 quadruped joystick policy in MJX."""
+class QuadrupedBaseEnv(PipelineEnv):
+    _ACTION_SIZE = 12
 
     def __init__(
         self,
@@ -123,15 +101,14 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         sys = self.make_system(init_scene_path, environment_config)
         super().__init__(sys, backend="mjx", n_frames=n_frames)
 
-        self.rewards = environment_config.rewards
+        self._rewards_config = environment_config.rewards
         self.reward_scales = asdict(environment_config.rewards.scales)
+
+        self._termination_body_height = environment_config.rewards.termination_body_height
 
         self._obs_noise_config = environment_config.observation_noise
 
         self._action_scale = environment_config.control.action_scale
-        self._resampling_time = environment_config.command.resampling_time
-        self._command_ranges = environment_config.command.ranges
-        self._termination_body_height = environment_config.rewards.termination_body_height
 
         initial_keyframe_name = robot_config.initial_keyframe
         initial_keyframe = sys.mj_model.keyframe(initial_keyframe_name)
@@ -183,67 +160,42 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         self._nv = sys.nv
         self._nq = sys.nq
 
+    @staticmethod
     def make_system(
-        self, init_scene_path: PathLike, environment_config: EnvironmentConfig
+        init_scene_path: PathLike, environment_config: EnvironmentConfig
     ) -> System:
         sys = mjcf.load(init_scene_path)
         sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
-
-        return self._override_menagerie_params(sys, environment_config)
-
-    def _override_menagerie_params(
-        self, sys: System, environment_config: EnvironmentConfig
-    ) -> System:
-        """
-        Here any changes to the parameters predefined in the robot's definition can be made.
-        """
+        sys = sys.replace(
+            actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(
+                environment_config.sim.override.Kp
+            ),
+            actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(
+                -environment_config.sim.override.Kp
+            ),
+        )
         return sys
 
-    def sample_command(self, rng: jax.Array) -> jax.Array:
-        key1, key2, key3 = jax.random.split(rng, 3)
-        lin_vel_x = jax.random.uniform(
-            key=key1,
-            shape=(1,),
-            minval=self._command_ranges.lin_vel_x_min,
-            maxval=self._command_ranges.lin_vel_x_max,
-        )
-        lin_vel_y = jax.random.uniform(
-            key=key2,
-            shape=(1,),
-            minval=self._command_ranges.lin_vel_y_min,
-            maxval=self._command_ranges.lin_vel_y_max,
-        )
-        ang_vel_yaw = jax.random.uniform(
-            key=key3,
-            shape=(1,),
-            minval=self._command_ranges.ang_vel_yaw_min,
-            maxval=self._command_ranges.ang_vel_yaw_max,
-        )
-        new_command = jnp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
-        return new_command
-
     def reset(self, rng: jax.Array) -> State:
-        rng, key = jax.random.split(rng)
-
         pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self._nv))
 
         state_info = {
             "rng": rng,
             "step": 0,
             "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(12),
-            "command": self.sample_command(key),
+            "last_act": jnp.zeros(self._ACTION_SIZE),
         }
 
         obs = self._init_obs(pipeline_state, state_info)
 
         reward, done = jnp.zeros(2)
 
-        metrics = {"total_dist": jnp.zeros(())}
-        for k in self.reward_scales.keys():
-            metrics[f"reward/{k}"] = jnp.zeros(())
+        metrics = {
+            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
+        }
 
-        return State(pipeline_state, obs, reward, done, metrics, state_info)
+        state = State(pipeline_state, obs, reward, done, metrics, state_info)
+        return state
 
     def step(self, state: State, action: jax.Array) -> State:
         rng, cmd_rng = jax.random.split(state.info["rng"], 2)
@@ -266,22 +218,10 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         state.info["rewards"] = rewards
         state.info["last_act"] = action
 
-        # sample new command if more than max timesteps achieved
-        state.info["command"] = jnp.where(
-            state.info["step"] > self._resampling_time,
-            self.sample_command(cmd_rng),
-            state.info["command"],
-        )
-
         # reset the step counter when done
         state.info["step"] = jnp.where(
-            done | (state.info["step"] > self._resampling_time), 0, state.info["step"]
+            done, 0, state.info["step"]
         )
-
-        # log total displacement as a proxy metric
-        state.metrics["total_dist"] = math.normalize(pipeline_state.x.pos[self._torso_idx - 1])[
-            1
-        ]
 
         state.metrics.update({f"reward/{k}": v for k, v in rewards.items()})
 
@@ -302,28 +242,56 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        return jnp.zeros(1)
+        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        return obs
 
     def _get_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
-        last_obs: jax.Array | dict[str, jax.Array],
+        previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        return last_obs
+        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        return obs
+
+    def _get_state_obs(
+        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+    ) -> jax.Array:
+        obs_list = QuadrupedBaseEnv._get_raw_obs_list(self, pipeline_state, state_info)
+        obs = jnp.clip(jnp.concatenate(obs_list), -100.0, 100.0)
+        return obs
+
+    def _get_raw_obs_list(
+        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+    ) -> list[jax.Array]:
+
+        inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
+        local_rpyrate = math.rotate(pipeline_state.xd.ang[0], inv_torso_rot)
+
+        obs_list = [
+            jnp.array([local_rpyrate[2]]) * 0.25,  # yaw rate
+            math.rotate(jnp.array([0, 0, -1]), inv_torso_rot),  # projected gravity
+            pipeline_state.q[7:] - self._default_pose,  # motor angles
+            state_info["last_act"],  # last action
+        ]
+        return obs_list
 
     def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
         # done if joint limits are reached or robot is falling
+
         up = jnp.array([0.0, 0.0, 1.0])
         joint_angles = pipeline_state.q[7:]
-        joint_vel = pipeline_state.qd[6:]
+
         # flipped over
         done = jnp.dot(math.rotate(up, pipeline_state.x.rot[self._torso_idx - 1]), up) < 0
+
         # joint limits exceeded
         done |= jnp.any(joint_angles < self.joints_lower_limits)
         done |= jnp.any(joint_angles > self.joints_upper_limits)
+
         # dropped too low
         done |= pipeline_state.x.pos[self._torso_idx - 1, 2] < self._termination_body_height
+
         return done
 
     def _get_rewards(
@@ -332,30 +300,8 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
         state_info: dict[str, ...],
         action: jax.Array,
         done: jax.Array,
-    ):
-        x, xd = pipeline_state.x, pipeline_state.xd
-        return {
-            "tracking_lin_vel": (self._reward_tracking_lin_vel(state_info["command"], x, xd)),
-            "tracking_ang_vel": (self._reward_tracking_ang_vel(state_info["command"], x, xd)),
-        }
-
-    # ------------ reward functions----------------
-    def _reward_tracking_lin_vel(
-        self, commands: jax.Array, x: Transform, xd: Motion
-    ) -> jax.Array:
-        # Tracking of linear velocity commands (xy axes)
-        local_vel = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
-        lin_vel_error = jnp.sum(jnp.square(commands[:2] - local_vel[:2]))
-        lin_vel_reward = jnp.exp(-lin_vel_error / self.rewards.tracking_sigma)
-        return lin_vel_reward
-
-    def _reward_tracking_ang_vel(
-        self, commands: jax.Array, x: Transform, xd: Motion
-    ) -> jax.Array:
-        # Tracking of angular velocity commands (yaw)
-        base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
-        ang_vel_error = jnp.square(commands[2] - base_ang_vel[2])
-        return jnp.exp(-ang_vel_error / self.rewards.tracking_sigma)
+    ) -> dict[str, jax.Array]:
+        return {}
 
     def render(
         self,
@@ -369,5 +315,5 @@ class QuadrupedJoystickBaseEnv(PipelineEnv):
 
 
 configs_to_env_classes = {
-    EnvironmentConfig: QuadrupedJoystickBaseEnv,
+    EnvironmentConfig: QuadrupedBaseEnv,
 }

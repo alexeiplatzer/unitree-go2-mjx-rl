@@ -8,12 +8,14 @@ from brax.base import State as PipelineState
 from brax.base import System
 from etils.epath import PathLike
 
-from quadruped_mjx_rl.environments.base import configs_to_env_classes
-from quadruped_mjx_rl.environments.base import environment_config_classes
-from quadruped_mjx_rl.environments.ppo_teacher_student import QuadrupedJoystickTeacherStudentEnv
-from quadruped_mjx_rl.environments.ppo_teacher_student import TeacherStudentEnvironmentConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.environments.joystick_base import (
+    JoystickBaseEnvConfig,
+    QuadrupedJoystickBaseEnv,
+    environment_config_classes,
+    configs_to_env_classes,
+)
 
 _ENVIRONMENT_CLASS = "QuadrupedVision"
 
@@ -24,12 +26,12 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(TeacherStudentEnvironmentConfig):
+class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
     environment_class: str = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
     @dataclass
-    class ObservationNoiseConfig(TeacherStudentEnvironmentConfig.ObservationNoiseConfig):
+    class ObservationNoiseConfig(JoystickBaseEnvConfig.ObservationNoiseConfig):
         brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
 
     observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
@@ -38,7 +40,7 @@ class QuadrupedVisionEnvConfig(TeacherStudentEnvironmentConfig):
 environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig
 
 
-class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
+class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
 
     def __init__(
         self,
@@ -69,21 +71,21 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
                 viz_gpu_hdls=None,
             )
 
-    def _override_menagerie_params(
-        self, sys: System, environment_config: QuadrupedVisionEnvConfig
-    ) -> System:
-        sys = super()._override_menagerie_params(sys, environment_config)
-
-        # TODO: verify that this works
+    @staticmethod
+    def make_system(
+        init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
+    ):
+        sys = QuadrupedJoystickBaseEnv.make_system(init_scene_path, environment_config)
         floor_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         sys = sys.replace(geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0]))
-
         return sys
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
-        obs = super()._init_obs(pipeline_state, state_info)
+        obs = {
+            "state": self._get_state_obs(pipeline_state, state_info),
+        }
         if self._use_vision:
             rng = state_info["rng"]
             rng_brightness, rng = jax.random.split(rng)
@@ -112,7 +114,9 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickTeacherStudentEnv):
         state_info: dict[str, ...],
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
-        obs = super()._get_obs(pipeline_state, state_info, last_obs)
+        obs = {
+            "state": self._get_state_obs(pipeline_state, state_info),
+        }
         if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0

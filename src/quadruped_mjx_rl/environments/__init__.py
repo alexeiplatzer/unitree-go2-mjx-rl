@@ -1,19 +1,24 @@
 from etils.epath import PathLike
-from functools import partial
 
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.robotic_vision import VisionConfig
-from quadruped_mjx_rl.environments.base import environment_config_classes
-from quadruped_mjx_rl.environments.base import configs_to_env_classes
-from quadruped_mjx_rl.environments.base import EnvironmentConfig
-from quadruped_mjx_rl.environments.base import QuadrupedJoystickBaseEnv
-from quadruped_mjx_rl.environments.ppo_enhanced import EnhancedEnvironmentConfig
-from quadruped_mjx_rl.environments.ppo_enhanced import QuadrupedJoystickEnhancedEnv
-from quadruped_mjx_rl.environments.ppo_teacher_student import TeacherStudentEnvironmentConfig
-from quadruped_mjx_rl.environments.ppo_teacher_student import QuadrupedJoystickTeacherStudentEnv
-from quadruped_mjx_rl.environments.simple_vision_playground import QuadrupedVisionEnvConfig
-from quadruped_mjx_rl.environments.simple_vision_playground import QuadrupedVisionEnvironment
-
+from quadruped_mjx_rl.environments.base import (
+    environment_config_classes,
+    configs_to_env_classes,
+    EnvironmentConfig,
+    QuadrupedBaseEnv,
+)
+from quadruped_mjx_rl.environments.joystick_base import (
+    JoystickBaseEnvConfig,
+    QuadrupedJoystickBaseEnv,
+)
+from quadruped_mjx_rl.environments.joystick_teacher_student import (
+    TeacherStudentEnvironmentConfig,
+    QuadrupedJoystickTeacherStudentEnv,
+)
+from quadruped_mjx_rl.environments.simple_vision_playground import (
+    QuadrupedVisionEnvConfig,
+    QuadrupedVisionEnvironment,
+)
 
 def get_env_factory(
     robot_config: RobotConfig,
