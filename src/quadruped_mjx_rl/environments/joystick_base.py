@@ -149,7 +149,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def make_system(
         init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
     ) -> System:
-        sys = super().make_system(init_scene_path, environment_config)
+        sys = QuadrupedBaseEnv.make_system(init_scene_path, environment_config)
         sys = sys.replace(
             dof_damping=sys.dof_damping.at[6:].set(environment_config.sim.override.Kd),
         )
