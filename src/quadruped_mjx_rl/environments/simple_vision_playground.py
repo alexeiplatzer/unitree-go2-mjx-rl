@@ -84,7 +84,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": self._init_obs(pipeline_state, state_info),
+            "state": QuadrupedJoystickBaseEnv._init_obs(self, pipeline_state, state_info),
         }
         if self._use_vision:
             rng = state_info["rng"]
