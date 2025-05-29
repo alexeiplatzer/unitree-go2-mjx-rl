@@ -88,7 +88,7 @@ class VisionDebugEnv(QuadrupedBaseEnv):
 
             rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
 
-            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[1]}
+            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
 
         return obs
 
@@ -103,6 +103,6 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         }
         if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
-            rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[1]}
+            rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
         return obs
