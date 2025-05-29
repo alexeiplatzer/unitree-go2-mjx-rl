@@ -78,7 +78,9 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        obs = {
+            "state": QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        }
 
         if self._use_vision:
             render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
@@ -96,7 +98,9 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        obs = {
+            "state": QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        }
         if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
