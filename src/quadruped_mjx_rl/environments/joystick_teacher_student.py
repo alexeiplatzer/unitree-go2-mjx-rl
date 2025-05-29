@@ -51,6 +51,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
+        # TODO: compare to init obs in superclass, state info must be updated
         state_obs = self._get_state_obs(pipeline_state, state_info)
         obs_history = jnp.zeros(state_obs.size * 15)
         obs_history = self._update_obs_history(obs_history, state_obs)
