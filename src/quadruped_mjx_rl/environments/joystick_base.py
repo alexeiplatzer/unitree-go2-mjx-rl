@@ -179,15 +179,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return new_command
 
     def reset(self, rng: jax.Array) -> State:
-        rng, command_key = jax.random.split(rng)
-
         state = super().reset(rng)
-
-        state.info["command"] = self.sample_command(command_key)
-        state.info["last_vel"] = jnp.zeros(12)
-        state.info["last_contact"] = jnp.zeros(shape=4, dtype=jnp.bool)
-        state.info["feet_air_time"] = jnp.zeros(4)
-        state.info["kick"] = jnp.array([0.0, 0.0])
 
         state.metrics["total_dist"] = jnp.zeros(())
 
@@ -228,6 +220,14 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
+        state_info["rng"], command_key = jax.random.split(state_info["rng"])
+
+        state_info["command"] = self.sample_command(command_key)
+        state_info["last_vel"] = jnp.zeros(12)
+        state_info["last_contact"] = jnp.zeros(shape=4, dtype=jnp.bool)
+        state_info["feet_air_time"] = jnp.zeros(4)
+        state_info["kick"] = jnp.array([0.0, 0.0])
+
         state_obs = QuadrupedJoystickBaseEnv._get_state_obs(self, pipeline_state, state_info)
         obs_history = jnp.zeros(state_obs.size * 15)  # keep track of the last 15 steps
         obs_history = QuadrupedJoystickBaseEnv._update_obs_history(
