@@ -198,7 +198,6 @@ class QuadrupedBaseEnv(PipelineEnv):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        rng, cmd_rng = jax.random.split(state.info["rng"], 2)
 
         pipeline_state = self._physics_step(state, action)
 
@@ -213,7 +212,6 @@ class QuadrupedBaseEnv(PipelineEnv):
         reward = jnp.clip(sum(rewards.values()) * self.dt, 0.0, 10_000.0)
 
         # state management
-        state.info["rng"] = rng
         state.info["step"] += 1
         state.info["rewards"] = rewards
         state.info["last_act"] = action
