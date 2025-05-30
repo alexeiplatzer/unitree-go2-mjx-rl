@@ -86,10 +86,10 @@ class VisionDebugEnv(QuadrupedBaseEnv):
             render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
             state_info["render_token"] = render_token
 
-            rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-
-            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
-
+            # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+            #
+            # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
+            obs |= {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
         return obs
 
     def _get_obs(
@@ -103,6 +103,7 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         }
         if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
-            rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-            obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
+            # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+            # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
+            obs |= {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
         return obs
