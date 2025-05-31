@@ -11,7 +11,7 @@ from etils.epath import Path, PathLike
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 
-from quadruped_mjx_rl.domain_randomization import domain_randomize
+from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
