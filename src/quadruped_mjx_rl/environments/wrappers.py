@@ -69,7 +69,7 @@ def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[Sys
         {
             "geom_rgba": jnp.repeat(jnp.expand_dims(sys.geom_rgba, 0), num_worlds, axis=0),
             "geom_matid": jnp.repeat(
-                jnp.expand_dims(jnp.repeat(-1, sys.geom_matid.shape[0], 0), 0),
+                jnp.expand_dims(jnp.repeat(-2, sys.geom_matid.shape[0], 0), 0),
                 num_worlds,
                 axis=0,
             ),
@@ -112,7 +112,7 @@ def _supplement_vision_randomization_fn(
     for field in required_fields:
         if getattr(in_axes, field) is None:
             in_axes = in_axes.tree_replace({field: 0})
-            val = -1 if field == "geom_matid" else getattr(sys, field)
+            val = -2 if field == "geom_matid" else getattr(sys, field)
             sys = sys.tree_replace(
                 {
                     field: jnp.repeat(jnp.expand_dims(val, 0), num_worlds, axis=0),
