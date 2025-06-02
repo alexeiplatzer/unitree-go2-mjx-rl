@@ -36,6 +36,8 @@ class VisionDebugEnv(QuadrupedBaseEnv):
     ):
         super().__init__(environment_config, robot_config, init_scene_path)
 
+        self.reward_scales = {}  # remove all the rewards form the joystick base config
+
         if vision_config is not None:
             from madrona_mjx.renderer import BatchRenderer
 
