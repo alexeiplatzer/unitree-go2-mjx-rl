@@ -121,7 +121,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         # find body definition
         self._torso_idx = mujoco.mj_name2id(
-            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.torso_name
+            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.main_body_name
         )
 
         # find lower leg definition

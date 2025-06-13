@@ -69,7 +69,7 @@ def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[Sys
         {
             "geom_rgba": jnp.repeat(jnp.expand_dims(sys.geom_rgba, 0), num_worlds, axis=0),
             "geom_matid": jnp.repeat(
-                jnp.expand_dims(jnp.repeat(sys.geom_matid, sys.geom_matid.shape[0], 0), 0),
+                jnp.expand_dims(jnp.repeat(-1, sys.geom_matid.shape[0], 0), 0),
                 num_worlds,
                 axis=0,
             ),

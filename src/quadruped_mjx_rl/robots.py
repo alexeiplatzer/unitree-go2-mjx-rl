@@ -6,7 +6,7 @@ class RobotConfig:
     robot_name: str
     scene_file: str
     initial_keyframe: str
-    torso_name: str
+    main_body_name: str
     upper_leg_name: str
     lower_leg_name: str
     foot_name: str
@@ -38,7 +38,7 @@ def unitree_go2_config() -> RobotConfig:
         robot_name="unitree_go2",
         scene_file="scene_mjx.xml",
         initial_keyframe="home",
-        torso_name="base",
+        main_body_name="base",
         upper_leg_name="thigh",
         lower_leg_name="calf",
         foot_name="foot",
@@ -65,7 +65,7 @@ def google_barkour_vb_config() -> RobotConfig:
         robot_name="google_barkour_vb",
         scene_file="scene_mjx.xml",
         initial_keyframe="home",
-        torso_name="torso",
+        main_body_name="torso",
         upper_leg_name="upper_leg",
         lower_leg_name="lower_leg",
         foot_name="foot",
