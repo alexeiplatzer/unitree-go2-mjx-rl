@@ -68,7 +68,29 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         return sys
 
     def reset(self, rng: jax.Array) -> State:
-        state = super().reset(rng)
+        pipeline_state = self.pipeline_init(
+            self._init_q + jax.random.uniform(
+                rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
+            ),
+            jnp.zeros(self._nv),
+        )
+
+        state_info = {
+            "rng": rng,
+            "step": 0,
+            "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
+            "last_act": jnp.zeros(self._ACTION_SIZE),
+        }
+
+        obs = self._init_obs(pipeline_state, state_info)
+
+        reward, done = jnp.zeros(2)
+
+        metrics = {
+            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
+        }
+
+        state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
