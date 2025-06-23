@@ -23,30 +23,26 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         environment_config: JoystickBaseEnvConfig,
         robot_config: RobotConfig,
         init_scene_path: PathLike,
-        vision_config: VisionConfig | None = None,
+        vision_config: VisionConfig,
     ):
         super().__init__(environment_config, robot_config, init_scene_path)
 
         self.reward_scales = {}  # remove all the rewards form the joystick base config
 
-        if vision_config is not None:
-            from madrona_mjx.renderer import BatchRenderer
+        from madrona_mjx.renderer import BatchRenderer
 
-            self.renderer = BatchRenderer(
-                m=self.sys,
-                gpu_id=vision_config.gpu_id,
-                num_worlds=vision_config.render_batch_size,
-                batch_render_view_width=vision_config.render_width,
-                batch_render_view_height=vision_config.render_height,
-                enabled_geom_groups=np.asarray(vision_config.enabled_geom_groups),
-                enabled_cameras=np.asarray(vision_config.enabled_cameras),
-                add_cam_debug_geo=False,
-                use_rasterizer=vision_config.use_rasterizer,
-                viz_gpu_hdls=None,
-            )
-            self._use_vision = True
-        else:
-            self._use_vision = False
+        self.renderer = BatchRenderer(
+            m=self.sys,
+            gpu_id=vision_config.gpu_id,
+            num_worlds=vision_config.render_batch_size,
+            batch_render_view_width=vision_config.render_width,
+            batch_render_view_height=vision_config.render_height,
+            enabled_geom_groups=np.asarray(vision_config.enabled_geom_groups),
+            enabled_cameras=np.asarray(vision_config.enabled_cameras),
+            add_cam_debug_geo=False,
+            use_rasterizer=vision_config.use_rasterizer,
+            viz_gpu_hdls=None,
+        )
 
     @staticmethod
     def make_system(
@@ -91,18 +87,13 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = {
-            "state": QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
-        }
+        render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
+        state_info["render_token"] = render_token
 
-        if self._use_vision:
-            render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
-            state_info["render_token"] = render_token
-
-            # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-            #
-            # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
-            obs |= {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
+        # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+        #
+        # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
+        obs = {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
         return obs
 
     def _get_obs(
@@ -111,12 +102,8 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = {
-            "state": QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
-        }
-        if self._use_vision:
-            _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
-            # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
-            # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
-            obs |= {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
+        _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
+        # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
+        # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
+        obs = {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}
         return obs
