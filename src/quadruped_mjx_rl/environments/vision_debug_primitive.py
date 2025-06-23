@@ -1,23 +1,14 @@
-# Typing
-from dataclasses import dataclass, asdict, field
-from collections.abc import Sequence
-
 # Math
 import jax
 import jax.numpy as jnp
 
 # Sim
-import mujoco
 import numpy as np
 
 # Brax
-from brax import base
-from brax import math
-from brax.base import Motion, Transform
 from brax.base import State as PipelineState
 from brax.base import System
-from brax.envs.base import PipelineEnv, State
-from brax.io import mjcf
+from brax.envs.base import State
 from etils.epath import PathLike
 
 from quadruped_mjx_rl.robotic_vision import VisionConfig
@@ -75,26 +66,24 @@ class VisionDebugEnv(QuadrupedBaseEnv):
             jnp.zeros(self._nv),
         )
 
-        state_info = {
-            "rng": rng,
-            "step": 0,
-            "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(self._ACTION_SIZE),
-        }
+        state_info = {"rng": rng}
 
         obs = self._init_obs(pipeline_state, state_info)
 
         reward, done = jnp.zeros(2)
-
-        metrics = {
-            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
-        }
-
+        metrics = {}
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        state = super().step(state, action)
+        pipeline_state = self._physics_step(state, action)
+
+        # observation data
+        obs = self._get_obs(pipeline_state, state.info, state.obs)
+
+        state = state.replace(
+            pipeline_state=pipeline_state, obs=obs, reward=state.reward, done=state.done
+        )
         return state
 
     def _init_obs(
