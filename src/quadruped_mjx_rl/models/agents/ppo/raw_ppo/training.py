@@ -1,39 +1,39 @@
-import functools
-import time
-from collections.abc import Callable, Mapping
 
+# Typing
+from collections.abc import Callable
+from quadruped_mjx_rl import types
+from quadruped_mjx_rl.types import Params, PRNGKey
+
+# Supporting
+import time
+import functools
 from absl import logging
-from brax import base
-from brax import envs
-from brax.training import acting
-from brax.training import gradients
-from brax.training import logger as metric_logger
-from brax.training import pmap
-from brax.training import types
-from brax.training.acme import running_statistics
-from brax.training.acme import specs
-from brax.training.agents.ppo import checkpoint
-from brax.training.types import Params
-from brax.training.types import PRNGKey
-import flax
+from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
+
+# Math
+from flax.struct import dataclass as flax_dataclass
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from quadruped_mjx_rl.models import running_statistics
 
+# Sim
+from quadruped_mjx_rl.environments.pipeline_utils import System
+from quadruped_mjx_rl.environments.base import Env, State
+from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
+
+# Networks
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import ActorCriticNetworkParams
 from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.losses import compute_ppo_loss
 
-from quadruped_mjx_rl.models.agents.ppo import _training_utils as _utils
-
 InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 
 
-@flax.struct.dataclass
+@flax_dataclass
 class TrainingState:
     """Contains training state for the learner."""
-
     optimizer_state: optax.OptState
     params: ActorCriticNetworkParams
     normalizer_params: running_statistics.RunningStatisticsState
@@ -41,7 +41,7 @@ class TrainingState:
 
 
 def train(
-    environment: envs.Env,
+    environment: Env,
     num_timesteps: int,
     max_devices_per_host: int | None = None,
     # high-level control flow
@@ -54,7 +54,7 @@ def train(
     action_repeat: int = 1,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[base.System, jnp.ndarray], tuple[base.System, base.System]] | None
+        Callable[[System, jnp.ndarray], tuple[System, System]] | None
     ) = None,
     # PPO parameters
     learning_rate: float = 1e-4,
@@ -77,7 +77,7 @@ def train(
     seed: int = 0,
     # evaluation settings
     num_evals: int = 1,
-    eval_env: envs.Env | None = None,
+    eval_env: Env | None = None,
     num_eval_envs: int = 128,
     deterministic_eval: bool = False,
     # training metrics
@@ -87,8 +87,6 @@ def train(
     progress_fn: Callable[[int, ...], None] = lambda *args: None,
     policy_params_fn: Callable[..., None] = lambda *args: None,
     # checkpointing
-    save_checkpoint_path: str | None = None,
-    restore_checkpoint_path: str | None = None,
     restore_params=None,
     restore_value_fn: bool = True,
 ):
@@ -151,9 +149,6 @@ def train(
       progress_fn: a user-defined callback function for reporting/plotting metrics
       policy_params_fn: a user-defined callback function that can be used for
         saving custom policy checkpoints or creating policy rollouts and videos
-      save_checkpoint_path: the path used to save checkpoints. If None, no
-        checkpoints are saved.
-      restore_checkpoint_path: the path used to restore previous model params
       restore_params: raw network parameters to restore the TrainingState from.
         These override `restore_checkpoint_path`. These paramaters can be obtained
         from the return values of ppo.train().
@@ -229,7 +224,7 @@ def train(
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
     env_state = reset_fn(key_envs)
 
-    # Shape of the observation tensor
+    # The shape of the observation tensor
     # Discard the batch axes over devices and envs.
     obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], env_state.obs)
 
@@ -322,8 +317,8 @@ def train(
         return (optimizer_state, params, key), metrics
 
     def training_step(
-        carry: tuple[TrainingState, envs.State, PRNGKey], unused_t
-    ) -> tuple[tuple[TrainingState, envs.State, PRNGKey], _utils.Metrics]:
+        carry: tuple[TrainingState, State, PRNGKey], unused_t
+    ) -> tuple[tuple[TrainingState, State, PRNGKey], types.Metrics]:
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
@@ -389,8 +384,8 @@ def train(
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: envs.State, key: PRNGKey
-    ) -> tuple[TrainingState, envs.State, _utils.Metrics]:
+        training_state: TrainingState, state: State, key: PRNGKey
+    ) -> tuple[TrainingState, State, _utils.Metrics]:
         (training_state, state, _), loss_metrics = jax.lax.scan(
             training_step,
             (training_state, state, key),
@@ -404,8 +399,8 @@ def train(
 
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
-        training_state: TrainingState, env_state: envs.State, key: PRNGKey
-    ) -> tuple[TrainingState, envs.State, _utils.Metrics]:
+        training_state: TrainingState, env_state: State, key: PRNGKey
+    ) -> tuple[TrainingState, State, types.Metrics]:
         nonlocal training_walltime
         t = time.time()
         training_state, env_state = _utils.strip_weak_type((training_state, env_state))
@@ -431,7 +426,7 @@ def train(
             training_state,
             env_state,
             metrics,
-        )  # pytype: disable=bad-return-type  # py311-upgrade
+        )
 
     # Initialize model params and training state.
     init_params = ActorCriticNetworkParams(
@@ -440,7 +435,7 @@ def train(
     )
 
     obs_shape = jax.tree_util.tree_map(
-        lambda x: specs.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
+        lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
     )
     training_state = TrainingState(
         optimizer_state=optimizer.init(init_params),
@@ -448,14 +443,6 @@ def train(
         normalizer_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
         env_steps=jnp.array(0, dtype=jnp.int64),
     )
-
-    if restore_checkpoint_path is not None:
-        params = checkpoint.load(restore_checkpoint_path)
-        value_params = params[2] if restore_value_fn else init_params.value
-        training_state = training_state.replace(
-            normalizer_params=params[0],
-            params=training_state.params.replace(policy=params[1], value=value_params),
-        )
 
     if restore_params is not None:
         logging.info("Restoring TrainingState from `restore_params`.")
@@ -551,15 +538,6 @@ def train(
         )
 
         policy_params_fn(current_step, make_policy, params)
-
-        if save_checkpoint_path is not None:
-            ckpt_config = checkpoint.network_config(
-                observation_size=obs_shape,
-                action_size=env.action_size,
-                normalize_observations=normalize_observations,
-                network_factory=network_factory,
-            )
-            checkpoint.save(save_checkpoint_path, current_step, params, ckpt_config)
 
         if num_evals > 0:
             metrics = evaluator.run_evaluation(

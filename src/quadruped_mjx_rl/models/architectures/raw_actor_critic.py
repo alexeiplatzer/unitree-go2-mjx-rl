@@ -1,28 +1,25 @@
+
+# Typing
 from collections.abc import Sequence
-from brax.training import types
-from brax.training.types import Params
-from brax.training.types import PRNGKey
-import flax
+from quadruped_mjx_rl import types
+
+# Math
+from flax.struct import dataclass as flax_dataclass
 from flax import linen
-import jax
-import jax.numpy as jnp
-
-from quadruped_mjx_rl.models import networks
-from quadruped_mjx_rl.models import modules
-from brax.training import distribution
+from quadruped_mjx_rl.models import modules, networks, distributions
 
 
-@flax.struct.dataclass
+@flax_dataclass
 class ActorCriticNetworks:
     policy_network: networks.FeedForwardNetwork
     value_network: networks.FeedForwardNetwork
-    parametric_action_distribution: distribution.ParametricDistribution
+    parametric_action_distribution: distributions.ParametricDistribution
 
 
-@flax.struct.dataclass
+@flax_dataclass
 class ActorCriticNetworkParams:
-    policy: Params
-    value: Params
+    policy: types.Params
+    value: types.Params
 
 
 def make_inference_fn(actor_critic_networks: ActorCriticNetworks):
@@ -33,7 +30,7 @@ def make_inference_fn(actor_critic_networks: ActorCriticNetworks):
         parametric_action_distribution = actor_critic_networks.parametric_action_distribution
 
         def policy(
-            observations: types.Observation, key_sample: PRNGKey
+            observations: types.Observation, key_sample: types.PRNGKey
         ) -> tuple[types.Action, types.Extra]:
             param_subset = (params[0], params[1])  # normalizer and policy params
             logits = policy_network.apply(*param_subset, observations)
@@ -67,7 +64,7 @@ def make_networks(
     value_obs_key: str = "state",
 ) -> ActorCriticNetworks:
     """Make Actor Critic networks with preprocessor."""
-    parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
+    parametric_action_distribution = distributions.NormalTanhDistribution(event_size=action_size)
     policy_module = modules.MLP(
         layer_sizes=(
             list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]

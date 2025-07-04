@@ -1,35 +1,28 @@
 """Base environment for training quadruped joystick policies in MJX."""
 
-from collections.abc import Sequence
 # Typing
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+
+# Supporting
+from etils.epath import PathLike
 
 # Math
 import jax
 import jax.numpy as jnp
-# Sim
-import mujoco
-import numpy as np
-# Brax
-from brax import base
-from brax import math
-from brax.base import Motion, Transform
-from brax.base import State as PipelineState
-from brax.base import System
-from brax.envs.base import PipelineEnv, State
-from brax.io import mjcf
-from etils.epath import PathLike
+from quadruped_mjx_rl import math
 
+# Sim
+from quadruped_mjx_rl.environments.utils import Motion, Transform
+from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
+from quadruped_mjx_rl.environments.base import State
+
+# Definitions
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.base import (
+from quadruped_mjx_rl.environments.quadruped_base import (
     EnvironmentConfig as EnvCfg,
     QuadrupedBaseEnv,
-    environment_config_classes,
-    configs_to_env_classes,
+    register_environment_config_class,
 )
-
-
-_ENVIRONMENT_CLASS = "Joystick"
 
 
 @dataclass
@@ -122,10 +115,16 @@ class JoystickBaseEnvConfig(EnvCfg):
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
 
-    environment_class: str = _ENVIRONMENT_CLASS
+    @classmethod
+    def environment_class_key(cls) -> str:
+        return "JoystickBase"
+
+    @classmethod
+    def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
+        return QuadrupedJoystickBaseEnv
 
 
-environment_config_classes[_ENVIRONMENT_CLASS] = JoystickBaseEnvConfig
+register_environment_config_class(JoystickBaseEnvConfig)
 
 
 class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
@@ -401,6 +400,3 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done & (step < self._resampling_time)
-
-
-configs_to_env_classes[JoystickBaseEnvConfig] = QuadrupedJoystickBaseEnv

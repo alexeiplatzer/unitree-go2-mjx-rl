@@ -1,6 +1,4 @@
-from brax.training import types
-from brax.training.types import Params
-import flax
+from quadruped_mjx_rl import types
 import optax
 import jax
 import jax.numpy as jnp

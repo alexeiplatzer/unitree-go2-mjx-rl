@@ -1,26 +1,35 @@
+"""Main module to execute the training, given all necessary configs"""
+
+# Typing
+from collections.abc import Callable
+from dataclasses import dataclass
+
+# Supporting
 import functools
 import logging
-from collections.abc import Callable
-from dataclasses import asdict, dataclass
 from datetime import datetime
-
 import matplotlib.pyplot as plt
-from brax.envs.base import PipelineEnv
-from brax.io import model
 from etils.epath import Path, PathLike
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
+from quadruped_mjx_rl.models.io import save_params
 
+# Training
+from quadruped_mjx_rl.environments.base import Env
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+
+
+# Configurations
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.models.configs import ActorCriticConfig, ModelConfig, TeacherStudentConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 
 
 @dataclass
-class TrainingConfig:
+class TrainingConfig(Configuration):
     num_timesteps: int = 100_000_000
     num_evals: int = 10
     reward_scaling: int = 1
@@ -35,7 +44,28 @@ class TrainingConfig:
     entropy_cost: float = 0.01
     num_envs: int = 8192
     batch_size: int = 256
-    training_class: str = "PPO"
+
+    @classmethod
+    def config_base_class_key(cls) -> str:
+        return "training"
+
+    @classmethod
+    def training_class_key(cls) -> str:
+        return "PPO"
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> Configuration:
+        training_class_key = config_dict.pop("training_class")
+        training_config_class = _training_config_classes[training_class_key]
+        return super(Configuration, training_config_class).from_dict(config_dict)
+
+    def to_dict(self) -> dict:
+        config_dict = super().to_dict()
+        config_dict["training_class"] = type(self).training_class_key()
+        return config_dict
+
+
+register_config_base_class(TrainingConfig)
 
 
 @dataclass
@@ -48,7 +78,6 @@ class TrainingWithVisionConfig(TrainingConfig):
     num_updates_per_batch: int = 8
     num_envs: int = 256
     batch_size: int = 256
-    training_class: str = "PPO_Vision"
 
     madrona_backend: bool = True
     # wrap_env: bool = False
@@ -56,8 +85,12 @@ class TrainingWithVisionConfig(TrainingConfig):
     max_grad_norm: float = 1.0
     # num_resets_per_eval: int = 1
 
+    @classmethod
+    def training_class_key(cls) -> str:
+        return "PPO_Vision"
 
-training_config_classes = {
+
+_training_config_classes = {
     "default": TrainingConfig,
     "PPO": TrainingConfig,
     "PPO_Vision": TrainingWithVisionConfig,
@@ -65,7 +98,7 @@ training_config_classes = {
 
 
 def train(
-    env_factory: Callable[..., PipelineEnv],
+    env_factory: Callable[..., Env],
     model_config: ModelConfig,
     training_config: TrainingConfig,
     model_save_path: PathLike,
@@ -143,7 +176,7 @@ def train(
     print(f"time to train: {times[-1] - times[1]}")
 
     # Save params
-    model.save_params(model_save_path, params)
+    save_params(model_save_path, params)
     # params = model.load_params(model_save_path)
 
 

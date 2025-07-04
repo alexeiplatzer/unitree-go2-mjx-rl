@@ -6,9 +6,11 @@ etils
 ml_collections
 pyyaml
 dacite
+bidict
 jax
 numpy
 flax
 matplotlib
 orbax
 tqdm
+optax

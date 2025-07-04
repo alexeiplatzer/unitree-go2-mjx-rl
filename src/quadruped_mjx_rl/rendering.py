@@ -1,22 +1,36 @@
-from collections.abc import Callable
-from dataclasses import dataclass, field
-from functools import partial
 
-import jax
-import jax.numpy as jp
-import mediapy as media
-import mujoco
-from brax import envs
-from brax.envs.base import PipelineEnv
+# Typing
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+
+# Supporting
+import functools
 from etils.epath import PathLike, Path
 
+# Math
+import jax
+from jax import numpy as jnp
+import numpy as np
+
+# Sim
+import mujoco
+from quadruped_mjx_rl.environments.base import System, PipelineState, PipelineEnv
+from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
+
+# IO
+import mediapy as media
+
+# ML
 from quadruped_mjx_rl.models import load_inference_fn
 from quadruped_mjx_rl.models import ModelConfig
 from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
+# Configs
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+
 
 @dataclass
-class RenderConfig:
+class RenderConfig(Configuration):
     episode_length: int = 1000
     render_every: int = 2
     seed: int = 0
@@ -28,15 +42,16 @@ class RenderConfig:
             "ang_vel": 0.0,
         }
     )
-    rendering_class: str = "default"
+
+    @classmethod
+    def config_base_class_key(cls) -> str:
+        return "render"
 
 
-rendering_config_classes = {
-    "default": RenderConfig,
-}
+register_config_base_class(RenderConfig)
 
 
-def render(
+def render_policy_rollout(
     env_factory: Callable[[], PipelineEnv],
     model_config: ModelConfig,
     trained_model_path: PathLike,
@@ -57,9 +72,9 @@ def render(
     y_vel = render_config.command["y_vel"]
     ang_vel = render_config.command["ang_vel"]
 
-    movement_command = jp.array([x_vel, y_vel, ang_vel])
+    movement_command = jnp.array([x_vel, y_vel, ang_vel])
 
-    demo_env = envs.training.EpisodeWrapper(
+    demo_env = EpisodeWrapper(
         env,
         episode_length=render_config.episode_length,
         action_repeat=1,
@@ -67,7 +82,7 @@ def render(
     if vision:
         demo_env = MadronaWrapper(demo_env, 1)
 
-    render_fn = partial(
+    render_fn = functools.partial(
         render_rollout,
         reset_fn=jax.jit(demo_env.reset),
         step_fn=jax.jit(demo_env.step),
@@ -87,28 +102,6 @@ def render(
             inference_fn=jax.jit(ppo_inference_fn),
             save_path=animation_save_path,
         )
-
-
-def render_scene(
-    scene_path: PathLike,
-    initial_keyframe: str,
-    camera: str | None = None,
-    save_path: PathLike | None = None,
-):
-    """Renders the initial scene from a given xml file"""
-    xml_path = Path(scene_path).as_posix()
-    mj_model = mujoco.MjModel.from_xml_path(xml_path)
-    renderer = mujoco.Renderer(mj_model)
-    init_q = mj_model.keyframe(initial_keyframe).qpos
-    mj_data = mujoco.MjData(mj_model)
-    mj_data.qpos = init_q
-    mujoco.mj_forward(mj_model, mj_data)
-    renderer.update_scene(mj_data, camera=camera)
-    image = renderer.render()
-    if save_path is not None:
-        media.write_image(save_path, image)
-    else:
-        media.show_image(image)
 
 
 def render_rollout(
@@ -149,3 +142,51 @@ def render_rollout(
             fps=1.0 / (env.dt * render_every),
             codec="gif",
         )
+
+
+def render_array(
+    sys: System,
+    trajectory: list[PipelineState] | PipelineState,
+    height: int = 240,
+    width: int = 320,
+    camera: str | None = None,
+) -> Sequence[np.ndarray] | np.ndarray:
+    """Returns a sequence of np.ndarray images using the MuJoCo renderer."""
+    renderer = mujoco.Renderer(sys.mj_model, height=height, width=width)
+    camera = camera or -1
+
+    def get_image(state: PipelineState):
+        d = mujoco.MjData(sys.mj_model)
+        d.qpos, d.qvel = state.q, state.qd
+        if hasattr(state, 'mocap_pos') and hasattr(state, 'mocap_quat'):
+            d.mocap_pos, d.mocap_quat = state.mocap_pos, state.mocap_quat
+        mujoco.mj_forward(sys.mj_model, d)
+        renderer.update_scene(d, camera=camera)
+        return renderer.render()
+
+    if isinstance(trajectory, list):
+        return [get_image(s) for s in trajectory]
+
+    return get_image(trajectory)
+
+
+def render_scene(
+    scene_path: PathLike,
+    initial_keyframe: str,
+    camera: str | None = None,
+    save_path: PathLike | None = None,
+):
+    """Renders the initial scene from a given xml file"""
+    xml_path = Path(scene_path).as_posix()
+    mj_model = mujoco.MjModel.from_xml_path(xml_path)
+    renderer = mujoco.Renderer(mj_model)
+    init_q = mj_model.keyframe(initial_keyframe).qpos
+    mj_data = mujoco.MjData(mj_model)
+    mj_data.qpos = init_q
+    mujoco.mj_forward(mj_model, mj_data)
+    renderer.update_scene(mj_data, camera=camera)
+    image = renderer.render()
+    if save_path is not None:
+        media.write_image(save_path, image)
+    else:
+        media.show_image(image)

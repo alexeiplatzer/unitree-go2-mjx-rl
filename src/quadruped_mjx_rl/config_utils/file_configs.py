@@ -1,20 +1,17 @@
 from collections.abc import Callable, Iterator
-from dataclasses import asdict
+from typing import TypeVar
 
 import yaml
-from dacite import from_dict
 from etils.epath import PathLike
 
-from quadruped_mjx_rl.config_utils.config_keys import AnyConfig, ConfigKey
-from quadruped_mjx_rl.config_utils.config_keys import config_class_to_key
-from quadruped_mjx_rl.config_utils.config_keys import key_to_resolver
+from quadruped_mjx_rl.config_utils.config_base import Configuration, configs_from_dicts
 
 
 def prepare_configs(
     *config_paths: PathLike,
-    check_configs: list[type[AnyConfig] | ConfigKey | str] | None = None,
-    **configs: AnyConfig | None,
-) -> dict[ConfigKey, AnyConfig | None]:
+    check_configs: list[type[Configuration] | str] | None = None,
+    **configs: Configuration,
+) -> dict[str, Configuration]:
     """
     Prepares All configs from provided files and config objects.
     :param config_paths: Paths of YAML files to search configs in.
@@ -23,47 +20,34 @@ def prepare_configs(
     :return: A dict containing the final config for every Config Key.
     """
     loaded_dicts = load_config_dicts(*config_paths)
-    loaded_configs = load_configs_from_dicts(list(ConfigKey), *loaded_dicts)
-    final_configs = {}
-    for config_key in ConfigKey:
-        if config_key in configs:
-            final_configs[config_key] = configs[config_key]
-        elif loaded_configs[config_key] is not None:
-            final_configs[config_key] = config_from_dict(config_key, loaded_configs[config_key])
-        else:
-            final_configs[config_key] = None
-        if final_configs[config_key] is None and config_key in check_configs:
+    loaded_configs = assemble_configs_from_dicts(*loaded_dicts)
+    final_configs = configs_from_dicts(loaded_configs)
+    for config_key, configuration in configs.items():
+        final_configs[config_key] = configuration
+    for config_key in check_configs:
+        if config_key not in final_configs:
             raise RuntimeError(f"Config for {config_key} not provided")
     return final_configs
 
 
-def config_from_dict(
-    config_key: ConfigKey,
-    loaded_config: dict,
-) -> AnyConfig:
-    """
-    Creates a config of the correct class from a given dict
-    """
-    config_class_name = loaded_config.get(f"{config_key.value}_class", "default")
-    config_class = key_to_resolver[config_key][config_class_name]
-    return from_dict(config_class, loaded_config)
-
-
-def load_configs_from_dicts(keywords: list[str], *loaded_configs: dict) -> dict[str, dict]:
+def assemble_configs_from_dicts(*loaded_configs: dict) -> dict[str, dict]:
     """
     Looks for entries under the provided keywords at the top level in each loaded dict,
     then stores them all in a dict entry under this keyword and returns the resulting dict.
     """
-    keyword_to_config = {keyword: {} for keyword in keywords}
+    keyword_to_config = {}
     for loaded_config in loaded_configs:
-        for keyword in keywords:
+        for keyword in loaded_config:
             keyword_to_config[keyword] |= loaded_config.get(keyword, {})
     return keyword_to_config
 
 
+MapDictsCodomain = TypeVar("MapDictsCodomain")
+
+
 def load_config_dicts(
-    *args: PathLike, map_dicts: Callable[[dict], ...] = None
-) -> Iterator[dict]:
+    *args: PathLike, map_dicts: Callable[[dict], MapDictsCodomain] = lambda d: d
+) -> Iterator[MapDictsCodomain]:
     """
     Loads YAML files into dicts, applies a map function if provided.
     """
@@ -75,11 +59,11 @@ def load_config_dicts(
 
 def save_configs(
     save_file_path: PathLike,
-    *configs: AnyConfig,
+    *configs: Configuration,
 ):
     """
     Saves all configs to a YAML file, each config under an appropriate top level key.
     """
-    final_dict = {config_class_to_key(type(config)).value: asdict(config) for config in configs}
+    final_dict = {config.config_base_class_key(): config.to_dict() for config in configs}
     with open(save_file_path, "w") as f:
         yaml.dump(final_dict, f)
