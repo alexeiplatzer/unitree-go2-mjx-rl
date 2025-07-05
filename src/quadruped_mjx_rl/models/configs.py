@@ -19,7 +19,7 @@ class ModelConfig(Configuration):
     def from_dict(cls, config_dict: dict) -> Configuration:
         model_class_key = config_dict.pop("model_class")
         model_config_class = _model_config_classes[model_class_key]
-        return super(Configuration, model_config_class).from_dict(config_dict)
+        return super(ModelConfig, model_config_class).from_dict(config_dict)
 
     def to_dict(self) -> dict:
         config_dict = super().to_dict()

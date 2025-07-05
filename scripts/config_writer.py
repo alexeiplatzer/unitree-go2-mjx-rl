@@ -1,5 +1,5 @@
 from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import robots, environments, models, training, rendering
+from quadruped_mjx_rl import robots, environments, models, training, policy_rendering
 
 import paths
 
@@ -45,5 +45,5 @@ if __name__ == "__main__":
     # --- Example rendering config ---
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "render_basic.yaml",
-        rendering.RenderConfig(),
+        policy_rendering.RenderConfig(),
     )

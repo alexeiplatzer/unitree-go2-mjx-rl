@@ -13,7 +13,7 @@ environment:
   domain_rand:
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: Enhanced
+  environment_class: JoystickBase
   observation_noise:
     general_noise: 0.05
   rewards:
@@ -57,7 +57,7 @@ training:
   num_envs: 8192
   num_evals: 10
   num_minibatches: 32
-  num_timesteps: 1_000_000
+  num_timesteps: 100000000
   num_updates_per_batch: 4
   reward_scaling: 1
   training_class: PPO

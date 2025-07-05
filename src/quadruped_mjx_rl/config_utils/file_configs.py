@@ -24,6 +24,7 @@ def prepare_configs(
     final_configs = configs_from_dicts(loaded_configs)
     for config_key, configuration in configs.items():
         final_configs[config_key] = configuration
+    check_configs = check_configs or []
     for config_key in check_configs:
         if config_key not in final_configs:
             raise RuntimeError(f"Config for {config_key} not provided")
@@ -38,7 +39,9 @@ def assemble_configs_from_dicts(*loaded_configs: dict) -> dict[str, dict]:
     keyword_to_config = {}
     for loaded_config in loaded_configs:
         for keyword in loaded_config:
-            keyword_to_config[keyword] |= loaded_config.get(keyword, {})
+            keyword_to_config[keyword] = (
+                loaded_config[keyword] | keyword_to_config.get(keyword, {})
+            )
     return keyword_to_config
 
 

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from quadruped_mjx_rl.types import Observation, ObservationSize
 
 # Supporting
-from quadruped_mjx_rl.rendering import render_array
+from quadruped_mjx_rl.environments.rendering import render_array
 
 # Math
 import jax

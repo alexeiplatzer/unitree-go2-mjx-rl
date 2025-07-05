@@ -1,7 +1,7 @@
 
 # Typing
 from collections.abc import Callable, Mapping
-from quadruped_mjx_rl import types
+from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.types import Params, PRNGKey
 
 # Supporting
@@ -16,7 +16,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from quadruped_mjx_rl.models import running_statistics
 
 # Sim
 from quadruped_mjx_rl.environments.pipeline_utils import System

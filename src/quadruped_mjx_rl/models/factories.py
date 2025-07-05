@@ -5,7 +5,7 @@ from etils.epath import PathLike
 from quadruped_mjx_rl.models import io
 
 # Math
-from quadruped_mjx_rl.models import running_statistics
+from quadruped_mjx_rl import running_statistics
 
 # Definitions
 from quadruped_mjx_rl.models.configs import (

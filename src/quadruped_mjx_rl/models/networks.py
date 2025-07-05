@@ -13,7 +13,7 @@ from quadruped_mjx_rl.types import (
 import jax
 import jax.numpy as jnp
 from flax import linen
-from quadruped_mjx_rl.models import running_statistics
+from quadruped_mjx_rl import running_statistics
 
 
 @dataclass

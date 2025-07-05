@@ -124,102 +124,6 @@ def _get_name(mj: mujoco.MjModel, i: int) -> str:
     return names[: names.find('\x00')]
 
 
-def _check_custom(mj: mujoco.MjModel, custom: dict[str, np.ndarray]) -> None:
-    """Validates fields in custom."""
-    if not (
-        0 <= custom['spring_mass_scale'] <= 1
-        and 0 <= custom['spring_inertia_scale'] <= 1
-    ):
-        raise ValueError('Spring inertia and mass scale must be in [0, 1].')
-    if 'init_qpos' in custom and custom['init_qpos'].shape[0] != mj.nq:
-        size = custom['init_qpos'].shape[0]
-        raise ValueError(
-            f'init_qpos had length {size} but expected length {mj.nq}.'
-        )
-
-
-def _get_custom(mj: mujoco.MjModel) -> dict[str, np.ndarray]:
-    """Gets custom mjcf parameters for brax, with defaults."""
-    default = {
-        'ang_damping': (0.0, None),
-        'vel_damping': (0.0, None),
-        'baumgarte_erp': (0.1, None),
-        'spring_mass_scale': (0.0, None),
-        'spring_inertia_scale': (0.0, None),
-        'joint_scale_pos': (0.5, None),
-        'joint_scale_ang': (0.2, None),
-        'collide_scale': (1.0, None),
-        'matrix_inv_iterations': (10, None),
-        'solver_maxls': (20, None),
-        'elasticity': (0.0, 'geom'),
-        'constraint_stiffness': (2000.0, 'body'),
-        'constraint_limit_stiffness': (1000.0, 'body'),
-        'constraint_ang_damping': (0.0, 'body'),
-        'constraint_vel_damping': (0.0, 'body'),
-    }
-
-    # add user provided overrides to the defaults
-    for i, ni in enumerate(mj.name_numericadr):
-        nsize = mj.numeric_size[i]
-        name = _get_name(mj, ni)
-        val = mj.numeric_data[mj.numeric_adr[i]: mj.numeric_adr[i] + nsize]
-        typ = default[name][1] if name in default else None
-        default[name] = (val, typ)
-
-    # gather custom overrides with correct sizes
-    custom = {}
-    for name, (val, typ) in default.items():
-        val = np.array([val])
-        size = {
-            'body': mj.nbody - 1,  # ignore the world body
-            'geom': mj.ngeom,
-        }.get(typ, val.shape[-1])
-        if val.shape[-1] != size and val.shape[-1] > 1:
-            # the provided shape does not match against our default size
-            raise ValueError(
-                f'"{name}" custom arg needed {size} values for the "{typ}" type, '
-                f'but got {val.shape[-1]} values.'
-            )
-        elif val.shape[-1] != size and val.shape[-1] == 1:
-            val = np.repeat(val, size)
-        val = val.squeeze() if not typ else val.reshape(size)
-        if typ == 'body':
-            # pad one value for the world body, which gets dropped at Link creation
-            val = np.concatenate([[val[0]], val])
-        custom[name] = val
-
-    # get tuple custom overrides
-    for i, ni in enumerate(mj.name_tupleadr):
-        start, end = mj.tuple_adr[i], mj.tuple_adr[i] + mj.tuple_size[i]
-        objtype = mj.tuple_objtype[start:end]
-        name = _get_name(mj, ni)
-        if not all(objtype[0] == objtype):
-            raise NotImplementedError(
-                f'All tuple elements "{name}" should have the same object type.'
-            )
-        if objtype[0] not in [1, 5]:
-            raise NotImplementedError(
-                f'Custom tuple "{name}" with objtype=={objtype[0]} is not supported.'
-            )
-        typ = {1: 'body', 5: 'geom'}[objtype[0]]
-        if name in default and default[name][1] != typ:
-            raise ValueError(
-                f'Custom tuple "{name}" is expected to be associated with'
-                f' the {default[name][1]} objtype.'
-            )
-
-        size = {1: mj.nbody, 5: mj.ngeom}[objtype[0]]
-        default_val, _ = default.get(name, (0.0, None))
-        arr = np.repeat(default_val, size)
-        objid = mj.tuple_objid[start:end]
-        objprm = mj.tuple_objprm[start:end]
-        arr[objid] = objprm
-        custom[name] = arr
-
-    _check_custom(mj, custom)
-    return custom
-
-
 def validate_model(mj: mujoco.MjModel) -> None:
     """Checks if a MuJoCo model is compatible with brax physics pipelines."""
     if mj.opt.integrator != 0:
@@ -303,7 +207,6 @@ def validate_model(mj: mujoco.MjModel) -> None:
 
 def load_model(mj: mujoco.MjModel) -> System:
     """Creates a brax system from a MuJoCo model."""
-    custom = _get_custom(mj)
 
     # create links
     joint_positions = [np.array([0.0, 0.0, 0.0])]
@@ -323,10 +226,6 @@ def load_model(mj: mujoco.MjModel) -> System:
         ),
         invweight=mj.body_invweight0[:, 0],
         joint=Transform(pos=joint_position, rot=identity),
-        constraint_stiffness=custom['constraint_stiffness'],
-        constraint_vel_damping=custom['constraint_vel_damping'],
-        constraint_limit_stiffness=custom['constraint_limit_stiffness'],
-        constraint_ang_damping=custom['constraint_ang_damping'],
     )
     # skip link 0 which is the world body in mujoco
     # copy to avoid writing to mj model
@@ -436,26 +335,14 @@ def load_model(mj: mujoco.MjModel) -> System:
         gravity=mj.opt.gravity,
         viscosity=mj.opt.viscosity,
         density=mj.opt.density,
-        elasticity=custom['elasticity'],
         link=link,
         dof=dof,
         actuator=actuator,
-        init_q=custom['init_qpos'] if 'init_qpos' in custom else mj.qpos0,
-        vel_damping=custom['vel_damping'],
-        ang_damping=custom['ang_damping'],
-        baumgarte_erp=custom['baumgarte_erp'],
-        spring_mass_scale=custom['spring_mass_scale'],
-        spring_inertia_scale=custom['spring_inertia_scale'],
-        joint_scale_ang=custom['joint_scale_ang'],
-        joint_scale_pos=custom['joint_scale_pos'],
-        collide_scale=custom['collide_scale'],
+        init_q=mj.qpos0,
         enable_fluid=(mj.opt.viscosity > 0) | (mj.opt.density > 0),
         link_names=link_names,
         link_types=link_types,
         link_parents=link_parents,
-        matrix_inv_iterations=int(custom['matrix_inv_iterations']),
-        solver_iterations=mj.opt.iterations,
-        solver_maxls=int(custom['solver_maxls']),
         mj_model=mj,
         **mjx_model.__dict__,
     )

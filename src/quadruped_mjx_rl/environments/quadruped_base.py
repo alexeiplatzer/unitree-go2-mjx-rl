@@ -94,7 +94,7 @@ class EnvironmentConfig(Configuration):
     def from_dict(cls, config_dict: dict) -> Configuration:
         environment_class_key = config_dict.pop("environment_class")
         environment_config_class = _environment_config_classes[environment_class_key]
-        return super(Configuration, environment_config_class).from_dict(config_dict)
+        return super(EnvironmentConfig, environment_config_class).from_dict(config_dict)
 
     def to_dict(self) -> dict:
         config_dict = super().to_dict()

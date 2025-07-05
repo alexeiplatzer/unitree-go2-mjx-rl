@@ -29,5 +29,5 @@ def register_config_base_class(config_base_class: type[Configuration]):
 def configs_from_dicts(config_dicts: dict[str, dict]) -> dict[str, Configuration]:
     return {
         key: _key_to_config_base_class[key].from_dict(config_dict)
-        for key, config_dict in config_dicts
+        for key, config_dict in config_dicts.items()
     }

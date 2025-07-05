@@ -2,7 +2,7 @@
 
 from typing import Any, NamedTuple, Tuple, TypeVar, Protocol
 from collections.abc import Mapping
-from quadruped_mjx_rl.models.running_statistics import NestedArray
+from quadruped_mjx_rl.running_statistics import NestedArray
 from jax.numpy import ndarray
 
 Params = Any

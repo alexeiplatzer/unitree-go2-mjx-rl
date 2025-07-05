@@ -13,7 +13,7 @@ import jax.numpy as jnp
 from flax import struct as flax_struct
 
 # Sim
-from quadruped_mjx_rl.models import running_statistics
+from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.base import Env, System
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 

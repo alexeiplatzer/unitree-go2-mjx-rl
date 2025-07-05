@@ -1,4 +1,4 @@
-rendering:
+render:
   command:
     ang_vel: 0.0
     x_vel: 0.5
@@ -6,5 +6,4 @@ rendering:
   episode_length: 1000
   n_steps: 500
   render_every: 2
-  rendering_class: default
   seed: 0

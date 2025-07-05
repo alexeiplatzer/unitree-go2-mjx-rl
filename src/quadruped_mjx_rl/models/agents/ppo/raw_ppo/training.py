@@ -1,7 +1,7 @@
 
 # Typing
 from collections.abc import Callable
-from quadruped_mjx_rl import types
+from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.types import Params, PRNGKey
 
 # Supporting
@@ -16,7 +16,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from quadruped_mjx_rl.models import running_statistics
 
 # Sim
 from quadruped_mjx_rl.environments.pipeline_utils import System
@@ -385,7 +384,7 @@ def train(
 
     def training_epoch(
         training_state: TrainingState, state: State, key: PRNGKey
-    ) -> tuple[TrainingState, State, _utils.Metrics]:
+    ) -> tuple[TrainingState, State, types.Metrics]:
         (training_state, state, _), loss_metrics = jax.lax.scan(
             training_step,
             (training_state, state, key),

@@ -313,12 +313,6 @@ class Link(Base):
     joint: Transform
     inertia: Inertia
     invweight: jax.Array
-    # only used by `brax.physics.spring`:
-    constraint_stiffness: jax.Array
-    constraint_vel_damping: jax.Array
-    constraint_limit_stiffness: jax.Array
-    # only used by `brax.physics.spring` and `brax.physics.positional`:
-    constraint_ang_damping: jax.Array
 
 
 @flax_struct.dataclass
@@ -441,10 +435,6 @@ class System(mjx.Model):
     link_names: list[str] = flax_struct.field(pytree_node=False)
     link_types: str = flax_struct.field(pytree_node=False)
     link_parents: tuple[int, ...] = flax_struct.field(pytree_node=False)
-    # only used in `brax.physics.generalized`:
-    matrix_inv_iterations: int = flax_struct.field(pytree_node=False)
-    solver_iterations: int = flax_struct.field(pytree_node=False)
-    solver_maxls: int = flax_struct.field(pytree_node=False)
     mj_model: mujoco.MjModel = flax_struct.field(pytree_node=False, default=None)
 
     def num_links(self) -> int:

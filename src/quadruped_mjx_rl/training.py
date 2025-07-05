@@ -57,7 +57,7 @@ class TrainingConfig(Configuration):
     def from_dict(cls, config_dict: dict) -> Configuration:
         training_class_key = config_dict.pop("training_class")
         training_config_class = _training_config_classes[training_class_key]
-        return super(Configuration, training_config_class).from_dict(config_dict)
+        return super(TrainingConfig, training_config_class).from_dict(config_dict)
 
     def to_dict(self) -> dict:
         config_dict = super().to_dict()
@@ -186,7 +186,7 @@ def get_training_fn(
     vision: bool = False,
 ):
     networks_factory = get_networks_factory(model_config)
-    training_params = asdict(training_config)
+    training_params = training_config.to_dict()
     training_params.pop("training_class")
     learning_rate = training_params.pop("learning_rate")
     if vision and training_params.get("num_eval_envs", 0) != training_params["num_envs"]:
