@@ -1,23 +1,29 @@
+
+# Typing
 from dataclasses import dataclass, field
 
-import jax
-import jax.numpy as jnp
-import mujoco
-import numpy as np
-from brax.base import State as PipelineState
-from brax.base import System
+# Supporting
 from etils.epath import PathLike
 
+# Math
+import jax
+import jax.numpy as jnp
+import numpy as np
+
+# Sim
+import mujoco
+
+from quadruped_mjx_rl.environments import QuadrupedBaseEnv
+from brax.base import System, State as PipelineState
+from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
+
+# Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
-    environment_config_classes,
-    configs_to_env_classes,
 )
-
-_ENVIRONMENT_CLASS = "QuadrupedVision"
 
 
 def adjust_brightness(img, scale):
@@ -27,7 +33,6 @@ def adjust_brightness(img, scale):
 
 @dataclass
 class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
-    environment_class: str = _ENVIRONMENT_CLASS
     use_vision: bool = True
 
     @dataclass
@@ -36,8 +41,16 @@ class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
 
     observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
 
+    @classmethod
+    def environment_class_key(cls) -> str:
+        return "QuadrupedVision"
 
-environment_config_classes[_ENVIRONMENT_CLASS] = QuadrupedVisionEnvConfig
+    @classmethod
+    def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
+        return QuadrupedVisionEnvironment
+
+
+register_environment_config_class(QuadrupedVisionEnvConfig)
 
 
 class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
@@ -123,6 +136,3 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
             obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
         return obs
-
-
-configs_to_env_classes[QuadrupedVisionEnvConfig] = QuadrupedVisionEnvironment

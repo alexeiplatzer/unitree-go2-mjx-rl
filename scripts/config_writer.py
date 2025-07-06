@@ -1,5 +1,5 @@
 from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import robots, environments, models
+from quadruped_mjx_rl import robots, environments, models, training, policy_rendering
 
 import paths
 
@@ -20,13 +20,13 @@ if __name__ == "__main__":
     )
 
     # --- Reinforcement learning configs ---
-    raw_ppo_env_config = environments.EnhancedEnvironmentConfig()
+    raw_ppo_env_config = environments.JoystickBaseEnvConfig()
     raw_ppo_model_config = models.ActorCriticConfig()
 
     guided_ppo_env_config = environments.TeacherStudentEnvironmentConfig()
     guided_ppo_model_config = models.TeacherStudentConfig()
 
-    ppo_training_config = cfg.TrainingConfig()
+    ppo_training_config = training.TrainingConfig()
 
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "raw_ppo.yaml",
@@ -45,5 +45,5 @@ if __name__ == "__main__":
     # --- Example rendering config ---
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "render_basic.yaml",
-        cfg.RenderConfig(),
+        policy_rendering.RenderConfig(),
     )

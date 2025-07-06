@@ -1,6 +1,6 @@
 import jax
 import jax.numpy as jnp
-from brax.training import types
+from quadruped_mjx_rl import types
 
 from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
 from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks

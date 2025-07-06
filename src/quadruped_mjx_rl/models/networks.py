@@ -1,20 +1,28 @@
-import dataclasses
-from collections.abc import Callable, Mapping
+"""Utility functions for instantiating neural networks."""
 
+# Typing
+from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from quadruped_mjx_rl.types import (
+    ObservationSize,
+    PreprocessObservationFn,
+    identity_observation_preprocessor,
+)
+
+# Math
 import jax
 import jax.numpy as jnp
-from brax.training import types
-from brax.training.acme import running_statistics
 from flax import linen
+from quadruped_mjx_rl import running_statistics
 
 
-@dataclasses.dataclass
+@dataclass
 class FeedForwardNetwork:
     init: Callable
     apply: Callable
 
 
-def _get_obs_state_size(obs_size: types.ObservationSize, obs_key: str) -> int:
+def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:
     obs_size = obs_size[obs_key] if isinstance(obs_size, Mapping) else obs_size
     return jax.tree_util.tree_flatten(obs_size)[0][-1]
 
@@ -32,10 +40,8 @@ def normalizer_select(
 
 def make_network(
     module: linen.Module,
-    obs_size: types.ObservationSize,
-    preprocess_observations_fn: types.PreprocessObservationFn = (
-        types.identity_observation_preprocessor
-    ),
+    obs_size: ObservationSize,
+    preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     obs_keys: str | tuple[str, ...] = "state",
     squeeze_output: bool = False,
 ):

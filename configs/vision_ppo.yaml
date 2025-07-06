@@ -99,4 +99,3 @@ vision:
   render_height: 64
   render_width: 128
   use_rasterizer: false
-  vision_class: default

@@ -1,18 +1,20 @@
+# Typing
 from collections.abc import Callable
 
-from functools import partial
+# Supporting
+import functools
 
+# Math
 import jax
 from jax import numpy as jnp
 
+# Sim
 from brax.base import System
-from brax.envs.base import Wrapper, Env, State
+from brax.envs.base import Env, Wrapper, State
 from brax.envs.wrappers.training import (
-    VmapWrapper,
-    DomainRandomizationVmapWrapper,
-    EpisodeWrapper,
-    AutoResetWrapper,
+    VmapWrapper, DomainRandomizationVmapWrapper, EpisodeWrapper, AutoResetWrapper
 )
+
 
 
 def wrap_for_training(
@@ -23,21 +25,22 @@ def wrap_for_training(
     vision: bool = False,
     num_vision_envs: int = 1,
 ) -> Wrapper:
-    """Common wrapper pattern for all training agents.
+    """
+    Common wrapper pattern for all training agents.
 
-  Args:
-      env: environment to be wrapped
-      episode_length: length of episode
-      action_repeat: how many repeated actions to take per step
-      randomization_fn: randomization function that produces a vectorized system
-          and in_axes to vmap over
-      vision: whether the environment will be vision-based
-      num_vision_envs: number of environments the renderer should generate,
-          should equal the number of batched envs
+    Args:
+        env: environment to be wrapped
+        episode_length: length of episode
+        action_repeat: how many repeated actions to take per step
+        randomization_fn: randomization function that produces a vectorized system
+            and in_axes to vmap over
+        vision: whether the environment will be vision-based
+        num_vision_envs: number of environments the renderer should generate,
+            should equal the number of batched envs
 
-  Returns:
-      An environment that is wrapped with Episode and AutoReset wrappers.  If the
-      environment did not already have batch dimensions, it is additionally Vmap-wrapped.
+    Returns:
+        An environment that is wrapped with Episode and AutoReset wrappers.  If the
+        environment did not already have batch dimensions, it is additionally Vmap-wrapped.
   """
     if vision:
         env = MadronaWrapper(env, num_vision_envs, randomization_fn)
@@ -131,9 +134,11 @@ class MadronaWrapper(Wrapper):
         randomization_fn: Callable[[System], tuple[System, System]] | None = None,
     ):
         if not randomization_fn:
-            randomization_fn = partial(_identity_vision_randomization_fn, num_worlds=num_worlds)
+            randomization_fn = functools.partial(
+                _identity_vision_randomization_fn, num_worlds=num_worlds
+            )
         else:
-            randomization_fn = partial(
+            randomization_fn = functools.partial(
                 _supplement_vision_randomization_fn,
                 randomization_fn=randomization_fn,
                 num_worlds=num_worlds,

@@ -1,15 +1,2 @@
-from quadruped_mjx_rl.environments import environment_config_classes
-from quadruped_mjx_rl.environments import EnvironmentConfig
-from quadruped_mjx_rl.models import model_config_classes
-from quadruped_mjx_rl.models import ModelConfig
-from quadruped_mjx_rl.rendering import RenderConfig
-from quadruped_mjx_rl.rendering import rendering_config_classes
-from quadruped_mjx_rl.robots import robot_config_classes
-from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.training import training_config_classes
-from quadruped_mjx_rl.training import TrainingConfig
-from quadruped_mjx_rl.robotic_vision import vision_config_classes
-from quadruped_mjx_rl.robotic_vision import VisionConfig
-
-from quadruped_mjx_rl.config_utils.config_keys import ConfigKey, AnyConfig
+from quadruped_mjx_rl.config_utils.config_base import Configuration, register_config_base_class
 from quadruped_mjx_rl.config_utils.file_configs import save_configs, prepare_configs

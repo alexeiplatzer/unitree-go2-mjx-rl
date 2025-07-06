@@ -1,40 +1,43 @@
-import functools
-import time
-from collections.abc import Callable, Mapping
 
+# Typing
+from collections.abc import Callable, Mapping
+from quadruped_mjx_rl import running_statistics, types
+from quadruped_mjx_rl.types import Params, PRNGKey
+
+# Supporting
+import time
+import functools
 from absl import logging
-from brax import base
-from brax import envs
-from brax.training import acting
-from brax.training import gradients
-from brax.training import logger as metric_logger
-from brax.training import pmap
-from brax.training import types
-from brax.training.acme import running_statistics
-from brax.training.acme import specs
-from brax.training.agents.ppo import checkpoint
-from brax.training.types import Params
-from brax.training.types import PRNGKey
-import flax
+from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
+
+# Math
+from flax.struct import dataclass as flax_dataclass
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
 
+# Sim
+from brax.base import System
+from brax.envs.base import Env, State
+from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
+
+# Networks
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
+    TeacherNetworkParams,
+    StudentNetworkParams,
+)
 from quadruped_mjx_rl.models.architectures import guided_actor_critic as ppo_networks
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import TeacherNetworkParams
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import StudentNetworkParams
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import compute_teacher_loss
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import compute_student_loss
-from quadruped_mjx_rl.models.agents.ppo import _training_utils as utils
+from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import (
+    compute_teacher_loss, compute_student_loss
+)
 
 InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 
 
-@flax.struct.dataclass
+@flax_dataclass
 class TrainingState:
     """Contains training state for the learner."""
-
     teacher_optimizer_state: optax.OptState
     teacher_params: TeacherNetworkParams
     student_optimizer_state: optax.OptState
@@ -44,7 +47,7 @@ class TrainingState:
 
 
 def train(
-    environment: envs.Env,
+    environment: Env,
     num_timesteps: int,
     max_devices_per_host: int | None = None,
     # high-level control flow
@@ -57,7 +60,7 @@ def train(
     action_repeat: int = 1,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[base.System, jnp.ndarray], tuple[base.System, base.System]] | None
+        Callable[[System, jnp.ndarray], tuple[System, System]] | None
     ) = None,
     # Teacher network
     teacher_network_factory: types.NetworkFactory[
@@ -87,7 +90,7 @@ def train(
     seed: int = 0,
     # evaluation settings
     num_evals: int = 1,
-    eval_env: envs.Env | None = None,
+    eval_env: Env | None = None,
     num_eval_envs: int = 128,
     deterministic_eval: bool = False,
     # training metrics
@@ -97,14 +100,12 @@ def train(
     progress_fn: Callable[[int, ...], None] = lambda *args: None,
     policy_params_fn: Callable[..., None] = lambda *args: None,
     # checkpointing
-    save_checkpoint_path: str | None = None,
-    restore_checkpoint_path: str | None = None,
     restore_params=None,
     restore_value_fn: bool = True,
 ):
     # Check arguments
     assert batch_size * num_minibatches % num_envs == 0
-    utils.validate_madrona_args(
+    _utils.validate_madrona_args(
         madrona_backend, num_envs, num_eval_envs, action_repeat, eval_env
     )
 
@@ -151,7 +152,7 @@ def train(
 
     assert num_envs % device_count == 0
 
-    env = utils.maybe_wrap_env(
+    env = _utils.maybe_wrap_env(
         environment,
         wrap_env,
         num_envs,
@@ -233,10 +234,10 @@ def train(
     )
 
     teacher_gradient_update_fn = gradients.gradient_update_fn(
-        teacher_loss_fn, teacher_optimizer, pmap_axis_name=utils.PMAP_AXIS_NAME, has_aux=True
+        teacher_loss_fn, teacher_optimizer, pmap_axis_name=_utils.PMAP_AXIS_NAME, has_aux=True
     )
     student_gradient_update_fn = gradients.gradient_update_fn(
-        student_loss_fn, student_optimizer, pmap_axis_name=utils.PMAP_AXIS_NAME, has_aux=True
+        student_loss_fn, student_optimizer, pmap_axis_name=_utils.PMAP_AXIS_NAME, has_aux=True
     )
 
     metrics_aggregator = metric_logger.EpisodeMetricsLogger(
@@ -290,7 +291,7 @@ def train(
 
         if augment_pixels:
             key, key_rt = jax.random.split(key)
-            r_translate = functools.partial(utils.random_translate_pixels, key=key_rt)
+            r_translate = functools.partial(_utils.random_translate_pixels, key=key_rt)
             data = types.Transition(
                 observation=r_translate(data.observation),
                 action=data.action,
@@ -315,8 +316,8 @@ def train(
         return (t_opt_state, t_params, s_opt_state, s_params, key), metrics
 
     def training_step(
-        carry: tuple[TrainingState, envs.State, PRNGKey], unused_t
-    ) -> tuple[tuple[TrainingState, envs.State, PRNGKey], utils.Metrics]:
+        carry: tuple[TrainingState, State, PRNGKey], unused_t
+    ) -> tuple[tuple[TrainingState, State, PRNGKey], types.Metrics]:
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
@@ -363,8 +364,8 @@ def train(
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(
             training_state.normalizer_params,
-            utils.remove_pixels(data.observation),
-            pmap_axis_name=utils.PMAP_AXIS_NAME,
+            _utils.remove_pixels(data.observation),
+            pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
         (t_opt_state, t_params, s_opt_state, s_params, ignore_key), metrics = jax.lax.scan(
@@ -391,8 +392,8 @@ def train(
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: envs.State, key: PRNGKey
-    ) -> tuple[TrainingState, envs.State, utils.Metrics]:
+        training_state: TrainingState, state: State, key: PRNGKey
+    ) -> tuple[TrainingState, State, types.Metrics]:
         (training_state, state, ignored_key), loss_metrics = jax.lax.scan(
             training_step,
             (training_state, state, key),
@@ -402,17 +403,17 @@ def train(
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
         return training_state, state, loss_metrics
 
-    training_epoch = jax.pmap(training_epoch, axis_name=utils.PMAP_AXIS_NAME)
+    training_epoch = jax.pmap(training_epoch, axis_name=_utils.PMAP_AXIS_NAME)
 
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
-        training_state: TrainingState, env_state: envs.State, key: PRNGKey
-    ) -> tuple[TrainingState, envs.State, utils.Metrics]:
+        training_state: TrainingState, env_state: State, key: PRNGKey
+    ) -> tuple[TrainingState, State, types.Metrics]:
         nonlocal training_walltime
         t = time.time()
-        training_state, env_state = utils.strip_weak_type((training_state, env_state))
+        training_state, env_state = _utils.strip_weak_type((training_state, env_state))
         result = training_epoch(training_state, env_state, key)
-        training_state, env_state, metrics = utils.strip_weak_type(result)
+        training_state, env_state, metrics = _utils.strip_weak_type(result)
 
         metrics = jax.tree_util.tree_map(jnp.mean, metrics)
         jax.tree_util.tree_map(lambda x: x.block_until_ready(), metrics)
@@ -443,33 +444,29 @@ def train(
     )
 
     obs_shape = jax.tree_util.tree_map(
-        lambda x: specs.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
+        lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
     )
     training_state = TrainingState(
         teacher_optimizer_state=teacher_optimizer.init(teacher_init_params),
         teacher_params=teacher_init_params,
         student_optimizer_state=student_optimizer.init(student_init_params),
         student_params=student_init_params,
-        normalizer_params=running_statistics.init_state(utils.remove_pixels(obs_shape)),
+        normalizer_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
         env_steps=jnp.array(0, dtype=jnp.int64),
     )
 
-    # TODO implement checkpoint support
-    # if restore_checkpoint_path is not None:
-    #     params = checkpoint.load(restore_checkpoint_path)
-    #     value_params = params[2] if restore_value_fn else init_params.value
-    #     training_state = training_state.replace(
-    #         normalizer_params=params[0],
-    #         params=training_state.params.replace(policy=params[1], value=value_params),
-    #     )
-    #
-    # if restore_params is not None:
-    #     logging.info("Restoring TrainingState from `restore_params`.")
-    #     value_params = restore_params[2] if restore_value_fn else init_params.value
-    #     training_state = training_state.replace(
-    #         normalizer_params=restore_params[0],
-    #         params=training_state.params.replace(policy=restore_params[1], value=value_params),
-    #     )
+    if restore_params is not None:
+        logging.info("Restoring TrainingState from `restore_params`.")
+        value_params = restore_params[3] if restore_value_fn else teacher_init_params.value
+        training_state = training_state.replace(
+            normalizer_params=restore_params[0],
+            teacher_params=training_state.teacher_params.replace(
+                encoder=restore_params[1], policy=restore_params[2], value=value_params
+            ),
+            student_params=training_state.student_params.replace(
+                encoder=restore_params[4],
+            )
+        )
 
     if num_timesteps == 0:
         return (
@@ -488,7 +485,7 @@ def train(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
 
-    eval_env = utils.maybe_wrap_env(
+    eval_env = _utils.maybe_wrap_env(
         eval_env or environment,
         wrap_env,
         num_eval_envs,
@@ -522,7 +519,7 @@ def train(
     student_metrics = {}
     if process_id == 0 and num_evals > 1:
         teacher_metrics = teacher_evaluator.run_evaluation(
-            utils.unpmap(
+            _utils.unpmap(
                 (
                     training_state.normalizer_params,
                     training_state.teacher_params.encoder,
@@ -536,7 +533,7 @@ def train(
         progress_fn(0, teacher_metrics)
 
         student_metrics = student_evaluator.run_evaluation(
-            utils.unpmap(
+            _utils.unpmap(
                 (
                     training_state.normalizer_params,
                     training_state.student_params.encoder,
@@ -547,8 +544,6 @@ def train(
         )
         logging.info(student_metrics)
         progress_fn(0, student_metrics)
-
-    # TODO VVV
 
     training_metrics = {}
     training_walltime = 0
@@ -563,19 +558,18 @@ def train(
             (training_state, env_state, training_metrics) = training_epoch_with_timing(
                 training_state, env_state, epoch_keys
             )
-            current_step = int(utils.unpmap(training_state.env_steps))
+            current_step = int(_utils.unpmap(training_state.env_steps))
 
             key_envs = jax.vmap(lambda x, s: jax.random.split(x[0], s), in_axes=(0, None))(
                 key_envs, key_envs.shape[1]
             )
-            # TODO: move extra reset logic to the AutoResetWrapper.
             env_state = reset_fn(key_envs) if num_resets_per_eval > 0 else env_state
 
         if process_id != 0:
             continue
 
         # Process id == 0.
-        teacher_params = utils.unpmap(
+        teacher_params = _utils.unpmap(
             (
                 training_state.normalizer_params,
                 training_state.teacher_params.encoder,
@@ -583,7 +577,7 @@ def train(
                 training_state.teacher_params.value,
             )
         )
-        student_params = utils.unpmap(
+        student_params = _utils.unpmap(
             (
                 training_state.normalizer_params,
                 training_state.student_params.encoder,
@@ -591,16 +585,7 @@ def train(
             )
         )
 
-        policy_params_fn(current_step, make_teacher_policy, teacher_params)  # TODO: what?
-
-        # if save_checkpoint_path is not None:
-        #     ckpt_config = checkpoint.network_config(
-        #         observation_size=obs_shape,
-        #         action_size=env.action_size,
-        #         normalize_observations=normalize_observations,
-        #         network_factory=network_factory,
-        #     )
-        #     checkpoint.save(save_checkpoint_path, current_step, params, ckpt_config)
+        policy_params_fn(current_step, make_teacher_policy, teacher_params)
 
         if num_evals > 0:
             teacher_metrics = teacher_evaluator.run_evaluation(
@@ -625,7 +610,7 @@ def train(
     # If there were no mistakes, the training_state should still be identical on all
     # devices.
     pmap.assert_is_replicated(training_state)
-    teacher_params = utils.unpmap(
+    teacher_params = _utils.unpmap(
         (
             training_state.normalizer_params,
             training_state.teacher_params.encoder,
@@ -633,7 +618,7 @@ def train(
             training_state.teacher_params.value,
         )
     )
-    student_params = utils.unpmap(
+    student_params = _utils.unpmap(
         (
             training_state.normalizer_params,
             training_state.student_params.encoder,

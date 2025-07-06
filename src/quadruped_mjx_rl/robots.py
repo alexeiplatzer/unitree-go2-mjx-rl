@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 
 
 @dataclass
-class RobotConfig:
+class RobotConfig(Configuration):
     robot_name: str
     scene_file: str
     initial_keyframe: str
@@ -26,11 +27,12 @@ class RobotConfig:
 
     robot_class: str = "Quadruped"
 
+    @classmethod
+    def config_base_class_key(cls) -> str:
+        return "robot"
 
-robot_config_classes = {
-    "Quadruped": RobotConfig,
-    "default": RobotConfig,
-}
+
+register_config_base_class(RobotConfig)
 
 
 def unitree_go2_config() -> RobotConfig:

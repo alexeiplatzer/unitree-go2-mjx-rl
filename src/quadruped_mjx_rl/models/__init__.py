@@ -5,4 +5,3 @@ from quadruped_mjx_rl.models.configs import (
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
 )
-from quadruped_mjx_rl.models.configs import model_config_classes

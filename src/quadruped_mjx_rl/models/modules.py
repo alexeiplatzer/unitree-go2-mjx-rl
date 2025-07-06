@@ -1,6 +1,9 @@
-import dataclasses
+"""Definitions of neural network modules."""
+
+# Typing
 from collections.abc import Callable, Sequence
 
+# Math
 import jax
 import jax.numpy as jnp
 from flax import linen

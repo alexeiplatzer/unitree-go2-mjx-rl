@@ -1,6 +1,7 @@
 """Quadruped Joytick environment adapted for PPO training."""
 
-from dataclasses import dataclass, field
+# Typing
+from dataclasses import dataclass
 
 # Supporting
 from etils.epath import PathLike
@@ -9,31 +10,31 @@ from etils.epath import PathLike
 import jax
 import jax.numpy as jnp
 
-# Brax
-from brax import math
-from brax.base import Motion, System, Transform
+# Sim
+from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from brax.base import State as PipelineState
-from brax.envs.base import State
+from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
 
-
+# Definitions
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
-    environment_config_classes,
-    configs_to_env_classes,
 )
-
-
-_ENVIRONMENT_CLASS = "TeacherStudent"
 
 
 @dataclass
 class TeacherStudentEnvironmentConfig(JoystickBaseEnvConfig):
-    environment_class: str = _ENVIRONMENT_CLASS
+    @classmethod
+    def environment_class_key(cls) -> str:
+        return "TeacherStudent"
+
+    @classmethod
+    def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
+        return QuadrupedJoystickTeacherStudentEnv
 
 
-environment_config_classes[_ENVIRONMENT_CLASS] = TeacherStudentEnvironmentConfig
+register_environment_config_class(TeacherStudentEnvironmentConfig)
 
 
 class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
@@ -92,6 +93,3 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
                 # self.sys.body_mass[0],
             ]
         )
-
-
-configs_to_env_classes[TeacherStudentEnvironmentConfig] = QuadrupedJoystickTeacherStudentEnv

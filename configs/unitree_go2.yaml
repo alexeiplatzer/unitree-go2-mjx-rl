@@ -21,8 +21,8 @@ robot:
     rear_left: RL_calf
     rear_right: RR_calf
   lower_leg_name: calf
+  main_body_name: base
   robot_class: Quadruped
   robot_name: unitree_go2
   scene_file: scene_mjx.xml
-  torso_name: base
   upper_leg_name: thigh

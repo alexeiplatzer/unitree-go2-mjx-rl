@@ -1,9 +1,13 @@
+
+# Supporting
+import functools
 from etils.epath import PathLike
-from functools import partial
+from quadruped_mjx_rl.models import io
 
-from brax.training.acme import running_statistics
-from brax.io import model
+# Math
+from quadruped_mjx_rl import running_statistics
 
+# Definitions
 from quadruped_mjx_rl.models.configs import (
     ModelConfig,
     ActorCriticConfig,
@@ -22,11 +26,11 @@ from quadruped_mjx_rl.models.architectures import (
 def get_networks_factory(
     model_config: ModelConfig,
 ) -> (
-    dict[str, partial[TeacherNetworks] | partial[StudentNetworks]]
-    | partial[ActorCriticNetworks]
+    dict[str, functools.partial[TeacherNetworks] | functools.partial[StudentNetworks]]
+    | functools.partial[ActorCriticNetworks]
 ):
     if isinstance(model_config, TeacherStudentVisionConfig):
-        teacher_factory = partial(
+        teacher_factory = functools.partial(
             guided_networks.make_teacher_networks,
             policy_hidden_layer_sizes=model_config.modules.policy,
             value_hidden_layer_sizes=model_config.modules.value,
@@ -35,7 +39,7 @@ def get_networks_factory(
             encoder_convolutional_layer_sizes=model_config.modules.encoder_convolutional,
             encoder_obs_key="pixels/view_terrain",
         )
-        student_factory = partial(
+        student_factory = functools.partial(
             guided_networks.make_student_networks,
             latent_representation_size=model_config.latent_size,
             adapter_hidden_layer_sizes=model_config.modules.adapter_dense,
@@ -44,21 +48,21 @@ def get_networks_factory(
         )
         return {"teacher": teacher_factory, "student": student_factory}
     if isinstance(model_config, TeacherStudentConfig):
-        teacher_factory = partial(
+        teacher_factory = functools.partial(
             guided_networks.make_teacher_networks,
             policy_hidden_layer_sizes=model_config.modules.policy,
             value_hidden_layer_sizes=model_config.modules.value,
             latent_representation_size=model_config.latent_size,
             encoder_hidden_layer_sizes=model_config.modules.encoder,
         )
-        student_factory = partial(
+        student_factory = functools.partial(
             guided_networks.make_student_networks,
             latent_representation_size=model_config.latent_size,
             adapter_hidden_layer_sizes=model_config.modules.adapter,
         )
         return {"teacher": teacher_factory, "student": student_factory}
     if isinstance(model_config, ActorCriticConfig):
-        return partial(
+        return functools.partial(
             raw_networks.make_networks,
             policy_hidden_layer_sizes=model_config.modules.policy,
             value_hidden_layer_sizes=model_config.modules.value,
@@ -71,7 +75,7 @@ def load_inference_fn(
     model_config: ModelConfig,
     action_size: int,
 ):
-    params = model.load_params(model_path)
+    params = io.load_params(model_path)
     network_factories = get_networks_factory(model_config)
     if isinstance(model_config, TeacherStudentConfig):
         teacher_params, student_params = params

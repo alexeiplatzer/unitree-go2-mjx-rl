@@ -1,31 +1,30 @@
 # Typing
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from collections.abc import Sequence
-from abc import ABC, abstractmethod
+
+# Supporting
+from etils.epath import PathLike
 
 # Math
 import jax
 import jax.numpy as jnp
+import numpy as np
+from quadruped_mjx_rl import math
 
 # Sim
 import mujoco
-import numpy as np
+from brax.base import System, State as PipelineState
+from brax.envs.base import State, PipelineEnv
+from brax.io.mjcf import load as load_system
 
-# Brax
-from brax import base
-from brax import math
-from brax.base import Motion, Transform
-from brax.base import State as PipelineState
-from brax.base import System
-from brax.envs.base import PipelineEnv, State
-from brax.io import mjcf
-from etils.epath import PathLike
 
+# Configs
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass
-class EnvironmentConfig(ABC):
+class EnvironmentConfig(Configuration):
     @dataclass
     class ObservationNoiseConfig:
         pass
@@ -79,12 +78,42 @@ class EnvironmentConfig(ABC):
 
     rewards: RewardConfig
 
-    environment_class: str = "default"
+    @classmethod
+    def config_base_class_key(cls) -> str:
+        return "environment"
+
+    @classmethod
+    def environment_class_key(cls) -> str:
+        return "QuadrupedBase"
+
+    @classmethod
+    def get_environment_class(cls) -> type["QuadrupedBaseEnv"]:
+        return QuadrupedBaseEnv
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> Configuration:
+        environment_class_key = config_dict.pop("environment_class")
+        environment_config_class = _environment_config_classes[environment_class_key]
+        return super(EnvironmentConfig, environment_config_class).from_dict(config_dict)
+
+    def to_dict(self) -> dict:
+        config_dict = super().to_dict()
+        config_dict["environment_class"] = type(self).environment_class_key()
+        return config_dict
 
 
-environment_config_classes = {
-    "default": EnvironmentConfig,
-}
+register_config_base_class(EnvironmentConfig)
+
+_environment_config_classes = {}
+
+
+def register_environment_config_class(environment_config_class: type[EnvironmentConfig]):
+    _environment_config_classes[
+        environment_config_class.environment_class_key()
+    ] = environment_config_class
+
+
+register_environment_config_class(EnvironmentConfig)
 
 
 class QuadrupedBaseEnv(PipelineEnv):
@@ -99,7 +128,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._dt = environment_config.sim.ctrl_dt
         n_frames = int(environment_config.sim.ctrl_dt / environment_config.sim.sim_dt)
         sys = self.make_system(init_scene_path, environment_config)
-        super().__init__(sys, backend="mjx", n_frames=n_frames)
+        super().__init__(sys, n_frames=n_frames)
 
         self._rewards_config = environment_config.rewards
         self.reward_scales = asdict(environment_config.rewards.scales)
@@ -164,7 +193,7 @@ class QuadrupedBaseEnv(PipelineEnv):
     def make_system(
         init_scene_path: PathLike, environment_config: EnvironmentConfig
     ) -> System:
-        sys = mjcf.load(init_scene_path)
+        sys = load_system(init_scene_path)
         sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
         sys = sys.replace(
             actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(
@@ -303,15 +332,10 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     def render(
         self,
-        trajectory: list[base.State],
+        trajectory: list[PipelineState],
         camera: str | None = None,
         width: int = 240,
         height: int = 320,
     ) -> Sequence[np.ndarray]:
         camera = camera or "track"
         return super().render(trajectory, camera=camera, width=width, height=height)
-
-
-configs_to_env_classes = {
-    EnvironmentConfig: QuadrupedBaseEnv,
-}

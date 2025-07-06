@@ -1,19 +1,20 @@
+
+# Supporting
+from etils.epath import PathLike
+
 # Math
 import jax
 import jax.numpy as jnp
-
-# Sim
 import numpy as np
 
-# Brax
-from brax.base import State as PipelineState
-from brax.base import System
+# Sim
+from brax.base import System, State as PipelineState
 from brax.envs.base import State
-from etils.epath import PathLike
 
+# Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.base import QuadrupedBaseEnv
+from quadruped_mjx_rl.environments.quadruped_base import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.joystick_base import JoystickBaseEnvConfig
 
 

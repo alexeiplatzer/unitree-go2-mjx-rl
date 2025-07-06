@@ -1,29 +1,34 @@
-import functools
-from collections.abc import Callable, Mapping
+"""Utility functions used for training models."""
 
-import flax
+# Typing
+from collections.abc import Callable, Mapping
+from quadruped_mjx_rl.types import PRNGKey
+
+# Supporting
+import functools
+
+# Math
 import jax
 import jax.numpy as jnp
-import optax
-from brax import base
-from brax import envs
-from brax.training import types
-from brax.training.acme import running_statistics
-from brax.training.types import PRNGKey
+from flax import struct as flax_struct
 
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import StudentNetworkParams
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import TeacherNetworkParams
+# Sim
+from quadruped_mjx_rl import running_statistics
+from brax.base import System
+from brax.envs.base import Env
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 
-Metrics = types.Metrics
+# ML
+import optax
+from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import StudentNetworkParams
+from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import TeacherNetworkParams
 
 PMAP_AXIS_NAME = "i"
 
 
-@flax.struct.dataclass
+@flax_struct.dataclass
 class TrainingState:
-    """Contains training state for the learner."""
-
+    """Contains the training state for the learner."""
     teacher_optimizer_state: optax.OptState
     teacher_params: TeacherNetworkParams
     student_optimizer_state: optax.OptState
@@ -51,7 +56,7 @@ def validate_madrona_args(
     num_envs: int,
     num_eval_envs: int,
     action_repeat: int,
-    eval_env: envs.Env | None = None,
+    eval_env: Env | None = None,
 ):
     """Validates arguments for Madrona-MJX."""
     if madrona_backend:
@@ -67,7 +72,7 @@ def validate_madrona_args(
 
 
 def maybe_wrap_env(
-    env: envs.Env,
+    env: Env,
     wrap_env: bool,
     num_envs: int,
     episode_length: int | None,
@@ -76,7 +81,7 @@ def maybe_wrap_env(
     key_env: PRNGKey,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[base.System, jnp.ndarray], tuple[base.System, base.System]] | None
+        Callable[[System, jnp.ndarray], tuple[System, System]] | None
     ) = None,
     vision: bool = False,
 ):
