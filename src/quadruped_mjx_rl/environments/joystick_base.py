@@ -12,9 +12,8 @@ import jax.numpy as jnp
 from quadruped_mjx_rl import math
 
 # Sim
-from quadruped_mjx_rl.environments.utils import Motion, Transform
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
-from quadruped_mjx_rl.environments.base import State
+from brax.base import System, State as PipelineState, Motion, Transform
+from brax.envs.base import State
 
 # Definitions
 from quadruped_mjx_rl.robots import RobotConfig

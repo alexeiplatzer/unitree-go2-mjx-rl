@@ -14,7 +14,7 @@ import numpy as np
 import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
+from brax.base import System, State as PipelineState
 from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
 
 # Definitions

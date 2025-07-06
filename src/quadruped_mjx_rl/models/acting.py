@@ -12,8 +12,8 @@ import jax
 import numpy as np
 
 # Sim
-from quadruped_mjx_rl.environments.base import Env, State
-from quadruped_mjx_rl.environments.wrappers import EvalWrapper
+from brax.envs.base import Env, State
+from brax.envs.wrappers.training import EvalWrapper
 
 
 def actor_step(

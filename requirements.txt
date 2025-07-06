@@ -7,7 +7,7 @@ ml_collections
 pyyaml
 dacite
 bidict
-jax==0.6.0
+jax==0.4.34
 numpy
 flax==0.10.6
 matplotlib

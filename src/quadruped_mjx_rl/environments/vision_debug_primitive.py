@@ -8,8 +8,8 @@ import jax.numpy as jnp
 import numpy as np
 
 # Sim
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
-from quadruped_mjx_rl.environments.base import State
+from brax.base import System, State as PipelineState
+from brax.envs.base import State
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig

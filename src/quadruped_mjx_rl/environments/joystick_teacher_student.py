@@ -10,9 +10,9 @@ from etils.epath import PathLike
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 # Sim
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState
+from quadruped_mjx_rl.environments import QuadrupedBaseEnv
+from brax.base import State as PipelineState
 from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
 
 # Definitions

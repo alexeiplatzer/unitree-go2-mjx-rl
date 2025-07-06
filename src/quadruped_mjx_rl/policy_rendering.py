@@ -12,7 +12,7 @@ import jax
 from jax import numpy as jnp
 
 # Sim
-from quadruped_mjx_rl.environments.base import PipelineEnv
+from brax.envs.base import PipelineEnv
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
 
 # IO

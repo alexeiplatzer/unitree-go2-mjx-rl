@@ -15,7 +15,7 @@ from orbax import checkpoint as ocp
 from quadruped_mjx_rl.models.io import save_params
 
 # Training
-from quadruped_mjx_rl.environments.base import Env
+from brax.envs.base import Env
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train

@@ -13,9 +13,9 @@ from quadruped_mjx_rl import math
 
 # Sim
 import mujoco
-from quadruped_mjx_rl.environments.loading import load as load_system
-from quadruped_mjx_rl.environments.base import PipelineEnv, State
-from quadruped_mjx_rl.environments.pipeline_utils import System, PipelineState
+from brax.base import System, State as PipelineState
+from brax.envs.base import State, PipelineEnv
+from brax.io.mjcf import load as load_system
 
 
 # Configs

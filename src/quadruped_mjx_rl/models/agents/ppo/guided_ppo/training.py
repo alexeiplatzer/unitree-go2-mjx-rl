@@ -18,8 +18,8 @@ import numpy as np
 import optax
 
 # Sim
-from quadruped_mjx_rl.environments.pipeline_utils import System
-from quadruped_mjx_rl.environments.base import Env, State
+from brax.base import System
+from brax.envs.base import Env, State
 from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
 
 # Networks
