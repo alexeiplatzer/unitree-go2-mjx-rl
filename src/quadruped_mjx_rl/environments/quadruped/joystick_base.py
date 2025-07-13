@@ -17,7 +17,7 @@ from brax.envs.base import State
 
 # Definitions
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.quadruped_base import (
+from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig as EnvCfg,
     QuadrupedBaseEnv,
     register_environment_config_class,

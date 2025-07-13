@@ -9,29 +9,34 @@ import numpy as np
 
 # Sim
 from brax.base import System, State as PipelineState
-from brax.envs.base import State
+from brax.envs.base import State, PipelineEnv
+from brax.io.mjcf import load as load_system
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.quadruped_base import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.joystick_base import JoystickBaseEnvConfig
+from quadruped_mjx_rl.environments.quadruped.base import QuadrupedBaseEnv
+from quadruped_mjx_rl.environments.quadruped.joystick_base import JoystickBaseEnvConfig
 
 
-class VisionDebugEnv(QuadrupedBaseEnv):
+class VisionDebugEnv(PipelineEnv):
     def __init__(
         self,
-        environment_config: JoystickBaseEnvConfig,
-        robot_config: RobotConfig,
         init_scene_path: PathLike,
         vision_config: VisionConfig,
+        sim_dt: float = 0.004,
+        ctrl_dt: float = 0.02,
     ):
-        super().__init__(environment_config, robot_config, init_scene_path)
+        sys = load_system(init_scene_path)
+        sys.tree_replace({"opt.timestep": sim_dt})
+        n_frames = int(ctrl_dt / sim_dt)
+        super().__init__(sys, n_frames=n_frames)
 
-        self.reward_scales = {}  # remove all the rewards form the joystick base config
+        self._init_q = sys.qpos0
+        self._nv = sys.nv
 
+        # Setup vision with the madrona mjx engine
         from madrona_mjx.renderer import BatchRenderer
-
         self.renderer = BatchRenderer(
             m=self.sys,
             gpu_id=vision_config.gpu_id,
@@ -44,16 +49,6 @@ class VisionDebugEnv(QuadrupedBaseEnv):
             use_rasterizer=vision_config.use_rasterizer,
             viz_gpu_hdls=None,
         )
-
-    @staticmethod
-    def make_system(
-        init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
-    ) -> System:
-        sys = QuadrupedBaseEnv.make_system(init_scene_path, environment_config)
-        # sys = sys.replace(
-        #     dof_damping=sys.dof_damping.at[6:].set(environment_config.sim.override.Kd),
-        # )
-        return sys
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(
@@ -73,7 +68,7 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        pipeline_state = self._physics_step(state, action)
+        pipeline_state = self.pipeline_step(state.pipeline_state, jnp.zeros(self.action_size))
 
         # observation data
         obs = self._get_obs(pipeline_state, state.info, state.obs)
