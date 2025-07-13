@@ -161,11 +161,11 @@ def train(
         #         "Setting render_batch_size to num_envs."
         #     )
         #     vision_config.render_batch_size = training_config.num_envs
-        env = env_factory(vision_config=vision_config)
+        env, _ = env_factory(vision_config=vision_config)
         eval_env = None
     else:
-        env = env_factory()
-        eval_env = env_factory()
+        env, _ = env_factory()
+        eval_env, _ = env_factory()
     make_inference_fn, params, metrics = train_fn(
         environment=env,
         progress_fn=progress,
