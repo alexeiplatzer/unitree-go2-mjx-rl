@@ -1,0 +1,4 @@
+Instructions to replace brax classes with mjx stuff:
+
+System -> mjx.Model -> "SystemModel"
+PipelineState -> mjx.Data -> "SystemState"

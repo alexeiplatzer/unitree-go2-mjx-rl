@@ -1,19 +1,19 @@
 from etils.epath import PathLike
 
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.quadruped_base import (
+from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
     QuadrupedBaseEnv,
 )
-from quadruped_mjx_rl.environments.joystick_base import (
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
-from quadruped_mjx_rl.environments.joystick_teacher_student import (
+from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
     TeacherStudentEnvironmentConfig,
     QuadrupedJoystickTeacherStudentEnv,
 )
-from quadruped_mjx_rl.environments.simple_vision_playground import (
+from quadruped_mjx_rl.environments.quadruped.simple_vision_playground import (
     QuadrupedVisionEnvConfig,
     QuadrupedVisionEnvironment,
 )

@@ -12,15 +12,14 @@ import numpy as np
 
 # Sim
 import mujoco
-
+from mujoco import mjx
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
-from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
+from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.joystick_base import (
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
@@ -85,16 +84,16 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             )
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
     ):
-        sys = QuadrupedJoystickBaseEnv.make_system(init_scene_path, environment_config)
+        sys = QuadrupedJoystickBaseEnv.customize_model(init_scene_path, environment_config)
         floor_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         sys = sys.replace(geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0]))
         return sys
 
     def _init_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: mjx.Data, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = {
             "state": QuadrupedJoystickBaseEnv._init_obs(self, pipeline_state, state_info),
@@ -123,7 +122,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
 
     def _get_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:

@@ -1,40 +1,36 @@
 # Typing
-from typing import Any
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from quadruped_mjx_rl.types import Observation, ObservationSize
 
 # Supporting
-from quadruped_mjx_rl.environments.rendering import render_array
+from quadruped_mjx_rl.environments.utils.rendering import render_array
 
 # Math
 import jax
-from flax.struct import dataclass as flax_dataclass, field as flax_field
+from flax.struct import dataclass as flax_dataclass
 import numpy as np
 
 # Sim
-from quadruped_mjx_rl.environments.utils import System, Base
-from quadruped_mjx_rl.environments.pipeline_utils import (
-    PipelineState,
-    init as pipeline_init,
-    step as pipeline_step,
-)
+import mujoco
+from mujoco import mjx
+from quadruped_mjx_rl.environments.utils import Base
+from quadruped_mjx_rl.environments.physics_pipeline import pipeline_init, pipeline_n_steps
 
 
 @flax_dataclass
 class State(Base):
     """Environment state for training and inference."""
-
-    pipeline_state: PipelineState
+    pipeline_state: mjx.Data
     obs: Observation
     reward: jax.Array
     done: jax.Array
-    metrics: dict[str, jax.Array] = flax_field(default_factory=dict)
-    info: dict[str, Any] = flax_field(default_factory=dict)
+    metrics: dict[str, jax.Array]
+    info: dict[str, ...]
 
 
 class Env(ABC):
-    """Interface for driving training and inference."""
+    """Interface for a Reinforcement Learning environment."""
 
     @abstractmethod
     def reset(self, rng: jax.Array) -> State:
@@ -53,6 +49,16 @@ class Env(ABC):
     @abstractmethod
     def action_size(self) -> int:
         """The size of the action vector expected by step."""
+
+    @property
+    @abstractmethod
+    def env_model(self) -> mujoco.MjModel:
+        """Mujoco model of the environment."""
+
+    @property
+    @abstractmethod
+    def pipeline_model(self) -> mjx.Model:
+        """Mjx model of the environment."""
 
     @property
     def unwrapped(self) -> 'Env':
@@ -80,6 +86,14 @@ class Wrapper(Env):
         return self.env.action_size
 
     @property
+    def env_model(self) -> mujoco.MjModel:
+        return self.env.env_model
+
+    @property
+    def pipeline_model(self) -> mjx.Model:
+        return self.env.pipeline_model
+
+    @property
     def unwrapped(self) -> Env:
         return self.env.unwrapped
 
@@ -90,22 +104,27 @@ class Wrapper(Env):
 
 
 class PipelineEnv(Env):
-    """API for driving a brax system for training and inference."""
+    """API for driving an mjx-based environment for training and inference."""
 
     def __init__(
         self,
-        sys: System,
-        n_frames: int = 1,
+        env_model: mujoco.MjModel,
+        sim_dt: float = 0.004,
+        ctrl_dt: float = 0.02,
     ):
         """Initializes PipelineEnv.
 
         Args:
-            sys: system defining the kinematic tree and other properties
-            n_frames: the number of times to step the physics pipeline for each
-                environment step
-    """
-        self.sys = sys
-        self._n_frames = n_frames
+            env_model: a model describing the physical environment
+            sim_dt: the timestep of the physical simulation
+            ctrl_dt: the time interval between reinforcement learning steps
+        """
+        self._env_model = env_model
+        self._env_model.opt.timestep = sim_dt
+        self._pipeline_model = mjx.put_model(self._env_model)
+        self._sim_dt = sim_dt
+        self._ctrl_dt = ctrl_dt
+        self._n_frames = int(ctrl_dt / sim_dt)
 
     @abstractmethod
     def reset(self, rng: jax.Array) -> State:
@@ -121,25 +140,18 @@ class PipelineEnv(Env):
         qd: jax.Array,
         act: jax.Array | None = None,
         ctrl: jax.Array | None = None,
-    ) -> PipelineState:
+    ) -> mjx.Data:
         """Initializes the pipeline state."""
-        return pipeline_init(self.sys, q, qd, act, ctrl)
+        return pipeline_init(self._pipeline_model, q, qd, act, ctrl)
 
-    def pipeline_step(self, pipeline_state: Any, action: jax.Array) -> PipelineState:
+    def pipeline_step(self, pipeline_state: mjx.Data, action: jax.Array) -> mjx.Data:
         """Takes a physics step using the physics pipeline."""
-
-        def f(state, _):
-            return (
-                pipeline_step(self.sys, state, action),
-                None,
-            )
-
-        return jax.lax.scan(f, pipeline_state, (), self._n_frames)[0]
+        return pipeline_n_steps(self._pipeline_model, pipeline_state, action, self._n_frames)
 
     @property
     def dt(self) -> jax.Array:
         """The timestep used for each env step."""
-        return self.sys.opt.timestep * self._n_frames
+        return self._pipeline_model.opt.timestep * self._n_frames
 
     @property
     def observation_size(self) -> ObservationSize:
@@ -152,14 +164,22 @@ class PipelineEnv(Env):
 
     @property
     def action_size(self) -> int:
-        return self.sys.act_size()
+        return self._pipeline_model.nu
+
+    @property
+    def env_model(self) -> mujoco.MjModel:
+        return self._env_model
+
+    @property
+    def pipeline_model(self) -> mjx.Model:
+        return self._pipeline_model
 
     def render(
         self,
-        trajectory: list[PipelineState],
+        trajectory: list[mjx.Data],
         height: int = 240,
         width: int = 320,
         camera: str | None = None,
     ) -> Sequence[np.ndarray]:
         """Renders a trajectory using the MuJoCo renderer."""
-        return render_array(self.sys, trajectory, height, width, camera)
+        return render_array(self._env_model, trajectory, height, width, camera)

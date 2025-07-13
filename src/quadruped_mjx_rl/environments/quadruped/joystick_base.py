@@ -12,13 +12,14 @@ import jax.numpy as jnp
 from quadruped_mjx_rl import math
 
 # Sim
-from quadruped_mjx_rl.environments.utils import Motion, Transform
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
+import mujoco
+from mujoco import mjx
 from quadruped_mjx_rl.environments.base import State
+from quadruped_mjx_rl.environments import physics_pipeline as pipeline
 
 # Definitions
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.quadruped_base import (
+from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig as EnvCfg,
     QuadrupedBaseEnv,
     register_environment_config_class,
@@ -145,14 +146,12 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self._command_ranges = environment_config.command.ranges
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
-    ) -> System:
-        sys = QuadrupedBaseEnv.make_system(init_scene_path, environment_config)
-        sys = sys.replace(
-            dof_damping=sys.dof_damping.at[6:].set(environment_config.sim.override.Kd),
-        )
-        return sys
+    ) -> mujoco.MjModel:
+        pipeline_model = QuadrupedBaseEnv.customize_model(init_scene_path, environment_config)
+        pipeline_model.dof_damping[6:] = environment_config.sim.override.Kd
+        return pipeline_model
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         key1, key2, key3 = jax.random.split(rng, 3)
@@ -209,14 +208,14 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
         # log total displacement as a proxy metric
         state.metrics["total_dist"] = math.normalize(
-            state.pipeline_state.x.pos[self._torso_idx - 1]
+            state.pipeline_state.xpos[self._torso_idx]
         )[1]
 
         return state
 
     def _init_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
@@ -236,7 +235,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     def _get_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
@@ -253,7 +252,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return jnp.roll(obs_history, current_obs.size).at[: current_obs.size].set(current_obs)
 
     def _get_state_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: mjx.Data, state_info: dict[str, ...]
     ) -> jax.Array:
         obs_list = QuadrupedJoystickBaseEnv._get_raw_obs_list(self, pipeline_state, state_info)
         obs = jnp.concatenate(obs_list)
@@ -266,7 +265,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return obs
 
     def _get_raw_obs_list(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: mjx.Data, state_info: dict[str, ...]
     ) -> list[jax.Array]:
         obs_list = [
             state_info["command"] * jnp.array([2.0, 2.0, 0.25]),  # command
@@ -276,14 +275,14 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     def _get_rewards(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         action: jax.Array,
         done: jax.Array,
     ):
-        x, xd = pipeline_state.x, pipeline_state.xd
-        joint_angles = pipeline_state.q[7:]
-        joint_vel = pipeline_state.qd[6:]
+        x, xd = pipeline.get_world_frame_coordinates(self.pipeline_model, pipeline_state)
+        joint_angles = pipeline_state.qpos[7:]
+        joint_vel = pipeline_state.qvel[6:]
 
         # foot contact data based on z-position
         foot_pos = pipeline_state.site_xpos[self._feet_site_id]
@@ -329,7 +328,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     # ------------ reward functions----------------
     def _reward_tracking_lin_vel(
-        self, commands: jax.Array, x: Transform, xd: Motion
+        self, commands: jax.Array, x: pipeline.Transform, xd: pipeline.Motion
     ) -> jax.Array:
         # Tracking of linear velocity commands (xy axes)
         local_vel = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
@@ -338,22 +337,22 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return lin_vel_reward
 
     def _reward_tracking_ang_vel(
-        self, commands: jax.Array, x: Transform, xd: Motion
+        self, commands: jax.Array, x: pipeline.Transform, xd: pipeline.Motion
     ) -> jax.Array:
         # Tracking of angular velocity commands (yaw)
         base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         ang_vel_error = jnp.square(commands[2] - base_ang_vel[2])
         return jnp.exp(-ang_vel_error / self._rewards_config.tracking_sigma)
 
-    def _reward_lin_vel_z(self, xd: Motion) -> jax.Array:
+    def _reward_lin_vel_z(self, xd: pipeline.Motion) -> jax.Array:
         # Penalize z axis base linear velocity
         return jnp.square(xd.vel[0, 2])
 
-    def _reward_ang_vel_xy(self, xd: Motion) -> jax.Array:
+    def _reward_ang_vel_xy(self, xd: pipeline.Motion) -> jax.Array:
         # Penalize xy axes base angular velocity
         return jnp.sum(jnp.square(xd.ang[0, :2]))
 
-    def _reward_orientation(self, x: Transform) -> jax.Array:
+    def _reward_orientation(self, x: pipeline.Transform) -> jax.Array:
         # Penalize non flat base orientation
         up = jnp.array([0.0, 0.0, 1.0])
         rot_up = math.rotate(up, x.rot[0])
@@ -386,12 +385,12 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         )
 
     def _reward_foot_slip(
-        self, pipeline_state: PipelineState, contact_filt: jax.Array
+        self, pipeline_state: mjx.Data, contact_filt: jax.Array
     ) -> jax.Array:
         # get velocities at feet which are offset from lower legs
         pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position
         feet_offset = pos - pipeline_state.xpos[self._lower_leg_body_id]
-        offset = Transform.create(pos=feet_offset)
+        offset = pipeline.Transform.create(pos=feet_offset)
         foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
         foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
 

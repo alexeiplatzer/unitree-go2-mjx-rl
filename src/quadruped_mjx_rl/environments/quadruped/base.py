@@ -13,9 +13,9 @@ from quadruped_mjx_rl import math
 
 # Sim
 import mujoco
-from quadruped_mjx_rl.environments.loading import load as load_system
+from mujoco import mjx
+from quadruped_mjx_rl.environments.utils import model_load
 from quadruped_mjx_rl.environments.base import PipelineEnv, State
-from quadruped_mjx_rl.environments.pipeline_utils import System, PipelineState
 
 
 # Configs
@@ -117,7 +117,6 @@ register_environment_config_class(EnvironmentConfig)
 
 
 class QuadrupedBaseEnv(PipelineEnv):
-    _ACTION_SIZE = 12
 
     def __init__(
         self,
@@ -125,10 +124,12 @@ class QuadrupedBaseEnv(PipelineEnv):
         robot_config: RobotConfig,
         init_scene_path: PathLike,
     ):
-        self._dt = environment_config.sim.ctrl_dt
-        n_frames = int(environment_config.sim.ctrl_dt / environment_config.sim.sim_dt)
-        sys = self.make_system(init_scene_path, environment_config)
-        super().__init__(sys, n_frames=n_frames)
+        env_model = self.customize_model(init_scene_path, environment_config)
+        super().__init__(
+            env_model=env_model,
+            sim_dt=environment_config.sim.sim_dt,
+            ctrl_dt=environment_config.sim.ctrl_dt,
+        )
 
         self._rewards_config = environment_config.rewards
         self.reward_scales = asdict(environment_config.rewards.scales)
@@ -140,7 +141,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._action_scale = environment_config.control.action_scale
 
         initial_keyframe_name = robot_config.initial_keyframe
-        initial_keyframe = sys.mj_model.keyframe(initial_keyframe_name)
+        initial_keyframe = self._env_model.keyframe(initial_keyframe_name)
         self._init_q = jnp.array(initial_keyframe.qpos)
         self._default_pose = initial_keyframe.qpos[7:]
 
@@ -150,7 +151,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         # find body definition
         self._torso_idx = mujoco.mj_name2id(
-            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.main_body_name
+            self._env_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.main_body_name
         )
 
         # find lower leg definition
@@ -161,7 +162,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             robot_config.lower_leg_bodies.rear_right,
         ]
         lower_leg_body_id = [
-            mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
+            mujoco.mj_name2id(self._env_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
             for l in lower_leg_body
         ]
         if any(id_ == -1 for id_ in lower_leg_body_id):
@@ -176,7 +177,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             robot_config.feet_sites.rear_right,
         ]
         feet_site_id = [
-            mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
+            mujoco.mj_name2id(self._env_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
             for f in feet_site
         ]
         if any(id_ == -1 for id_ in feet_site_id):
@@ -186,24 +187,17 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._foot_radius = robot_config.foot_radius
 
         # numbers of DOFs for velocity and position
-        self._nv = sys.nv
-        self._nq = sys.nq
+        self._nv = self._pipeline_model.nv
+        self._nq = self._pipeline_model.nq
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: EnvironmentConfig
-    ) -> System:
-        sys = load_system(init_scene_path)
-        sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
-        sys = sys.replace(
-            actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(
-                environment_config.sim.override.Kp
-            ),
-            actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(
-                -environment_config.sim.override.Kp
-            ),
-        )
-        return sys
+    ) -> mujoco.MjModel:
+        env_model = model_load(init_scene_path)
+        env_model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
+        env_model.actuator_biasprm[:, 1] = environment_config.sim.override.Kp
+        return env_model
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self._nv))
@@ -212,7 +206,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             "rng": rng,
             "step": 0,
             "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(self._ACTION_SIZE),
+            "last_act": jnp.zeros(self.action_size),
         }
 
         obs = self._init_obs(pipeline_state, state_info)
@@ -256,7 +250,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
         return state
 
-    def _physics_step(self, state: State, action: jax.Array) -> PipelineState:
+    def _physics_step(self, state: State, action: jax.Array) -> mjx.Data:
         motor_targets = self._default_pose + action * self._action_scale
         motor_targets = jnp.clip(
             motor_targets, self.joints_lower_limits, self.joints_upper_limits
@@ -266,7 +260,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     def _init_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
         obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
@@ -274,7 +268,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     def _get_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
@@ -282,48 +276,49 @@ class QuadrupedBaseEnv(PipelineEnv):
         return obs
 
     def _get_state_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: mjx.Data, state_info: dict[str, ...]
     ) -> jax.Array:
         obs_list = QuadrupedBaseEnv._get_raw_obs_list(self, pipeline_state, state_info)
         obs = jnp.clip(jnp.concatenate(obs_list), -100.0, 100.0)
         return obs
 
     def _get_raw_obs_list(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: mjx.Data, state_info: dict[str, ...]
     ) -> list[jax.Array]:
 
-        inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
-        local_rpyrate = math.rotate(pipeline_state.xd.ang[0], inv_torso_rot)
+        # Todo: check the math of these sensor calculations
+        inv_torso_rot = math.quat_inv(pipeline_state.xquat[1:][0])
+        local_rpyrate = math.rotate(pipeline_state.cvel[1:, :3][0], inv_torso_rot)
 
         obs_list = [
             jnp.array([local_rpyrate[2]]) * 0.25,  # yaw rate
             math.rotate(jnp.array([0, 0, -1]), inv_torso_rot),  # projected gravity
-            pipeline_state.q[7:] - self._default_pose,  # motor angles
+            pipeline_state.qpos[7:] - self._default_pose,  # motor angles
             state_info["last_act"],  # last action
         ]
         return obs_list
 
-    def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
+    def _check_termination(self, pipeline_state: mjx.Data) -> jax.Array:
         # done if joint limits are reached or robot is falling
 
         up = jnp.array([0.0, 0.0, 1.0])
         joint_angles = pipeline_state.q[7:]
 
         # flipped over
-        done = jnp.dot(math.rotate(up, pipeline_state.x.rot[self._torso_idx - 1]), up) < 0
+        done = jnp.dot(math.rotate(up, pipeline_state.xquat[1:][self._torso_idx - 1]), up) < 0
 
         # joint limits exceeded
         done |= jnp.any(joint_angles < self.joints_lower_limits)
         done |= jnp.any(joint_angles > self.joints_upper_limits)
 
         # dropped too low
-        done |= pipeline_state.x.pos[self._torso_idx - 1, 2] < self._termination_body_height
+        done |= pipeline_state.xpos[1:][self._torso_idx - 1, 2] < self._termination_body_height
 
         return done
 
     def _get_rewards(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         action: jax.Array,
         done: jax.Array,
@@ -332,7 +327,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     def render(
         self,
-        trajectory: list[PipelineState],
+        trajectory: list[mjx.Data],
         camera: str | None = None,
         width: int = 240,
         height: int = 320,

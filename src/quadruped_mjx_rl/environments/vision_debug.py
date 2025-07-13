@@ -1,6 +1,7 @@
 
 # Supporting
 from etils.epath import PathLike
+from quadruped_mjx_rl.environments.utils import model_load
 
 # Math
 import jax
@@ -8,32 +9,29 @@ import jax.numpy as jnp
 import numpy as np
 
 # Sim
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState, System
-from quadruped_mjx_rl.environments.base import State
+from mujoco import mjx
+from quadruped_mjx_rl.environments.base import State, PipelineEnv
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
-from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.quadruped_base import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.joystick_base import JoystickBaseEnvConfig
 
 
-class VisionDebugEnv(QuadrupedBaseEnv):
+class VisionDebugEnv(PipelineEnv):
     def __init__(
         self,
-        environment_config: JoystickBaseEnvConfig,
-        robot_config: RobotConfig,
         init_scene_path: PathLike,
         vision_config: VisionConfig,
     ):
-        super().__init__(environment_config, robot_config, init_scene_path)
+        env_model = model_load(init_scene_path)
+        super().__init__(env_model)
 
-        self.reward_scales = {}  # remove all the rewards form the joystick base config
+        self._init_q = self.pipeline_model.qpos0
+        self._nv = self.pipeline_model.nv
 
+        # Setup vision with the madrona mjx engine
         from madrona_mjx.renderer import BatchRenderer
-
         self.renderer = BatchRenderer(
-            m=self.sys,
+            m=self.pipeline_model,
             gpu_id=vision_config.gpu_id,
             num_worlds=vision_config.render_batch_size,
             batch_render_view_width=vision_config.render_width,
@@ -44,16 +42,6 @@ class VisionDebugEnv(QuadrupedBaseEnv):
             use_rasterizer=vision_config.use_rasterizer,
             viz_gpu_hdls=None,
         )
-
-    @staticmethod
-    def make_system(
-        init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
-    ) -> System:
-        sys = QuadrupedBaseEnv.make_system(init_scene_path, environment_config)
-        # sys = sys.replace(
-        #     dof_damping=sys.dof_damping.at[6:].set(environment_config.sim.override.Kd),
-        # )
-        return sys
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(
@@ -73,7 +61,7 @@ class VisionDebugEnv(QuadrupedBaseEnv):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        pipeline_state = self._physics_step(state, action)
+        pipeline_state = self.pipeline_step(state.pipeline_state, jnp.zeros(self.action_size))
 
         # observation data
         obs = self._get_obs(pipeline_state, state.info, state.obs)
@@ -85,10 +73,10 @@ class VisionDebugEnv(QuadrupedBaseEnv):
 
     def _init_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
+        render_token, rgb, depth = self.renderer.init(pipeline_state, self.pipeline_model)
         state_info["render_token"] = render_token
 
         # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
@@ -99,9 +87,8 @@ class VisionDebugEnv(QuadrupedBaseEnv):
 
     def _get_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
-        previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
         # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0

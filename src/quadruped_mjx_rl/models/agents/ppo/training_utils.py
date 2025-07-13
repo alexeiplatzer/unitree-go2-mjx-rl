@@ -13,8 +13,9 @@ import jax.numpy as jnp
 from flax import struct as flax_struct
 
 # Sim
+from mujoco import mjx
 from quadruped_mjx_rl import running_statistics
-from quadruped_mjx_rl.environments.base import Env, System
+from quadruped_mjx_rl.environments.base import Env
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 
 # ML
@@ -80,7 +81,7 @@ def maybe_wrap_env(
     key_env: PRNGKey,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[System, jnp.ndarray], tuple[System, System]] | None
+        Callable[[mjx.Model, jnp.ndarray], tuple[mjx.Model, mjx.Model]] | None
     ) = None,
     vision: bool = False,
 ):

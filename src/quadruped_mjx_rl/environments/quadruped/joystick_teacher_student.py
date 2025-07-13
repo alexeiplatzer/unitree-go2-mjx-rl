@@ -10,14 +10,14 @@ from etils.epath import PathLike
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 # Sim
-from quadruped_mjx_rl.environments.pipeline_utils import PipelineState
-from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
+from mujoco import mjx
+from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.joystick_base import (
+from quadruped_mjx_rl.environments import QuadrupedBaseEnv
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
@@ -49,7 +49,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
 
     def _init_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
         # TODO: compare to init obs in superclass, state info must be updated
@@ -66,7 +66,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
 
     def _get_obs(
         self,
-        pipeline_state: PipelineState,
+        pipeline_state: mjx.Data,
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
@@ -85,7 +85,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
     def _get_privileged_obs(self) -> jax.Array:
         return jnp.concatenate(
             [
-                self.sys.geom_friction.reshape(-1),
+                self.pipeline_model.geom_friction.reshape(-1),
                 # self.sys.dof_frictionloss,
                 # self.sys.dof_damping,
                 # self.sys.jnt_stiffness,
