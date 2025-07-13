@@ -303,7 +303,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
             "stand_still": self._reward_stand_still(state_info["command"], joint_angles),
             "feet_air_time": self._reward_feet_air_time(
                 state_info["feet_air_time"], first_contact, state_info["command"]
-            ), "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
+            ), "foot_slip": self._reward_foot_slip(pipeline_state, xd, contact_filt_cm),
             "termination": self._reward_termination(done, state_info["step"])
         }
 
@@ -385,14 +385,14 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         )
 
     def _reward_foot_slip(
-        self, pipeline_state: mjx.Data, contact_filt: jax.Array
+        self, pipeline_state: mjx.Data, xd: pipeline.Motion, contact_filt: jax.Array
     ) -> jax.Array:
         # get velocities at feet which are offset from lower legs
         pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position
         feet_offset = pos - pipeline_state.xpos[self._lower_leg_body_id]
         offset = pipeline.Transform.create(pos=feet_offset)
         foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
-        foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
+        foot_vel = offset.vmap().do(xd.take(foot_indices)).vel
 
         # Penalize large feet velocity for feet that are in contact with the ground.
         return jnp.sum(jnp.square(foot_vel[:, :2]) * contact_filt.reshape((-1, 1)))

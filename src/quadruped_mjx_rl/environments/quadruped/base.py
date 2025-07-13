@@ -302,7 +302,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         # done if joint limits are reached or robot is falling
 
         up = jnp.array([0.0, 0.0, 1.0])
-        joint_angles = pipeline_state.q[7:]
+        joint_angles = pipeline_state.qpos[7:]
 
         # flipped over
         done = jnp.dot(math.rotate(up, pipeline_state.xquat[1:][self._torso_idx - 1]), up) < 0
