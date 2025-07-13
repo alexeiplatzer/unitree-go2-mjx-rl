@@ -270,7 +270,7 @@ class AutoResetWrapper(Wrapper):
         def where_done(x, y):
             done = state.done
             if done.shape:
-                done = jp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))  # type: ignore
+                done = jnp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))
             return jnp.where(done, x, y)
 
         pipeline_state = jax.tree.map(
