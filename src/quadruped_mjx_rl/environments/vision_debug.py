@@ -8,9 +8,13 @@ import jax.numpy as jnp
 import numpy as np
 
 # Sim
-from brax.base import System, State as PipelineState
-from brax.envs.base import State, PipelineEnv
-from brax.io.mjcf import load as load_system
+# from brax.base import System, State as PipelineState
+# from brax.envs.base import State, PipelineEnv
+# from brax.io.mjcf import load as load_system
+from quadruped_mjx_rl.environments.physics_pipeline import (
+    PipelineModel, PipelineState, model_load, State
+)
+from quadruped_mjx_rl.environments.base import PipelineEnv
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
@@ -24,16 +28,12 @@ class VisionDebugEnv(PipelineEnv):
         self,
         init_scene_path: PathLike,
         vision_config: VisionConfig,
-        sim_dt: float = 0.004,
-        ctrl_dt: float = 0.02,
     ):
-        sys = load_system(init_scene_path)
-        sys.tree_replace({"opt.timestep": sim_dt})
-        n_frames = int(ctrl_dt / sim_dt)
-        super().__init__(sys, n_frames=n_frames)
+        env_model = model_load(init_scene_path)
+        super().__init__(env_model)
 
-        self._init_q = sys.qpos0
-        self._nv = sys.nv
+        self._init_q = self.pipeline_model.qpos0
+        self._nv = self.pipeline_model.nv
 
         # Setup vision with the madrona mjx engine
         from madrona_mjx.renderer import BatchRenderer

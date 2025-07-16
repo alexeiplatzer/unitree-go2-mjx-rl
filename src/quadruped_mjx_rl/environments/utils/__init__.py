@@ -1,1 +1,0 @@
-from quadruped_mjx_rl.environments.utils.rendering import render_scene

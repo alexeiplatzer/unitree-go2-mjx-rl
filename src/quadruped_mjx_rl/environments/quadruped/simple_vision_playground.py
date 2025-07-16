@@ -1,7 +1,9 @@
 
 # Typing
 from dataclasses import dataclass, field
+from typing import Optional, Any
 
+from brax import base
 # Supporting
 from etils.epath import PathLike
 
@@ -69,6 +71,8 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             if vision_config is None:
                 raise ValueError("Use vision set to true, VisionConfig not provided.")
 
+            self._num_vision_envs = vision_config.render_batch_size
+
             from madrona_mjx.renderer import BatchRenderer
 
             self.renderer = BatchRenderer(
@@ -92,6 +96,21 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         floor_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         sys = sys.replace(geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0]))
         return sys
+
+    def pipeline_init(
+        self,
+        q: jax.Array,
+        qd: jax.Array,
+        act: jax.Array | None = None,
+        ctrl: jax.Array | None = None,
+    ) -> base.State:
+        """Force broadcasting into batch dimensions for madrona mjx. Experimental feature."""
+        q = jnp.repeat(jnp.expand_dims(q, axis=0), self._num_vision_envs, axis=0)
+        return super().pipeline_init(q, qd, act, ctrl)
+
+    # def pipeline_step(self, pipeline_state: Any, action: jax.Array) -> base.State:
+    #     """Force broadcasting into batch dimensions for madrona mjx. Experimental feature."""
+    #
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]

@@ -9,10 +9,15 @@ import jax
 from jax import numpy as jnp
 
 # Sim
-from brax.base import System
-from brax.envs.base import Env, Wrapper, State
-from brax.envs.wrappers.training import (
-    VmapWrapper, DomainRandomizationVmapWrapper, EpisodeWrapper, AutoResetWrapper
+from quadruped_mjx_rl.environments.physics_pipeline import (
+    PipelineModel,
+    State,
+    Env,
+    Wrapper,
+    VmapWrapper,
+    DomainRandomizationVmapWrapper,
+    EpisodeWrapper,
+    AutoResetWrapper,
 )
 
 
@@ -20,7 +25,9 @@ def wrap_for_training(
     env: Env,
     episode_length: int = 1000,
     action_repeat: int = 1,
-    randomization_fn: Callable[[System], tuple[System, System]] | None = None,
+    randomization_fn: Callable[
+        [PipelineModel], tuple[PipelineModel, PipelineModel]
+    ] | None = None,
     vision: bool = False,
     num_vision_envs: int = 1,
 ) -> Wrapper:
@@ -52,9 +59,11 @@ def wrap_for_training(
     return env
 
 
-def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[System, System]:
+def _identity_vision_randomization_fn(
+    pipeline_model: PipelineModel, num_worlds: int
+) -> tuple[PipelineModel, PipelineModel]:
     """Tile the necessary fields for the Madrona memory buffer copy."""
-    in_axes = jax.tree_util.tree_map(lambda x: None, sys)
+    in_axes = jax.tree_util.tree_map(lambda x: None, pipeline_model)
     in_axes = in_axes.tree_replace(
         {
             "geom_rgba": 0,
@@ -67,38 +76,48 @@ def _identity_vision_randomization_fn(sys: System, num_worlds: int) -> tuple[Sys
             "light_cutoff": 0,
         }
     )
-    sys = sys.tree_replace(
+    pipeline_model = pipeline_model.tree_replace(
         {
-            "geom_rgba": jnp.repeat(jnp.expand_dims(sys.geom_rgba, 0), num_worlds, axis=0),
+            "geom_rgba": jnp.repeat(
+                jnp.expand_dims(pipeline_model.geom_rgba, 0), num_worlds, axis=0
+            ),
             "geom_matid": jnp.repeat(
-                jnp.expand_dims(jnp.repeat(-1, sys.geom_matid.shape[0], 0), 0),
+                jnp.expand_dims(
+                    jnp.repeat(-1, pipeline_model.geom_matid.shape[0], 0), 0
+                ),
                 num_worlds,
                 axis=0,
             ),
-            "geom_size": jnp.repeat(jnp.expand_dims(sys.geom_size, 0), num_worlds, axis=0),
-            "light_pos": jnp.repeat(jnp.expand_dims(sys.light_pos, 0), num_worlds, axis=0),
-            "light_dir": jnp.repeat(jnp.expand_dims(sys.light_dir, 0), num_worlds, axis=0),
+            "geom_size": jnp.repeat(
+                jnp.expand_dims(pipeline_model.geom_size, 0), num_worlds, axis=0
+            ),
+            "light_pos": jnp.repeat(
+                jnp.expand_dims(pipeline_model.light_pos, 0), num_worlds, axis=0
+            ),
+            "light_dir": jnp.repeat(
+                jnp.expand_dims(pipeline_model.light_dir, 0), num_worlds, axis=0
+            ),
             "light_directional": jnp.repeat(
-                jnp.expand_dims(sys.light_directional, 0), num_worlds, axis=0
+                jnp.expand_dims(pipeline_model.light_directional, 0), num_worlds, axis=0
             ),
             "light_castshadow": jnp.repeat(
-                jnp.expand_dims(sys.light_castshadow, 0), num_worlds, axis=0
+                jnp.expand_dims(pipeline_model.light_castshadow, 0), num_worlds, axis=0
             ),
             "light_cutoff": jnp.repeat(
-                jnp.expand_dims(sys.light_cutoff, 0), num_worlds, axis=0
+                jnp.expand_dims(pipeline_model.light_cutoff, 0), num_worlds, axis=0
             ),
         }
     )
-    return sys, in_axes
+    return pipeline_model, in_axes
 
 
 def _supplement_vision_randomization_fn(
-    sys: System,
-    randomization_fn: Callable[[System], tuple[System, System]],
+    pipeline_model: PipelineModel,
+    randomization_fn: Callable[[PipelineModel], tuple[PipelineModel, PipelineModel]],
     num_worlds: int,
-) -> tuple[System, System]:
+) -> tuple[PipelineModel, PipelineModel]:
     """Tile the necessary missing fields for the Madrona memory buffer copy."""
-    sys, in_axes = randomization_fn(sys)
+    pipeline_model, in_axes = randomization_fn(pipeline_model)
 
     required_fields = [
         "geom_rgba",
@@ -114,13 +133,13 @@ def _supplement_vision_randomization_fn(
     for field in required_fields:
         if getattr(in_axes, field) is None:
             in_axes = in_axes.tree_replace({field: 0})
-            val = -2 if field == "geom_matid" else getattr(sys, field)
-            sys = sys.tree_replace(
+            val = -2 if field == "geom_matid" else getattr(pipeline_model, field)
+            pipeline_model = pipeline_model.tree_replace(
                 {
                     field: jnp.repeat(jnp.expand_dims(val, 0), num_worlds, axis=0),
                 }
             )
-    return sys, in_axes
+    return pipeline_model, in_axes
 
 
 class MadronaWrapper(Wrapper):
@@ -130,7 +149,9 @@ class MadronaWrapper(Wrapper):
         self,
         env: Env,
         num_worlds: int,
-        randomization_fn: Callable[[System], tuple[System, System]] | None = None,
+        randomization_fn: Callable[
+            [PipelineModel], tuple[PipelineModel, PipelineModel]
+        ] | None = None,
     ):
         if not randomization_fn:
             randomization_fn = functools.partial(
