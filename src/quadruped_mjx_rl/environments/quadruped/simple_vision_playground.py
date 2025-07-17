@@ -16,7 +16,7 @@ import numpy as np
 import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from brax.base import State as PipelineState
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
@@ -61,10 +61,10 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         self,
         environment_config: QuadrupedVisionEnvConfig,
         robot_config: RobotConfig,
-        init_scene_path: PathLike,
+        env_model: EnvModel,
         vision_config: VisionConfig | None = None,
     ):
-        super().__init__(environment_config, robot_config, init_scene_path)
+        super().__init__(environment_config, robot_config, env_model)
 
         self._use_vision = environment_config.use_vision
         if self._use_vision:

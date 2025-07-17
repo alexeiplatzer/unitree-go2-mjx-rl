@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 import numpy as np
 
-from brax.base import System
+from quadruped_mjx_rl.environments import PipelineModel
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 
@@ -24,11 +24,11 @@ class VisionConfig(Configuration):
 register_config_base_class(VisionConfig)
 
 
-def get_renderer(sys: System, vision_config: VisionConfig):
+def get_renderer(pipeline_model: PipelineModel, vision_config: VisionConfig):
     from madrona_mjx.renderer import BatchRenderer
 
     return BatchRenderer(
-        m=sys,
+        m=pipeline_model,
         gpu_id=vision_config.gpu_id,
         num_worlds=vision_config.render_batch_size,
         batch_render_view_width=vision_config.render_width,

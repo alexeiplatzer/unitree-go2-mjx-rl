@@ -108,3 +108,7 @@ class PipelineEnv(Env):
     ) -> Sequence[np.ndarray]:
         """Renders a trajectory using the MuJoCo renderer."""
         return render_array(self._env_model, trajectory, height, width, camera)
+
+    def backend(self) -> str:
+        return "mjx"
+    

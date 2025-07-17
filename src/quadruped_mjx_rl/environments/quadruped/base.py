@@ -127,9 +127,8 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         environment_config: EnvironmentConfig,
         robot_config: RobotConfig,
-        init_scene_path: PathLike,
+        env_model: EnvModel,
     ):
-        env_model = self.customize_model(init_scene_path, environment_config)
         super().__init__(
             env_model=env_model,
             sim_dt=environment_config.sim.sim_dt,

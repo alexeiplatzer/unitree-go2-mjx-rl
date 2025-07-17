@@ -12,8 +12,9 @@ import jax.numpy as jnp
 from quadruped_mjx_rl import math
 
 # Sim
-from brax.base import System, State as PipelineState, Motion, Transform
-from brax.envs.base import State
+from quadruped_mjx_rl.environments.physics_pipeline import (
+    EnvModel, PipelineModel, PipelineState, State, Motion, Transform
+)
 
 # Definitions
 from quadruped_mjx_rl.robots import RobotConfig
@@ -133,9 +134,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self,
         environment_config: JoystickBaseEnvConfig,
         robot_config: RobotConfig,
-        init_scene_path: PathLike,
+        env_model: EnvModel,
     ):
-        super().__init__(environment_config, robot_config, init_scene_path)
+        super().__init__(environment_config, robot_config, env_model)
 
         self._kick_interval = environment_config.domain_rand.kick_interval
         self._kick_vel = environment_config.domain_rand.kick_vel
@@ -144,14 +145,12 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self._command_ranges = environment_config.command.ranges
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
-    ) -> System:
-        sys = QuadrupedBaseEnv.make_system(init_scene_path, environment_config)
-        sys = sys.replace(
-            dof_damping=sys.dof_damping.at[6:].set(environment_config.sim.override.Kd),
-        )
-        return sys
+    ) -> EnvModel:
+        pipeline_model = QuadrupedBaseEnv.customize_model(init_scene_path, environment_config)
+        pipeline_model.dof_damping[6:] = environment_config.sim.override.Kd
+        return pipeline_model
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         key1, key2, key3 = jax.random.split(rng, 3)
