@@ -1,7 +1,7 @@
 """Main module to execute the training, given all necessary configs"""
 
 # Typing
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 # Supporting
@@ -15,17 +15,21 @@ from orbax import checkpoint as ocp
 from quadruped_mjx_rl.models.io import save_params
 
 # Training
-from brax.envs.base import Env
+from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.environments import EnvironmentConfig, get_base_model, get_env_factory
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.policy_rendering import (
+    render_rollout, RenderConfig, RolloutRenderer, PolicyRenderingFn, render_policy_rollout
+)
 
 
 # Configurations
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.models.configs import ActorCriticConfig, ModelConfig, TeacherStudentConfig
-from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.robotic_vision import VisionConfig, get_renderer
 
 
 @dataclass
@@ -97,14 +101,75 @@ _training_config_classes = {
 }
 
 
+def make_progress_fn(num_timesteps, reward_max=40):
+    x_data = []
+    y_data = []
+    ydataerr = []
+    times = [datetime.now()]
+    max_y, min_y = reward_max, 0
+
+    def progress(num_steps, metrics):
+        times.append(datetime.now())
+        x_data.append(num_steps)
+        y_data.append(metrics["eval/episode_reward"])
+        ydataerr.append(metrics["eval/episode_reward_std"])
+
+        plt.xlim([0, num_timesteps * 1.25])
+        plt.ylim([min_y, max_y])
+
+        plt.xlabel("# environment steps")
+        plt.ylabel("reward per episode")
+        plt.title(f"y={y_data[-1]:.3f}")
+
+        plt.errorbar(x_data, y_data, yerr=ydataerr)
+        plt.show()
+
+    return progress, times
+
+
+def train_with_vision(
+    *,
+    robot_config: RobotConfig,
+    env_config: EnvironmentConfig,
+    init_scene_path: PathLike,
+    model_config: ModelConfig,
+    training_config: TrainingWithVisionConfig,
+    vision_config: VisionConfig,
+    params_save_path: PathLike,
+
+):
+    env_model = get_base_model(init_scene_path, env_config)
+    env = get_env_factory(robot_config, env_config, env_model, vision_config=vision_config)()
+    train_fn = get_training_fn(
+        model_config=model_config, training_config=training_config, vision=True
+    )
+    progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
+    make_inference_fn, params, metrics = train_fn(
+        environment=env,
+        eval_env=env,
+        seed=0,
+        randomization_fn=domain_randomize,
+        progress_fn=progress_fn,
+    )
+    print(f"time to jit: {eval_times[1] - eval_times[0]}")
+    print(f"time to train: {eval_times[-1] - eval_times[1]}")
+
+    # Save params
+    save_params(params_save_path, params)
+
+
 def train(
-    env_factory: Callable[..., Env],
+    *,
+    robot_config: RobotConfig,
+    env_config: EnvironmentConfig,
+    init_scene_path: PathLike,
     model_config: ModelConfig,
     training_config: TrainingConfig,
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
-    vision: bool = False,
-    vision_config: VisionConfig | None = None,
+    policy_rendering_fn=functools.partial(
+        render_policy_rollout, render_config=RenderConfig(),
+    ),
 ):
     if checkpoints_save_path is not None:
         checkpoints_save_path = Path(checkpoints_save_path)
@@ -119,65 +184,32 @@ def train(
     else:
         policy_params_fn = lambda *args: None
 
-    def progress(num_steps, metrics):
-        times.append(datetime.now())
-        x_data.append(num_steps)
-        y_data.append(metrics["eval/episode_reward"])
-        ydataerr.append(metrics["eval/episode_reward_std"])
-
-        plt.xlim([0, train_fn.keywords["num_timesteps"] * 1.25])
-        plt.ylim([min_y, max_y])
-
-        plt.xlabel("# environment steps")
-        plt.ylabel("reward per episode")
-        plt.title(f"y={y_data[-1]:.3f}")
-
-        plt.errorbar(x_data, y_data, yerr=ydataerr)
-        plt.show()
-
-    train_fn = get_training_fn(model_config, training_config, vision=vision)
+    train_fn = get_training_fn(model_config, training_config, vision=False)
     train_fn = functools.partial(
         train_fn,
         randomization_fn=domain_randomize,
         policy_params_fn=policy_params_fn,
         seed=0,
     )
-
-    x_data = []
-    y_data = []
-    ydataerr = []
-    times = [datetime.now()]
-    max_y, min_y = 40, 0
-
-    # Reset environments since internals may be overwritten by tracers from the
-    # domain randomization function.
-    if vision:
-        if vision_config is None:
-            raise ValueError("vision_config must be provided when vision is True")
-        # if vision_config.render_batch_size != training_config.num_envs:
-        #     logging.warning(
-        #         "All batch sizes must coincide when using vision. "
-        #         "Render batch size must be equal to num_envs. "
-        #         "Setting render_batch_size to num_envs."
-        #     )
-        #     vision_config.render_batch_size = training_config.num_envs
-        env = env_factory(vision_config=vision_config)
-        eval_env = None
-    else:
-        env = env_factory()
-        eval_env = env_factory()
+    env_model = get_base_model(init_scene_path, env_config)
+    env_factory = get_env_factory(robot_config, env_config, env_model)
+    env = env_factory()
+    eval_env = env_factory()
+    progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
     make_inference_fn, params, metrics = train_fn(
         environment=env,
-        progress_fn=progress,
+        progress_fn=progress_fn,
         eval_env=eval_env,
     )
-
-    print(f"time to jit: {times[1] - times[0]}")
-    print(f"time to train: {times[-1] - times[1]}")
+    print(f"time to jit: {eval_times[1] - eval_times[0]}")
+    print(f"time to train: {eval_times[-1] - eval_times[1]}")
 
     # Save params
     save_params(model_save_path, params)
     # params = model.load_params(model_save_path)
+
+    if policy_rendering_fn is not None:
+        policy_rendering_fn(env, make_inference_fn(params))
 
 
 def get_training_fn(

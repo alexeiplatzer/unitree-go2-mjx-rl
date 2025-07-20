@@ -18,8 +18,7 @@ import numpy as np
 import optax
 
 # Sim
-from brax.base import System
-from brax.envs.base import Env, State
+from quadruped_mjx_rl.environments import PipelineModel, Env, State
 from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
 
 # Networks
@@ -53,7 +52,7 @@ def train(
     action_repeat: int = 1,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[System, jnp.ndarray], tuple[System, System]] | None
+        Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
     # PPO parameters
     learning_rate: float = 1e-4,

@@ -14,8 +14,7 @@ from flax import struct as flax_struct
 
 # Sim
 from quadruped_mjx_rl import running_statistics
-from brax.base import System
-from brax.envs.base import Env
+from quadruped_mjx_rl.environments import Env, PipelineModel
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 
 # ML
@@ -81,7 +80,7 @@ def maybe_wrap_env(
     key_env: PRNGKey,
     wrap_env_fn: Callable | None = None,
     randomization_fn: (
-        Callable[[System, jnp.ndarray], tuple[System, System]] | None
+        Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
     vision: bool = False,
 ):

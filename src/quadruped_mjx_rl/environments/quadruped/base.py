@@ -12,10 +12,15 @@ import numpy as np
 from quadruped_mjx_rl import math
 
 # Sim
+# import mujoco
+# from brax.base import System, State as PipelineState
+# from brax.envs.base import State, PipelineEnv
+# from brax.io.mjcf import load as load_system
 import mujoco
-from brax.base import System, State as PipelineState
-from brax.envs.base import State, PipelineEnv
-from brax.io.mjcf import load as load_system
+from quadruped_mjx_rl.environments.physics_pipeline import (
+    EnvModel, PipelineModel, PipelineState, State, model_load
+)
+from quadruped_mjx_rl.environments.base import PipelineEnv
 
 
 # Configs
@@ -122,11 +127,13 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         environment_config: EnvironmentConfig,
         robot_config: RobotConfig,
-        init_scene_path: PathLike,
+        env_model: EnvModel,
     ):
-        n_frames = int(environment_config.sim.ctrl_dt / environment_config.sim.sim_dt)
-        sys = self.make_system(init_scene_path, environment_config)
-        super().__init__(sys, n_frames=n_frames)
+        super().__init__(
+            env_model=env_model,
+            sim_dt=environment_config.sim.sim_dt,
+            ctrl_dt=environment_config.sim.ctrl_dt,
+        )
 
         self._rewards_config = environment_config.rewards
         self.reward_scales = asdict(environment_config.rewards.scales)
@@ -138,7 +145,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._action_scale = environment_config.control.action_scale
 
         initial_keyframe_name = robot_config.initial_keyframe
-        initial_keyframe = sys.mj_model.keyframe(initial_keyframe_name)
+        initial_keyframe = self._env_model.keyframe(initial_keyframe_name)
         self._init_q = jnp.array(initial_keyframe.qpos)
         self._default_pose = initial_keyframe.qpos[7:]
 
@@ -148,7 +155,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         # find body definition
         self._torso_idx = mujoco.mj_name2id(
-            sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.main_body_name
+            self._env_model, mujoco.mjtObj.mjOBJ_BODY.value, name=robot_config.main_body_name
         )
 
         # find lower leg definition
@@ -159,7 +166,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             robot_config.lower_leg_bodies.rear_right,
         ]
         lower_leg_body_id = [
-            mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
+            mujoco.mj_name2id(self._env_model, mujoco.mjtObj.mjOBJ_BODY.value, l)
             for l in lower_leg_body
         ]
         if any(id_ == -1 for id_ in lower_leg_body_id):
@@ -174,7 +181,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             robot_config.feet_sites.rear_right,
         ]
         feet_site_id = [
-            mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
+            mujoco.mj_name2id(self._env_model, mujoco.mjtObj.mjOBJ_SITE.value, f)
             for f in feet_site
         ]
         if any(id_ == -1 for id_ in feet_site_id):
@@ -184,24 +191,17 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._foot_radius = robot_config.foot_radius
 
         # numbers of DOFs for velocity and position
-        self._nv = sys.nv
-        self._nq = sys.nq
+        self._nv = self._pipeline_model.nv
+        self._nq = self._pipeline_model.nq
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: EnvironmentConfig
-    ) -> System:
-        sys = load_system(init_scene_path)
-        sys = sys.tree_replace({"opt.timestep": environment_config.sim.sim_dt})
-        sys = sys.replace(
-            actuator_gainprm=sys.actuator_gainprm.at[:, 0].set(
-                environment_config.sim.override.Kp
-            ),
-            actuator_biasprm=sys.actuator_biasprm.at[:, 1].set(
-                -environment_config.sim.override.Kp
-            ),
-        )
-        return sys
+    ) -> EnvModel:
+        env_model = model_load(init_scene_path)
+        env_model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
+        env_model.actuator_biasprm[:, 1] = environment_config.sim.override.Kp
+        return env_model
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self._nv))
