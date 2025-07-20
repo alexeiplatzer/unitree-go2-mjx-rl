@@ -99,6 +99,15 @@ class PipelineEnv(Env):
     def pipeline_model(self) -> PipelineModel:
         return self._pipeline_model
 
+    # for brax wrappers compatibility
+    @property
+    def sys(self) -> PipelineModel:
+        return self._pipeline_model
+
+    @sys.setter
+    def sys(self, value):
+        self._pipeline_model = value
+
     def render(
         self,
         trajectory: list[PipelineState],
