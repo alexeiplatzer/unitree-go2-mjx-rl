@@ -26,7 +26,7 @@ elif GLOBAL_PHYSICS_PIPELINE == "brax":
     from brax.mjx.base import State as PipelineState
     from brax.mjx.pipeline import init as pipeline_init, step as pipeline_step
     from brax.io.image import render_array
-    from brax.io.mjcf import load as model_load, load_model as make_pipeline_model
+    from brax.io.mjcf import load_mjmodel as model_load, load_model as make_pipeline_model
     from brax.envs.base import Env, State, Wrapper
     from brax.envs.wrappers.training import (
         EvalMetrics,
