@@ -14,13 +14,13 @@ import numpy as np
 import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from brax.base import System, State as PipelineState
-from quadruped_mjx_rl.environments.quadruped_base import register_environment_config_class
+from brax.base import State as PipelineState
+from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments.joystick_base import (
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )

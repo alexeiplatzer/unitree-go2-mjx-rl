@@ -16,7 +16,6 @@ from brax.envs.wrappers.training import (
 )
 
 
-
 def wrap_for_training(
     env: Env,
     episode_length: int = 1000,

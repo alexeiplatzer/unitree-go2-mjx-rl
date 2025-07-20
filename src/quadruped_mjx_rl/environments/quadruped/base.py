@@ -117,7 +117,6 @@ register_environment_config_class(EnvironmentConfig)
 
 
 class QuadrupedBaseEnv(PipelineEnv):
-    _ACTION_SIZE = 12
 
     def __init__(
         self,
@@ -125,7 +124,6 @@ class QuadrupedBaseEnv(PipelineEnv):
         robot_config: RobotConfig,
         init_scene_path: PathLike,
     ):
-        self._dt = environment_config.sim.ctrl_dt
         n_frames = int(environment_config.sim.ctrl_dt / environment_config.sim.sim_dt)
         sys = self.make_system(init_scene_path, environment_config)
         super().__init__(sys, n_frames=n_frames)
@@ -212,7 +210,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             "rng": rng,
             "step": 0,
             "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(self._ACTION_SIZE),
+            "last_act": jnp.zeros(self.action_size),
         }
 
         obs = self._init_obs(pipeline_state, state_info)
