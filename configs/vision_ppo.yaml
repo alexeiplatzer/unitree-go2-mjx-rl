@@ -71,7 +71,7 @@ model:
     - 256
 training:
   action_repeat: 1
-  batch_size: 256
+  batch_size: 128
   discounting: 0.97
   entropy_cost: 0.01
   episode_length: 1000
@@ -79,9 +79,9 @@ training:
   madrona_backend: true
   max_grad_norm: 1.0
   normalize_observations: true
-  num_envs: 512
+  num_envs: 256
   num_evals: 5
-  num_eval_envs: 512
+  num_eval_envs: 256
   num_minibatches: 8
   num_timesteps: 1_000_000
   num_updates_per_batch: 8
@@ -95,7 +95,7 @@ vision:
   enabled_geom_groups:
     - 0
   gpu_id: 0
-  render_batch_size: 512
+  render_batch_size: 256
   render_height: 64
   render_width: 128
   use_rasterizer: false
