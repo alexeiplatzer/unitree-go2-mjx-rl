@@ -200,7 +200,7 @@ class QuadrupedBaseEnv(PipelineEnv):
     ) -> EnvModel:
         env_model = model_load(init_scene_path)
         env_model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
-        env_model.actuator_biasprm[:, 1] = environment_config.sim.override.Kp
+        env_model.actuator_biasprm[:, 1] = -environment_config.sim.override.Kp
         return env_model
 
     def reset(self, rng: jax.Array) -> State:
