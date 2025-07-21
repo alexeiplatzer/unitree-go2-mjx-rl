@@ -154,7 +154,7 @@ def train_with_vision(
     progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
     make_inference_fn, params, metrics = train_fn(
         environment=env,
-        eval_env=env,
+        #eval_env=env,
         seed=0,
         # randomization_fn=domain_randomize,
         progress_fn=progress_fn,
