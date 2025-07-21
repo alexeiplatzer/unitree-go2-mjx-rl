@@ -124,7 +124,7 @@ def render_rollout(
 
     for i in range(render_config.n_steps):
         act_rng, rng = jax.random.split(rng)
-        ctrl, _ = inference_fn(state.obs, act_rng)
+        ctrl, _ = act_fn(state.obs, act_rng)
         state = step_fn(state, ctrl)
         if i % render_every == 0:
             rollout.append(state.pipeline_state)

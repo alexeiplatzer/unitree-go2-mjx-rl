@@ -209,7 +209,8 @@ def train(
     # params = model.load_params(model_save_path)
 
     if policy_rendering_fn is not None:
-        policy_rendering_fn(env, make_inference_fn(params))
+        rendering_env = env_factory()
+        policy_rendering_fn(rendering_env, make_inference_fn(params))
 
 
 def get_training_fn(
