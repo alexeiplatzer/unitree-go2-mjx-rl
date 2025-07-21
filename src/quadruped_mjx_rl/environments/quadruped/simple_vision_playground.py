@@ -16,7 +16,7 @@ import numpy as np
 import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel, State
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
@@ -88,20 +88,32 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         env_model.geom_size[floor_id, :2] = [5.0, 5.0]
         return env_model
 
-    def pipeline_init(
-        self,
-        q: jax.Array,
-        qd: jax.Array,
-        act: jax.Array | None = None,
-        ctrl: jax.Array | None = None,
-    ) -> base.State:
-        """Force broadcasting into batch dimensions for madrona mjx. Experimental feature."""
-        q = jnp.repeat(jnp.expand_dims(q, axis=0), self._num_vision_envs, axis=0)
-        return super().pipeline_init(q, qd, act, ctrl)
+    def reset(self, rng: jax.Array) -> State:
+        pipeline_state = self.pipeline_init(
+            self._init_q + jax.random.uniform(
+                rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
+            ),
+            jnp.zeros(self._nv),
+        )
 
-    # def pipeline_step(self, pipeline_state: Any, action: jax.Array) -> base.State:
-    #     """Force broadcasting into batch dimensions for madrona mjx. Experimental feature."""
-    #
+        state_info = {
+            "rng": rng,
+            "step": 0,
+            "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
+            "last_act": jnp.zeros(self.action_size),
+        }
+
+        obs = self._init_obs(pipeline_state, state_info)
+
+        reward, done = jnp.zeros(2)
+
+        metrics = {
+            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
+        }
+        metrics["total_dist"] = jnp.zeros(())
+
+        state = State(pipeline_state, obs, reward, done, metrics, state_info)
+        return state
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
