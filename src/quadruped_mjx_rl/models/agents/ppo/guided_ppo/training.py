@@ -484,7 +484,7 @@ def train(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
 
-    eval_env = _utils.maybe_wrap_env(
+    eval_env = env if madrona_backend else _utils.maybe_wrap_env(
         eval_env or environment,
         wrap_env,
         num_eval_envs,

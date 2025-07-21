@@ -24,6 +24,7 @@ from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo
 from quadruped_mjx_rl.policy_rendering import (
     render_rollout, RenderConfig, RolloutRenderer, PolicyRenderingFn, render_policy_rollout
 )
+from quadruped_mjx_rl.models.agents.ppo.training_utils import maybe_wrap_env
 
 
 # Configurations
@@ -152,12 +153,22 @@ def train_with_vision(
         model_config=model_config, training_config=training_config, vision=True
     )
     progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
+    # env = maybe_wrap_env(
+    #     env=env,
+    #     wrap_env=True,
+    #     num_envs=training_config.num_envs,
+    #     episode_length=training_config.episode_length,
+    #     action_repeat=training_config.action_repeat,
+    #     device_count=1,
+    #
+    # )
     make_inference_fn, params, metrics = train_fn(
         environment=env,
-        #eval_env=env,
+        # eval_env=env,
         seed=0,
         # randomization_fn=domain_randomize,
         progress_fn=progress_fn,
+        # wrap_env=False,
     )
     print(f"time to jit: {eval_times[1] - eval_times[0]}")
     print(f"time to train: {eval_times[-1] - eval_times[1]}")
