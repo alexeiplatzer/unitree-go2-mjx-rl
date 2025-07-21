@@ -18,7 +18,7 @@ requires-python = ">=3.10"
 dependencies = [
     "mujoco==3.3.4",
     "mujoco_mjx==3.3.4",
-    "brax==0.12.3",
+    "brax==0.12.4",
     "mediapy",
     "ml_collections",
     "pyyaml",
