@@ -98,7 +98,7 @@ def _identity_vision_randomization_fn(
                 jnp.expand_dims(pipeline_model.light_dir, 0), num_worlds, axis=0
             ),
             "light_type": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_directional, 0), num_worlds, axis=0
+                jnp.expand_dims(pipeline_model.light_type, 0), num_worlds, axis=0
             ),
             "light_castshadow": jnp.repeat(
                 jnp.expand_dims(pipeline_model.light_castshadow, 0), num_worlds, axis=0
