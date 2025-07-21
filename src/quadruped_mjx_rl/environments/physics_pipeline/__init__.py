@@ -1,5 +1,7 @@
 GLOBAL_PHYSICS_PIPELINE = "brax"  # or brax
 
+from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
+
 if GLOBAL_PHYSICS_PIPELINE == "local":
     from quadruped_mjx_rl.environments.physics_pipeline.base import Motion, Transform
     from mujoco import MjModel as EnvModel
@@ -7,7 +9,7 @@ if GLOBAL_PHYSICS_PIPELINE == "local":
     from quadruped_mjx_rl.environments.physics_pipeline.physics_pipeline import (
         pipeline_init, pipeline_step
     )
-    from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
+    # from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
     from quadruped_mjx_rl.environments.physics_pipeline.loading import (
         model_load, make_pipeline_model
     )
@@ -25,7 +27,7 @@ elif GLOBAL_PHYSICS_PIPELINE == "brax":
     from mujoco import MjModel as EnvModel
     from brax.mjx.base import State as PipelineState
     from brax.mjx.pipeline import init as pipeline_init, step as pipeline_step
-    from brax.io.image import render_array
+    # from brax.io.image import render_array
     from brax.io.mjcf import load_mjmodel as model_load, load_model as make_pipeline_model
     from brax.envs.base import Env, State, Wrapper
     from brax.envs.wrappers.training import (
