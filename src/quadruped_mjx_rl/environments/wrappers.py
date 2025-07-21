@@ -97,7 +97,7 @@ def _identity_vision_randomization_fn(
             "light_dir": jnp.repeat(
                 jnp.expand_dims(pipeline_model.light_dir, 0), num_worlds, axis=0
             ),
-            "light_directional": jnp.repeat(
+            "light_type": jnp.repeat(
                 jnp.expand_dims(pipeline_model.light_directional, 0), num_worlds, axis=0
             ),
             "light_castshadow": jnp.repeat(
@@ -125,7 +125,7 @@ def _supplement_vision_randomization_fn(
         "geom_size",
         "light_pos",
         "light_dir",
-        "light_directional",
+        "light_type",
         "light_castshadow",
         "light_cutoff",
     ]
@@ -174,7 +174,7 @@ class MadronaWrapper(Wrapper):
             "geom_size",
             "light_pos",
             "light_dir",
-            "light_directional",
+            "light_type",
             "light_castshadow",
             "light_cutoff",
         ]
