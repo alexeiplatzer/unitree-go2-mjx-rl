@@ -148,9 +148,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def customize_model(
         init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
     ) -> EnvModel:
-        pipeline_model = QuadrupedBaseEnv.customize_model(init_scene_path, environment_config)
-        pipeline_model.dof_damping[6:] = environment_config.sim.override.Kd
-        return pipeline_model
+        env_model = QuadrupedBaseEnv.customize_model(init_scene_path, environment_config)
+        env_model.dof_damping[6:] = environment_config.sim.override.Kd
+        return env_model
 
     def sample_command(self, rng: jax.Array) -> jax.Array:
         key1, key2, key3 = jax.random.split(rng, 3)

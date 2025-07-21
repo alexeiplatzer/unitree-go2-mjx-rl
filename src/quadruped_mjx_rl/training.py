@@ -136,10 +136,18 @@ def train_with_vision(
     training_config: TrainingWithVisionConfig,
     vision_config: VisionConfig,
     params_save_path: PathLike,
-
+    policy_rendering_fn=functools.partial(
+        render_policy_rollout, render_config=RenderConfig(),
+    ),
 ):
     env_model = get_base_model(init_scene_path, env_config)
-    env = get_env_factory(robot_config, env_config, env_model, vision_config=vision_config)()
+
+    env_factory = get_env_factory(
+        robot_config, env_config, env_model, vision_config=vision_config #, renderer=renderer
+    )
+    env = env_factory()
+    renderer = get_renderer(env.pipeline_model, vision_config)
+    env.renderer = renderer
     train_fn = get_training_fn(
         model_config=model_config, training_config=training_config, vision=True
     )
@@ -148,7 +156,7 @@ def train_with_vision(
         environment=env,
         eval_env=env,
         seed=0,
-        randomization_fn=domain_randomize,
+        # randomization_fn=domain_randomize,
         progress_fn=progress_fn,
     )
     print(f"time to jit: {eval_times[1] - eval_times[0]}")
@@ -156,6 +164,11 @@ def train_with_vision(
 
     # Save params
     save_params(params_save_path, params)
+
+    if policy_rendering_fn is not None:
+        rendering_env = env_factory()
+        rendering_env.renderer = renderer
+        policy_rendering_fn(rendering_env, make_inference_fn(params))
 
 
 def train_wrong(

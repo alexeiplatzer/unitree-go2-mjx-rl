@@ -63,39 +63,30 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         robot_config: RobotConfig,
         env_model: EnvModel,
         vision_config: VisionConfig | None = None,
+        # renderer=None,
     ):
         super().__init__(environment_config, robot_config, env_model)
 
         self._use_vision = environment_config.use_vision
         if self._use_vision:
             if vision_config is None:
-                raise ValueError("Use vision set to true, VisionConfig not provided.")
+                raise ValueError("use_vision set to true, VisionConfig not provided.")
+            # if renderer is None:
+            #     raise ValueError("use_vision set to false, renderer not provided.")
 
             self._num_vision_envs = vision_config.render_batch_size
-
-            from madrona_mjx.renderer import BatchRenderer
-
-            self.renderer = BatchRenderer(
-                m=self.sys,
-                gpu_id=vision_config.gpu_id,
-                num_worlds=vision_config.render_batch_size,
-                batch_render_view_width=vision_config.render_width,
-                batch_render_view_height=vision_config.render_height,
-                enabled_geom_groups=np.asarray(vision_config.enabled_geom_groups),
-                enabled_cameras=np.asarray(vision_config.enabled_cameras),
-                add_cam_debug_geo=False,
-                use_rasterizer=vision_config.use_rasterizer,
-                viz_gpu_hdls=None,
-            )
+            self.renderer = None  # must be set!
 
     @staticmethod
-    def make_system(
+    def customize_model(
         init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
     ):
-        sys = QuadrupedJoystickBaseEnv.make_system(init_scene_path, environment_config)
-        floor_id = mujoco.mj_name2id(sys.mj_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
-        sys = sys.replace(geom_size=sys.geom_size.at[floor_id, :2].set([5.0, 5.0]))
-        return sys
+        env_model = QuadrupedJoystickBaseEnv.customize_model(
+            init_scene_path, environment_config
+        )
+        floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+        env_model.geom_size[floor_id, :2] = [5.0, 5.0]
+        return env_model
 
     def pipeline_init(
         self,
