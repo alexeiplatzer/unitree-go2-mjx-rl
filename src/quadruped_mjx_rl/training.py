@@ -158,6 +158,58 @@ def train_with_vision(
     save_params(params_save_path, params)
 
 
+def train_wrong(
+    *,
+    robot_config: RobotConfig,
+    env_config: EnvironmentConfig,
+    init_scene_path: PathLike,
+    model_config: ModelConfig,
+    training_config: TrainingConfig,
+    model_save_path: PathLike,
+    checkpoints_save_path: PathLike | None = None,
+    policy_rendering_fn=functools.partial(
+        render_policy_rollout, render_config=RenderConfig(),
+    ),
+):
+    if checkpoints_save_path is not None:
+        checkpoints_save_path = Path(checkpoints_save_path)
+
+        def policy_params_fn(current_step, make_policy, parameters):
+            # save checkpoints
+            orbax_checkpointer = ocp.PyTreeCheckpointer()
+            save_args = orbax_utils.save_args_from_target(parameters)
+            path = checkpoints_save_path / f"{current_step}"
+            orbax_checkpointer.save(path, parameters, force=True, save_args=save_args)
+
+    else:
+        policy_params_fn = lambda *args: None
+
+    env_model = get_base_model(init_scene_path, env_config)
+    env_factory = get_env_factory(robot_config, env_config, env_model)
+    env = env_factory()
+    eval_env = env_factory()
+    progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
+    train_fn = get_training_fn(model_config, training_config, vision=False)
+    make_inference_fn, params, metrics = train_fn(
+        environment=env,
+        progress_fn=progress_fn,
+        eval_env=eval_env,
+        randomization_fn=domain_randomize,
+        policy_params_fn=policy_params_fn,
+        seed=0,
+    )
+    print(f"time to jit: {eval_times[1] - eval_times[0]}")
+    print(f"time to train: {eval_times[-1] - eval_times[1]}")
+
+    # Save params
+    save_params(model_save_path, params)
+    # params = model.load_params(model_save_path)
+
+    if policy_rendering_fn is not None:
+        rendering_env = env_factory()
+        policy_rendering_fn(rendering_env, make_inference_fn(params))
+
+
 def train(
     *,
     robot_config: RobotConfig,
