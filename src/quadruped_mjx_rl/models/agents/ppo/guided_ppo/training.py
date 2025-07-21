@@ -172,12 +172,12 @@ def train(
         raise TypeError(
             f"Environment observations must be a dictionary (Mapping), got {type(env_state.obs)}"
         )
-    required_keys = {"state", "privileged_state", "state_history"}
-    if not required_keys.issubset(env_state.obs.keys()):
-        raise ValueError(
-            f"Environment observation dict missing required keys. "
-            f"Expected: {required_keys}, Got: {env_state.obs.keys()}"
-        )
+    # required_keys = {"state", "privileged_state", "state_history"}
+    # if not required_keys.issubset(env_state.obs.keys()):
+    #     raise ValueError(
+    #         f"Environment observation dict missing required keys. "
+    #         f"Expected: {required_keys}, Got: {env_state.obs.keys()}"
+    #     )
 
     # Shapes of different observation tensors
     # Discard the batch axes over devices and envs.
