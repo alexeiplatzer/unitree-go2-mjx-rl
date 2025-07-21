@@ -145,12 +145,12 @@ def make_teacher_networks(
             f"Environment observations must be a dictionary (Mapping),"
             f" got {type(observation_size)}"
         )
-    required_keys = {"state", "privileged_state", "state_history"}
-    if not required_keys.issubset(observation_size.keys()):
-        raise ValueError(
-            f"Environment observation dict missing required keys. "
-            f"Expected: {required_keys}, Got: {observation_size.keys()}"
-        )
+    # required_keys = {"state", "privileged_state", "state_history"}
+    # if not required_keys.issubset(observation_size.keys()):
+    #     raise ValueError(
+    #         f"Environment observation dict missing required keys. "
+    #         f"Expected: {required_keys}, Got: {observation_size.keys()}"
+    #     )
 
     observation_size |= {"latent": latent_representation_size}
 
