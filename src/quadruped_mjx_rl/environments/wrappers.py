@@ -71,7 +71,7 @@ def _identity_vision_randomization_fn(
             "geom_size": 0,
             "light_pos": 0,
             "light_dir": 0,
-            "light_directional": 0,
+            "light_type": 0,
             "light_castshadow": 0,
             "light_cutoff": 0,
         }

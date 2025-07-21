@@ -16,14 +16,14 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "mujoco==3.3.2",
-    "mujoco_mjx==3.3.2",
+    "mujoco==3.3.4",
+    "mujoco_mjx==3.3.4",
     "brax==0.12.3",
     "mediapy",
     "ml_collections",
     "pyyaml",
     "dacite==1.9.2",
-    "jax==0.5.1",
+    "jax==0.5.2",
     "numpy",
     "flax==0.10.6",
     "matplotlib",
