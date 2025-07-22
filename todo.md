@@ -1,5 +1,7 @@
 ## Todo list
 
+- [ ] check the observations key errors
+
 - [ ] visualise cameras output
 - [ ] try training full setup
 - [ ] try training partial setups
