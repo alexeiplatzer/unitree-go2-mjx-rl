@@ -1,7 +1,7 @@
-"""Definitions of neural network modules."""
+"""Definitions of neural network modules, basic building blocks for networks."""
 
 # Typing
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Sequence, Mapping
 
 # Math
 import jax
@@ -14,7 +14,6 @@ Initializer = Callable
 
 class MLP(linen.Module):
     """MLP module."""
-
     layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
@@ -39,6 +38,29 @@ class MLP(linen.Module):
         return hidden
 
 
+class HeadMLP(linen.Module):
+    """MLP module over pre-processed latent vectors."""
+    obs_keys: Sequence[str]
+    layer_sizes: Sequence[int]
+    activation: ActivationFn = linen.relu
+    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+    activate_final: bool = False
+    bias: bool = True
+    layer_norm: bool = False
+
+    @linen.compact
+    def __call__(self, data: Mapping[str, jax.Array]):
+        observations = [data[obs_key] for obs_key in self.obs_keys]
+        observation_vector = jnp.concatenate(observations, axis=-1)
+        return MLP(
+            layer_sizes=self.layer_sizes,
+            activation=self.activation,
+            kernel_init=self.kernel_init,
+            activate_final=self.activate_final,
+            layer_norm=self.layer_norm,
+        )(observation_vector)
+
+
 class CNN(linen.Module):
     """CNN module. Inputs are expected in Batch * HWC format."""
 
@@ -47,6 +69,7 @@ class CNN(linen.Module):
     strides: Sequence[tuple]
     dense_layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
+    activate_final: bool = False
     use_bias: bool = True
 
     @linen.compact
@@ -64,11 +87,11 @@ class CNN(linen.Module):
             hidden = self.activation(hidden)
             hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
 
-
         #hidden = hidden.reshape((hidden.shape[0], -1))
         hidden = jnp.mean(hidden, axis=(-2, -3))
         return MLP(
             layer_sizes=self.dense_layer_sizes,
             activation=self.activation,
+            activate_final=self.activate_final,
             bias=self.use_bias,
         )(hidden)

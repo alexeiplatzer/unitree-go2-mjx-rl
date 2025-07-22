@@ -1,12 +1,22 @@
 
 # Typing
 from collections.abc import Sequence, Mapping
+
+from notebooks.Universal import latent_representation_size
 from quadruped_mjx_rl import types
+
+# Supporting
+import functools
 
 # Math
 from flax.struct import dataclass as flax_dataclass
 from flax import linen
-from quadruped_mjx_rl.models import modules, networks, distributions
+from quadruped_mjx_rl.models import distributions
+
+# Definitions
+from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
+from quadruped_mjx_rl.models.modules import ActivationFn, MLP, HeadMLP, CNN
+from quadruped_mjx_rl.models.networks import make_network, FeedForwardNetwork, normalizer_select
 
 
 @flax_dataclass
@@ -241,3 +251,124 @@ def make_student_networks(
     return StudentNetworks(
         encoder_network=encoder_network,
     )
+
+
+def make_teacher_student_network(
+    observation_size: types.ObservationSize,
+    action_size: int,
+    preprocess_observations_fn: types.PreprocessObservationFn = (
+        types.identity_observation_preprocessor
+    ),
+    teacher_obs_key: str = "privileged_state",
+    student_obs_key: str = "state_history",
+    common_obs_key: str = "state",
+    model_config: TeacherStudentConfig = TeacherStudentConfig(),
+    activation: ActivationFn = linen.swish,
+):
+    """Make teacher student network with preprocessor."""
+
+    # Sanity check
+    if not isinstance(observation_size, Mapping):
+        raise TypeError(
+            f"Environment observations must be a dictionary (Mapping),"
+            f" got {type(observation_size)}"
+        )
+    if teacher_obs_key not in observation_size:
+        raise ValueError(
+            f"Teacher observation key {teacher_obs_key} must be in environment observations."
+        )
+    if student_obs_key not in observation_size:
+        raise ValueError(
+            f"Student observation key {student_obs_key} must be in environment observations."
+        )
+    if common_obs_key not in observation_size:
+        raise ValueError(
+            f"Common observation key {common_obs_key} must be in environment observations."
+        )
+
+    parametric_action_distribution = distributions.NormalTanhDistribution(
+        event_size=action_size
+    )
+
+    def mapped_preprocess(
+        obs: types.Observation, processor_params: types.PreprocessorParams, obs_key: str
+    ) -> types.Observation:
+        return preprocess_observations_fn(
+            obs[obs_key], normalizer_select(processor_params, obs_key)
+        )
+
+    if isinstance(model_config, TeacherStudentVisionConfig):
+        teacher_encoder_module = CNN(
+            num_filters=model_config.modules.encoder_convolutional,
+            kernel_sizes=[(3, 3)] * len(model_config.modules.encoder_convolutional),
+            strides=[(1, 1)] * len(model_config.modules.encoder_convolutional),
+            dense_layer_sizes=model_config.modules.encoder_dense + [model_config.latent_size],
+            activation=activation,
+            activate_final=True,
+        )
+        student_encoder_module = CNN(
+            num_filters=model_config.modules.adapter_convolutional,
+            kernel_sizes=[(3, 3)] * len(model_config.modules.adapter_convolutional),
+            strides=[(1, 1)] * len(model_config.modules.adapter_convolutional),
+            dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
+            activation=activation,
+            activate_final=True,
+        )
+        teacher_preprocess = lambda obs, p: obs[teacher_obs_key]
+        student_preprocess = lambda obs, p: obs[student_obs_key]
+    elif isinstance(model_config, TeacherStudentConfig):
+        teacher_encoder_module = MLP(
+            layer_sizes=model_config.modules.encoder + [model_config.latent_size],
+            activation=activation,
+            activate_final=True,
+        )
+        student_encoder_module = MLP(
+            layer_sizes=model_config.modules.adapter + [model_config.latent_size],
+            activation=activation,
+            activate_final=True,
+        )
+        teacher_preprocess = functools.partial(mapped_preprocess, obs_key=teacher_obs_key)
+        student_preprocess = functools.partial(mapped_preprocess, obs_key=student_obs_key)
+    else:
+        raise TypeError("Model configuration must be a TeacherStudentConfig instance.")
+
+    teacher_encoder_network = make_network(
+        module=teacher_encoder_module,
+        obs_size=observation_size[teacher_obs_key],
+        preprocess_observations_fn=teacher_preprocess,
+    )
+
+    student_encoder_network = make_network(
+        module=student_encoder_module,
+        obs_size=observation_size[student_obs_key],
+        preprocess_observations_fn=student_preprocess,
+    )
+
+    def head_preprocessor(obs, p):
+        return {**obs, common_obs_key: mapped_preprocess(obs, p, common_obs_key)}
+
+    policy_module = HeadMLP(
+        layer_sizes=model_config.modules.policy + [parametric_action_distribution.param_size],
+        activation=activation,
+        obs_keys=[common_obs_key, "latent"],
+    )
+
+    value_module = HeadMLP(
+        layer_sizes=model_config.modules.value + [1],
+        activation=activation,
+        obs_keys=[common_obs_key, "latent"],
+    )
+
+    policy_network = make_network(
+        module=policy_module,
+        obs_size=observation_size,
+        preprocess_observations_fn=head_preprocessor,  # TODO: maybe glue them here, simplify upstream
+    )
+
+    value_network = make_network(
+        module=value_module,
+        obs_size=observation_size[common_obs_key] + model_config.latent_size,
+        preprocess_observations_fn=head_preprocessor,
+    )
+
+    return None

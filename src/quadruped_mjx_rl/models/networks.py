@@ -2,7 +2,7 @@
 
 # Typing
 from dataclasses import dataclass
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Collection
 from quadruped_mjx_rl.types import (
     ObservationSize,
     PreprocessObservationFn,
@@ -42,40 +42,17 @@ def make_network(
     module: linen.Module,
     obs_size: ObservationSize,
     preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
-    obs_keys: str | tuple[str, ...] = "state",
     squeeze_output: bool = False,
 ):
-    def preprocess_by_key(obs, processor_params, obs_key=obs_keys):
-        return preprocess_observations_fn(
-            obs[obs_key], normalizer_select(processor_params, obs_key)
-        )
-
-    def preprocess_multiple_obs(obs, processor_params):
-        obs = [
-            (
-                preprocess_by_key(obs, processor_params, obs_key)
-                if obs_key != "latent" and not obs_key.startswith("pixels")
-                else obs[obs_key]
-            )
-            for obs_key in obs_keys
-        ]
-        return jnp.concatenate(obs, axis=-1)
-
-    if isinstance(obs_size, Mapping):
-        if not isinstance(obs_keys, tuple):
-            obs_keys = (obs_keys,)
-        preprocess_observations = preprocess_multiple_obs
-        obs_size = sum((_get_obs_state_size(obs_size, obs_key) for obs_key in obs_keys))
-    else:
-        preprocess_observations = preprocess_observations_fn
-        obs_size = _get_obs_state_size(obs_size, obs_keys)
-
     def apply(processor_params, params, obs):
-        obs = preprocess_observations(obs, processor_params)
+        obs = preprocess_observations_fn(obs, processor_params)
         out = module.apply(params, obs)
         if squeeze_output:
             return jnp.squeeze(out, axis=-1)
         return out
 
-    dummy_obs = jnp.zeros((1, obs_size))
+    dummy_obs = jax.tree_util.tree_map(
+        lambda x: jnp.zeros((1,) + x),
+        obs_size,
+    )
     return FeedForwardNetwork(init=lambda key: module.init(key, dummy_obs), apply=apply)
