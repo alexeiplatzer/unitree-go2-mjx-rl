@@ -54,7 +54,7 @@ def make_network(
         obs = [
             (
                 preprocess_by_key(obs, processor_params, obs_key)
-                if obs_key != "latent"
+                if obs_key != "latent" and not obs_key.startswith("pixels")
                 else obs[obs_key]
             )
             for obs_key in obs_keys
@@ -62,12 +62,10 @@ def make_network(
         return jnp.concatenate(obs, axis=-1)
 
     if isinstance(obs_size, Mapping):
-        if isinstance(obs_keys, tuple):
-            preprocess_observations = preprocess_multiple_obs
-            obs_size = sum((_get_obs_state_size(obs_size, obs_key) for obs_key in obs_keys))
-        else:
-            preprocess_observations = preprocess_by_key
-            obs_size = _get_obs_state_size(obs_size, obs_keys)
+        if not isinstance(obs_keys, tuple):
+            obs_keys = (obs_keys,)
+        preprocess_observations = preprocess_multiple_obs
+        obs_size = sum((_get_obs_state_size(obs_size, obs_key) for obs_key in obs_keys))
     else:
         preprocess_observations = preprocess_observations_fn
         obs_size = _get_obs_state_size(obs_size, obs_keys)

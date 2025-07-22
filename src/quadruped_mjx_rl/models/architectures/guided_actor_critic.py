@@ -171,7 +171,7 @@ def make_teacher_networks(
     encoder_network = networks.make_network(
         module=encoder_module,
         obs_size=observation_size,
-        preprocess_observations_fn=types.identity_observation_preprocessor,
+        preprocess_observations_fn=preprocess_observations_fn,
         obs_keys=encoder_obs_key,
     )
     policy_module = modules.MLP(
@@ -234,7 +234,7 @@ def make_student_networks(
     encoder_network = networks.make_network(
         module=encoder_module,
         obs_size=observation_size,
-        preprocess_observations_fn=types.identity_observation_preprocessor,
+        preprocess_observations_fn=preprocess_observations_fn,
         obs_keys=encoder_obs_key,
     )
 
