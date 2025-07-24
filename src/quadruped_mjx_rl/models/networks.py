@@ -89,7 +89,7 @@ def make_network(
         lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
         obs_size,
     )
-    print(f"dummy_obs: {dummy_obs}")
+    # print(f"dummy_obs: {dummy_obs}")
     dummy_inputs = to_inputs(dummy_obs)
-    print(f"dummy_inputs: {dummy_inputs}")
+    # print(f"dummy_inputs: {dummy_inputs}")
     return FeedForwardNetwork(init=lambda key: module.init(key, *dummy_inputs), apply=apply)

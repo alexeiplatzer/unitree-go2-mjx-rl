@@ -264,8 +264,8 @@ def make_student_networks(
         module=encoder_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        preprocess_obs_keys=(),
-        apply_to_obs_keys=preprocess_obs_keys,
+        preprocess_obs_keys=preprocess_obs_keys,
+        apply_to_obs_keys=(encoder_obs_key,),
         squeeze_output=False,
     )
 
