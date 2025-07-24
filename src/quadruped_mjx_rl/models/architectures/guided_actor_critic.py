@@ -193,7 +193,7 @@ def make_teacher_networks(
         squeeze_output=False,
     )
 
-    policy_module = MLP(
+    policy_module = HeadMLP(
         layer_sizes=(
             list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]
         ),
@@ -209,7 +209,7 @@ def make_teacher_networks(
         squeeze_output=False,
     )
 
-    value_module = MLP(
+    value_module = HeadMLP(
         layer_sizes=list(value_hidden_layer_sizes) + [1],
         activation=activation,
         activate_final=False,
