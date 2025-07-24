@@ -99,5 +99,5 @@ vision:
   gpu_id: 0
   render_batch_size: 256
   render_height: 64
-  render_width: 128
+  render_width: 64
   use_rasterizer: false

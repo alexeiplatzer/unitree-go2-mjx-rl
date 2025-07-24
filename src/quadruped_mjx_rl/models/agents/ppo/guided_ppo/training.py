@@ -7,7 +7,7 @@ from quadruped_mjx_rl.types import Params, PRNGKey
 # Supporting
 import time
 import functools
-from absl import logging
+import logging
 from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
 
 # Math
@@ -441,6 +441,10 @@ def train(
     student_init_params = StudentNetworkParams(
         encoder=student_network.encoder_network.init(key_adapter),
     )
+    encoder_param_size = _utils.param_size(teacher_init_params.encoder)
+    policy_param_size = _utils.param_size(teacher_init_params.policy)
+    logging.info(f"Encoder param size: {encoder_param_size}")
+    logging.info(f"Policy param size: {policy_param_size}")
 
     obs_shape = jax.tree_util.tree_map(
         lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
@@ -627,4 +631,4 @@ def train(
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
     metrics = (teacher_metrics, student_metrics)
-    return make_student_policy, teacher_params, student_params, metrics
+    return make_student_policy, (teacher_params, student_params), metrics

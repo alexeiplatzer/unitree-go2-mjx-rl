@@ -2,7 +2,7 @@
 
 # Typing
 from collections.abc import Callable, Mapping
-from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.types import PRNGKey, Params
 
 # Supporting
 import functools
@@ -158,3 +158,7 @@ def remove_pixels(
     if not isinstance(obs, Mapping):
         return obs
     return {k: v for k, v in obs.items() if not k.startswith("pixels/")}
+
+
+def param_size(params: Params) -> int:
+    return jax.tree.reduce(lambda c, x: c + x.size, params, 0)

@@ -7,7 +7,7 @@ from quadruped_mjx_rl.types import Params, PRNGKey
 # Supporting
 import time
 import functools
-from absl import logging
+import logging
 from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
 
 # Math

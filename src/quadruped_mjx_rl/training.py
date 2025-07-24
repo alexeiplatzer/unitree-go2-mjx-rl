@@ -141,12 +141,15 @@ def train_with_vision(
         render_policy_rollout, render_config=RenderConfig(),
     ),
 ):
+    logging.info("Getting the base model...")
     env_model = get_base_model(init_scene_path, env_config)
 
     env_factory = get_env_factory(
         robot_config, env_config, env_model, vision_config=vision_config #, renderer=renderer
     )
+    logging.info("Creating the environment...")
     env = env_factory()
+    logging.info("Instantiating the rendering backend...")
     renderer = get_renderer(env.pipeline_model, vision_config)
     env.renderer = renderer
     train_fn = get_training_fn(
@@ -162,6 +165,7 @@ def train_with_vision(
     #     device_count=1,
     #
     # )
+    logging.info("Starting training with vision...")
     make_inference_fn, params, metrics = train_fn(
         environment=env,
         # eval_env=env,
@@ -170,16 +174,17 @@ def train_with_vision(
         progress_fn=progress_fn,
         # wrap_env=False,
     )
-    print(f"time to jit: {eval_times[1] - eval_times[0]}")
-    print(f"time to train: {eval_times[-1] - eval_times[1]}")
+    logging.info(f"time to jit: {eval_times[1] - eval_times[0]}")
+    logging.info(f"time to train: {eval_times[-1] - eval_times[1]}")
 
     # Save params
     save_params(params_save_path, params)
 
     if policy_rendering_fn is not None:
+        student_params = params[1]
         rendering_env = env_factory()
         rendering_env.renderer = renderer
-        policy_rendering_fn(rendering_env, make_inference_fn(params))
+        policy_rendering_fn(rendering_env, make_inference_fn(student_params))
 
 
 def train_wrong(
