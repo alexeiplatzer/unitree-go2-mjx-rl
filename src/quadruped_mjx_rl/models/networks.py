@@ -86,7 +86,7 @@ def make_network(
         return out
 
     dummy_obs = jax.tree_util.tree_map(
-        lambda x: jnp.zeros((1,) + x),
+        lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
         obs_size,
     )
     dummy_inputs = to_inputs(dummy_obs)
