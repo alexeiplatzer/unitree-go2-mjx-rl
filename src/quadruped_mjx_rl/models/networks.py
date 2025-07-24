@@ -2,10 +2,13 @@
 
 # Typing
 from dataclasses import dataclass
-from collections.abc import Callable, Mapping, Collection
+from collections.abc import Callable, Mapping, Collection, Sequence
 from quadruped_mjx_rl.types import (
+    Observation,
     ObservationSize,
     PreprocessObservationFn,
+    PreprocessorParams,
+    Params,
     identity_observation_preprocessor,
 )
 
@@ -38,15 +41,46 @@ def normalizer_select(
     )
 
 
+def preprocess_by_key(
+    *,
+    preprocess_obs_fn: PreprocessObservationFn,
+    processor_params: PreprocessorParams,
+    obs: Observation,
+    preprocess_obs_keys: Collection[str] = (),
+):
+    """Preprocesses the specified observations only, returns the same structure."""
+    if not isinstance(obs, Mapping):
+        return preprocess_obs_fn(obs, processor_params)
+    return {
+        obs_key: obs[obs_key] if obs_key not in preprocess_obs_keys
+        else preprocess_obs_fn(obs[obs_key], normalizer_select(processor_params, obs_key))
+        for obs_key in obs
+    }
+
+
 def make_network(
     module: linen.Module,
     obs_size: ObservationSize,
     preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
+    preprocess_obs_keys: Collection[str] = (),
+    apply_to_obs_keys: Sequence[str] = ("state",),
     squeeze_output: bool = False,
 ):
-    def apply(processor_params, params, obs):
-        obs = preprocess_observations_fn(obs, processor_params)
-        out = module.apply(params, obs)
+    def to_inputs(obs: Observation) -> list[jax.Array]:
+        if isinstance(obs, Mapping):
+            return [obs[k] for k in apply_to_obs_keys]
+        else:
+            return [obs]
+
+    def apply(processor_params: PreprocessorParams, params: Params, obs: Observation):
+        obs = preprocess_by_key(
+            preprocess_obs_fn=preprocess_observations_fn,
+            processor_params=processor_params,
+            obs=obs,
+            preprocess_obs_keys=preprocess_obs_keys,
+        )
+        inputs = to_inputs(obs)
+        out = module.apply(params, *inputs)
         if squeeze_output:
             return jnp.squeeze(out, axis=-1)
         return out
@@ -55,4 +89,5 @@ def make_network(
         lambda x: jnp.zeros((1,) + x),
         obs_size,
     )
-    return FeedForwardNetwork(init=lambda key: module.init(key, dummy_obs), apply=apply)
+    dummy_inputs = to_inputs(dummy_obs)
+    return FeedForwardNetwork(init=lambda key: module.init(key, *dummy_inputs), apply=apply)

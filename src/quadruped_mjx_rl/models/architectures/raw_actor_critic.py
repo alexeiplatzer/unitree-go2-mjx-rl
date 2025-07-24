@@ -75,7 +75,8 @@ def make_networks(
         module=policy_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=policy_obs_key,
+        preprocess_obs_keys=(policy_obs_key,),
+        apply_to_obs_keys=(policy_obs_key,),
     )
     value_module = modules.MLP(
         layer_sizes=list(value_hidden_layer_sizes) + [1],
@@ -85,7 +86,8 @@ def make_networks(
         module=value_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=value_obs_key,
+        preprocess_obs_keys=(value_obs_key,),
+        apply_to_obs_keys=(value_obs_key,),
         squeeze_output=True,
     )
 

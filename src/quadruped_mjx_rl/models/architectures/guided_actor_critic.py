@@ -1,8 +1,6 @@
 
 # Typing
 from collections.abc import Sequence, Mapping
-
-from notebooks.Universal import latent_representation_size
 from quadruped_mjx_rl import types
 
 # Supporting
@@ -21,15 +19,15 @@ from quadruped_mjx_rl.models.networks import make_network, FeedForwardNetwork, n
 
 @flax_dataclass
 class TeacherNetworks:
-    encoder_network: networks.FeedForwardNetwork
-    policy_network: networks.FeedForwardNetwork
-    value_network: networks.FeedForwardNetwork
+    encoder_network: FeedForwardNetwork
+    policy_network: FeedForwardNetwork
+    value_network: FeedForwardNetwork
     parametric_action_distribution: distributions.ParametricDistribution
 
 
 @flax_dataclass
 class StudentNetworks:
-    encoder_network: networks.FeedForwardNetwork
+    encoder_network: FeedForwardNetwork
 
 
 @flax_dataclass
@@ -101,6 +99,7 @@ def make_student_inference_fn(
         def policy(
             observations: types.Observation, key_sample: types.PRNGKey
         ) -> tuple[types.Action, types.Extra]:
+            # TODO this indices might be false? maybe refactoring makes sense to avoid them
             normalizer_params = teacher_student_params[0]
             encoder_params = teacher_student_params[1]
             policy_params = teacher_student_params[2]
@@ -142,7 +141,7 @@ def make_teacher_networks(
     encoder_convolutional_layer_sizes: Sequence[int] | None = None,
     encoder_hidden_layer_sizes: Sequence[int] = (128,) * 2,
     latent_representation_size: int = 32,
-    activation: modules.ActivationFn = linen.swish,
+    activation: ActivationFn = linen.swish,
     policy_obs_key: str = "state",
     value_obs_key: str = "state",
     encoder_obs_key: str = "privileged_state",
@@ -164,47 +163,63 @@ def make_teacher_networks(
 
     observation_size |= {"latent": latent_representation_size}
 
-    parametric_action_distribution = distributions.NormalTanhDistribution(event_size=action_size)
+    parametric_action_distribution = distributions.NormalTanhDistribution(
+        event_size=action_size
+    )
+
     if encoder_convolutional_layer_sizes is not None:
-        encoder_module = modules.CNN(
+        encoder_module = CNN(
             num_filters=list(encoder_convolutional_layer_sizes),
-            kernel_sizes=[(3,)] * len(encoder_convolutional_layer_sizes),
-            strides=[(1,)] * len(encoder_convolutional_layer_sizes),
-            dense_layer_sizes=list(encoder_hidden_layer_sizes),
+            kernel_sizes=[(3, 3)] * len(encoder_convolutional_layer_sizes),
+            strides=[(1, 1)] * len(encoder_convolutional_layer_sizes),
+            dense_layer_sizes=list(encoder_hidden_layer_sizes) + [latent_representation_size],
             activation=activation,
+            activate_final=True,
         )
+        encoder_preprocess_keys = ()
     else:
-        encoder_module = modules.MLP(
+        encoder_module = MLP(
             layer_sizes=list(encoder_hidden_layer_sizes) + [latent_representation_size],
             activation=activation,
+            activate_final=True,
         )
-    encoder_network = networks.make_network(
+        encoder_preprocess_keys = (encoder_obs_key,)
+    encoder_network = make_network(
         module=encoder_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=encoder_obs_key,
+        preprocess_obs_keys=encoder_preprocess_keys,
+        apply_to_obs_keys=(encoder_obs_key,),
+        squeeze_output=False,
     )
-    policy_module = modules.MLP(
+
+    policy_module = MLP(
         layer_sizes=(
             list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]
         ),
         activation=activation,
+        activate_final=False,
     )
-    policy_network = networks.make_network(
+    policy_network = make_network(
         module=policy_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=(policy_obs_key, latent_obs_key),
+        preprocess_obs_keys=(policy_obs_key,),
+        apply_to_obs_keys=(policy_obs_key, latent_obs_key),
+        squeeze_output=False,
     )
-    value_module = modules.MLP(
+
+    value_module = MLP(
         layer_sizes=list(value_hidden_layer_sizes) + [1],
         activation=activation,
+        activate_final=False,
     )
-    value_network = networks.make_network(
+    value_network = make_network(
         module=value_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=(value_obs_key, latent_obs_key),
+        preprocess_obs_keys=(value_obs_key,),
+        apply_to_obs_keys=(value_obs_key, latent_obs_key),
         squeeze_output=True,
     )
 
@@ -224,28 +239,34 @@ def make_student_networks(
     ),
     adapter_convolutional_layer_sizes: Sequence[int] | None = None,
     adapter_hidden_layer_sizes: Sequence[int] = (128,) * 2,
-    activation: modules.ActivationFn = linen.swish,
+    activation: ActivationFn = linen.swish,
     encoder_obs_key: str = "state_history",
 ) -> StudentNetworks:
     """Make Student networks with preprocessor."""
     if adapter_convolutional_layer_sizes is not None:
-        encoder_module = modules.CNN(
+        encoder_module = CNN(
             num_filters=list(adapter_convolutional_layer_sizes),
-            kernel_sizes=[(3,)] * len(adapter_convolutional_layer_sizes),
-            strides=[(1,)] * len(adapter_convolutional_layer_sizes),
-            dense_layer_sizes=list(adapter_hidden_layer_sizes),
+            kernel_sizes=[(3, 3)] * len(adapter_convolutional_layer_sizes),
+            strides=[(1, 1)] * len(adapter_convolutional_layer_sizes),
+            dense_layer_sizes=list(adapter_hidden_layer_sizes) + [latent_representation_size],
             activation=activation,
+            activate_final=True,
         )
+        preprocess_obs_keys = ()
     else:
-        encoder_module = modules.MLP(
+        encoder_module = MLP(
             layer_sizes=list(adapter_hidden_layer_sizes) + [latent_representation_size],
             activation=activation,
+            activate_final=True,
         )
-    encoder_network = networks.make_network(
+        preprocess_obs_keys = (encoder_obs_key,)
+    encoder_network = make_network(
         module=encoder_module,
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
-        obs_keys=encoder_obs_key,
+        preprocess_obs_keys=(),
+        apply_to_obs_keys=preprocess_obs_keys,
+        squeeze_output=False,
     )
 
     return StudentNetworks(
@@ -253,7 +274,8 @@ def make_student_networks(
     )
 
 
-def make_teacher_student_network(
+# TODO: potential alternative refactoring
+def _make_teacher_student_network(
     observation_size: types.ObservationSize,
     action_size: int,
     preprocess_observations_fn: types.PreprocessObservationFn = (

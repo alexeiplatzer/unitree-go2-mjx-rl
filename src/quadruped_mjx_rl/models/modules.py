@@ -40,7 +40,6 @@ class MLP(linen.Module):
 
 class HeadMLP(linen.Module):
     """MLP module over pre-processed latent vectors."""
-    obs_keys: Sequence[str]
     layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
@@ -49,16 +48,15 @@ class HeadMLP(linen.Module):
     layer_norm: bool = False
 
     @linen.compact
-    def __call__(self, data: Mapping[str, jax.Array]):
-        observations = [data[obs_key] for obs_key in self.obs_keys]
-        observation_vector = jnp.concatenate(observations, axis=-1)
+    def __call__(self, *input_vectors: jax.Array):
+        joint_input_vector = jnp.concatenate(input_vectors, axis=-1)
         return MLP(
             layer_sizes=self.layer_sizes,
             activation=self.activation,
             kernel_init=self.kernel_init,
             activate_final=self.activate_final,
             layer_norm=self.layer_norm,
-        )(observation_vector)
+        )(joint_input_vector)
 
 
 class CNN(linen.Module):
