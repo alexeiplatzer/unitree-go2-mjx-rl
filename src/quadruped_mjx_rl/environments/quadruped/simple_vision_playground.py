@@ -150,7 +150,9 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickBaseEnv._get_obs(pipeline_state, state_info),
+            "state": QuadrupedJoystickBaseEnv._get_obs(
+                self, pipeline_state, state_info, last_obs
+            ),
         }
         if self._use_vision:
             _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
