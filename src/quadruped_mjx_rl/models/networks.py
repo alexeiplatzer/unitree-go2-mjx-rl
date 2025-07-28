@@ -2,6 +2,7 @@
 
 # Typing
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 from collections.abc import Callable, Mapping, Collection, Sequence
 from quadruped_mjx_rl.types import (
     Observation,
@@ -16,6 +17,7 @@ from quadruped_mjx_rl.types import (
 import jax
 import jax.numpy as jnp
 from flax import linen
+from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import running_statistics
 
 
@@ -23,6 +25,15 @@ from quadruped_mjx_rl import running_statistics
 class FeedForwardNetwork:
     init: Callable
     apply: Callable
+
+
+AgentNetworkParams = TypeVar("AgentNetworkParams")
+
+
+@flax_dataclass
+class AgentParams(Generic[AgentNetworkParams]):
+    preprocessor_params: PreprocessorParams
+    network_params: AgentNetworkParams
 
 
 def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:

@@ -2,7 +2,7 @@
 
 from typing import Any, NamedTuple, Tuple, TypeVar, Protocol
 from collections.abc import Mapping
-from quadruped_mjx_rl.running_statistics import NestedArray
+from quadruped_mjx_rl.running_statistics import NestedArray, RunningStatisticsState
 from jax.numpy import ndarray
 
 Params = Any
@@ -12,7 +12,7 @@ Observation = ndarray | Mapping[str, ndarray]
 ObservationSize = int | Mapping[str, tuple[int, ...] | int]
 Action = ndarray
 Extra = Mapping[str, Any]
-PreprocessorParams = Any
+PreprocessorParams = RunningStatisticsState
 PolicyParams = Tuple[PreprocessorParams, Params]
 NetworkType = TypeVar('NetworkType')
 

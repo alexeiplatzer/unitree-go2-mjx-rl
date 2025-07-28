@@ -18,56 +18,36 @@ from quadruped_mjx_rl.models.architectures import (
     raw_actor_critic as raw_networks,
     guided_actor_critic as guided_networks,
     ActorCriticNetworks,
-    StudentNetworks,
-    TeacherNetworks,
+    TeacherStudentNetworks,
+    ActorCriticAgentParams,
+    TeacherStudentAgentParams,
 )
 
 
 def get_networks_factory(
     model_config: ModelConfig,
-) -> (
-    dict[str, functools.partial[TeacherNetworks] | functools.partial[StudentNetworks]]
-    | functools.partial[ActorCriticNetworks]
-):
+) -> functools.partial[TeacherStudentNetworks] | functools.partial[ActorCriticNetworks]:
+    """Checks the model type from the configuration and returns the appropriate factory."""
     if isinstance(model_config, TeacherStudentVisionConfig):
-        teacher_factory = functools.partial(
-            guided_networks.make_teacher_networks,
-            policy_hidden_layer_sizes=model_config.modules.policy,
-            value_hidden_layer_sizes=model_config.modules.value,
-            latent_representation_size=model_config.latent_size,
-            encoder_hidden_layer_sizes=model_config.modules.encoder_dense,
-            encoder_convolutional_layer_sizes=model_config.modules.encoder_convolutional,
-            encoder_obs_key="pixels/view_terrain",
+        networks_factory = functools.partial(
+            guided_networks.make_teacher_student_networks,
+            model_config=model_config,
+            teacher_encoder_obs_key="pixels/view_terrain",
+            student_encoder_obs_key="pixels/view_frontal_ego",
         )
-        student_factory = functools.partial(
-            guided_networks.make_student_networks,
-            latent_representation_size=model_config.latent_size,
-            adapter_hidden_layer_sizes=model_config.modules.adapter_dense,
-            adapter_convolutional_layer_sizes=model_config.modules.adapter_convolutional,
-            encoder_obs_key="pixels/view_frontal_ego",
+    elif isinstance(model_config, TeacherStudentConfig):
+        networks_factory = functools.partial(
+            guided_networks.make_teacher_student_networks,
+            model_config=model_config,
         )
-        return {"teacher": teacher_factory, "student": student_factory}
-    if isinstance(model_config, TeacherStudentConfig):
-        teacher_factory = functools.partial(
-            guided_networks.make_teacher_networks,
-            policy_hidden_layer_sizes=model_config.modules.policy,
-            value_hidden_layer_sizes=model_config.modules.value,
-            latent_representation_size=model_config.latent_size,
-            encoder_hidden_layer_sizes=model_config.modules.encoder,
+    elif isinstance(model_config, ActorCriticConfig):
+        networks_factory = functools.partial(
+            raw_networks.make_actor_critic_networks,
+            model_config=model_config,
         )
-        student_factory = functools.partial(
-            guided_networks.make_student_networks,
-            latent_representation_size=model_config.latent_size,
-            adapter_hidden_layer_sizes=model_config.modules.adapter,
-        )
-        return {"teacher": teacher_factory, "student": student_factory}
-    if isinstance(model_config, ActorCriticConfig):
-        return functools.partial(
-            raw_networks.make_networks,
-            policy_hidden_layer_sizes=model_config.modules.policy,
-            value_hidden_layer_sizes=model_config.modules.value,
-        )
-    raise NotImplementedError
+    else:
+        raise NotImplementedError
+    return networks_factory
 
 
 def load_inference_fn(
@@ -78,25 +58,31 @@ def load_inference_fn(
     params = io.load_params(model_path)
     network_factories = get_networks_factory(model_config)
     if isinstance(model_config, TeacherStudentConfig):
-        teacher_params, student_params = params
-        teacher_nets = network_factories["teacher"](
-            observation_size=1,
-            privileged_observation_size=1,
+        if not isinstance(params, TeacherStudentAgentParams):
+            raise ValueError(
+                f"The restored params have the wrong type: {type(params)}"
+                f" - while TeacherStudentAgentParams were expected!"
+            )
+        teacher_student_networks = network_factories(
+            observation_size={
+                "state": 1,
+                "state_history": 1,
+                "privileged_state": 1,
+                "pixels/view_terrain": 1,
+                "pixels/view_frontal_ego": 1,
+            },
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        student_nets = network_factories["student"](
-            observation_size=1,
-            preprocess_observations_fn=running_statistics.normalize,
+        teacher_student_inference_factory = guided_networks.make_teacher_student_inference_fns(
+            teacher_student_networks
         )
-        teacher_inference_factory = guided_networks.make_teacher_inference_fn(teacher_nets)
-        assert isinstance(student_nets, StudentNetworks)
-        student_inference_factory = guided_networks.make_student_inference_fn(
-            teacher_nets, student_nets
+        teacher_inference_fn, student_inference_fn = teacher_student_inference_factory(
+            params=params
         )
         return {
-            "teacher": teacher_inference_factory(teacher_params),
-            "student": student_inference_factory(teacher_params, student_params),
+            "teacher": teacher_inference_fn,
+            "student": student_inference_fn,
         }
     elif isinstance(model_config, ActorCriticConfig):
         ppo_nets = network_factories(

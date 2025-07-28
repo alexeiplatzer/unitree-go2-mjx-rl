@@ -13,14 +13,12 @@ import jax.numpy as jnp
 from flax import struct as flax_struct
 
 # Sim
-from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments import Env, PipelineModel
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 
 # ML
 import optax
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import StudentNetworkParams
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import TeacherNetworkParams
+from quadruped_mjx_rl.models.architectures import ActorCriticAgentParams
 
 PMAP_AXIS_NAME = "i"
 
@@ -28,11 +26,8 @@ PMAP_AXIS_NAME = "i"
 @flax_struct.dataclass
 class TrainingState:
     """Contains the training state for the learner."""
-    teacher_optimizer_state: optax.OptState
-    teacher_params: TeacherNetworkParams
-    student_optimizer_state: optax.OptState
-    student_params: StudentNetworkParams
-    normalizer_params: running_statistics.RunningStatisticsState
+    agent_optimizer_state: optax.OptState
+    agent_params: ActorCriticAgentParams
     env_steps: jnp.ndarray
 
 

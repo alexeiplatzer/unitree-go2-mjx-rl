@@ -3,19 +3,18 @@ import optax
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import TeacherNetworks
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import StudentNetworks
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import TeacherNetworkParams
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import StudentNetworkParams
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
+    TeacherStudentNetworks, TeacherStudentNetworkParams
+)
 from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
 
 
 def compute_teacher_loss(
-    params: TeacherNetworkParams,
+    params: TeacherStudentNetworkParams,
     normalizer_params,
     data: types.Transition,
     rng: jnp.ndarray,
-    teacher_network: TeacherNetworks,
+    teacher_student_networks: TeacherStudentNetworks,
     entropy_cost: float = 1e-4,
     discounting: float = 0.9,
     reward_scaling: float = 1.0,
@@ -32,7 +31,7 @@ def compute_teacher_loss(
         are ['state_extras']['truncation'] ['policy_extras']['raw_action']
         ['policy_extras']['log_prob']
       rng: Random key
-      teacher_network: PPO networks.
+      teacher_student_networks: PPO networks.
       entropy_cost: entropy cost.
       discounting: discounting,
       reward_scaling: reward multiplier.
@@ -43,21 +42,25 @@ def compute_teacher_loss(
     Returns:
       A tuple (loss, metrics)
     """
-    parametric_action_distribution = teacher_network.parametric_action_distribution
-    encoder_apply = teacher_network.encoder_network.apply
-    policy_apply = teacher_network.policy_network.apply
-    value_apply = teacher_network.value_network.apply
+    parametric_action_distribution = teacher_student_networks.parametric_action_distribution
+    encoder_apply = teacher_student_networks.teacher_encoder_network.apply
+    policy_apply = teacher_student_networks.policy_network.apply
+    value_apply = teacher_student_networks.value_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    latent_vector = encoder_apply(normalizer_params, params.encoder, data.observation)
-    observations = data.observation | {"latent": latent_vector}
-    policy_logits = policy_apply(normalizer_params, params.policy, observations)
-    baseline = value_apply(normalizer_params, params.value, observations)
+    latent_vector = encoder_apply(normalizer_params, params.teacher_encoder, data.observation)
+    policy_logits = policy_apply(
+        normalizer_params, params.policy, data.observation, latent_vector
+    )
+    baseline = value_apply(
+        normalizer_params, params.value, data.observation, latent_vector
+    )
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    terminal_latent = encoder_apply(normalizer_params, params.encoder, terminal_obs)
-    terminal_input = terminal_obs | {"latent": terminal_latent}
-    bootstrap_value = value_apply(normalizer_params, params.value, terminal_input)
+    terminal_latent = encoder_apply(normalizer_params, params.teacher_encoder, terminal_obs)
+    bootstrap_value = value_apply(
+        normalizer_params, params.value, terminal_obs, terminal_latent
+    )
 
     rewards = data.reward * reward_scaling
     truncation = data.extras["state_extras"]["truncation"]
@@ -104,25 +107,23 @@ def compute_teacher_loss(
 
 
 def compute_student_loss(
-    student_params: StudentNetworkParams,
-    teacher_params: TeacherNetworkParams,
+    teacher_student_params: TeacherStudentNetworkParams,
     normalizer_params,
     data: types.Transition,
-    teacher_network: TeacherNetworks,
-    student_network: StudentNetworks,
+    teacher_student_network: TeacherStudentNetworks,
 ) -> tuple[jnp.ndarray, types.Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = teacher_network.encoder_network.apply
-    adapter_apply = student_network.encoder_network.apply
+    encoder_apply = teacher_student_network.teacher_encoder_network.apply
+    adapter_apply = teacher_student_network.student_encoder_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
     teacher_latent_vector = encoder_apply(
-        normalizer_params, teacher_params.encoder, data.observation
+        normalizer_params, teacher_student_params.teacher_encoder, data.observation
     )
     student_latent_vector = adapter_apply(
-        normalizer_params, student_params.encoder, data.observation
+        normalizer_params, teacher_student_params.student_encoder, data.observation
     )
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
 

@@ -6,7 +6,7 @@ from quadruped_mjx_rl import types
 # Math
 from flax.struct import dataclass as flax_dataclass
 from flax import linen
-from quadruped_mjx_rl.models import modules, networks, distributions
+from quadruped_mjx_rl.models import modules, networks, distributions, configs
 
 
 @flax_dataclass
@@ -22,18 +22,26 @@ class ActorCriticNetworkParams:
     value: types.Params
 
 
+@flax_dataclass
+class ActorCriticAgentParams(networks.AgentParams[ActorCriticNetworkParams]):
+    """Full usable parameters for an actor critic architecture."""
+
+
 def make_inference_fn(actor_critic_networks: ActorCriticNetworks):
     """Creates params and inference function for the PPO agent."""
 
-    def make_policy(params: types.Params, deterministic: bool = False) -> types.Policy:
+    def make_policy(
+        params: ActorCriticAgentParams, deterministic: bool = False
+    ) -> types.Policy:
         policy_network = actor_critic_networks.policy_network
         parametric_action_distribution = actor_critic_networks.parametric_action_distribution
 
         def policy(
             observations: types.Observation, key_sample: types.PRNGKey
         ) -> tuple[types.Action, types.Extra]:
-            param_subset = (params[0], params[1])  # normalizer and policy params
-            logits = policy_network.apply(*param_subset, observations)
+            normalizer_params = params.preprocessor_params
+            policy_params = params.network_params.policy
+            logits = policy_network.apply(normalizer_params, policy_params, observations)
             if deterministic:
                 return actor_critic_networks.parametric_action_distribution.mode(logits), {}
             raw_actions = parametric_action_distribution.sample_no_postprocessing(
@@ -51,25 +59,29 @@ def make_inference_fn(actor_critic_networks: ActorCriticNetworks):
     return make_policy
 
 
-def make_networks(
+def make_actor_critic_networks(
+    *,
     observation_size: types.ObservationSize,
     action_size: int,
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
-    policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
-    value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
-    activation: modules.ActivationFn = linen.swish,
     policy_obs_key: str = "state",
     value_obs_key: str = "state",
+    model_config: configs.ActorCriticConfig = configs.ActorCriticConfig(),
+    activation: modules.ActivationFn = linen.swish,
+
 ) -> ActorCriticNetworks:
     """Make Actor Critic networks with preprocessor."""
-    parametric_action_distribution = distributions.NormalTanhDistribution(event_size=action_size)
+    parametric_action_distribution = distributions.NormalTanhDistribution(
+        event_size=action_size
+    )
     policy_module = modules.MLP(
         layer_sizes=(
-            list(policy_hidden_layer_sizes) + [parametric_action_distribution.param_size]
+            model_config.modules.policy + [parametric_action_distribution.param_size]
         ),
         activation=activation,
+        activate_final=False,
     )
     policy_network = networks.make_network(
         module=policy_module,
@@ -77,10 +89,12 @@ def make_networks(
         preprocess_observations_fn=preprocess_observations_fn,
         preprocess_obs_keys=(policy_obs_key,),
         apply_to_obs_keys=(policy_obs_key,),
+        squeeze_output=False,
     )
     value_module = modules.MLP(
-        layer_sizes=list(value_hidden_layer_sizes) + [1],
+        layer_sizes=model_config.modules.value + [1],
         activation=activation,
+        activate_final=False,
     )
     value_network = networks.make_network(
         module=value_module,
