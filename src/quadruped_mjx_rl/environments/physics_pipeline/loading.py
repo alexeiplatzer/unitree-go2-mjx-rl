@@ -384,5 +384,20 @@ def model_load(path: PathLike) -> mujoco.MjModel:
     return mj
 
 
+def load_to_spec(path: PathLike) -> mujoco.MjSpec:
+    """Loads the mujoco spec from a given mjcf file path."""
+    elem = ElementTree.fromstring(Path(path).read_text())
+    meshdir = _get_meshdir(elem)
+    assets = _find_assets(elem, Path(path), meshdir)
+    xml = ElementTree.tostring(elem, encoding='unicode')
+    spec = mujoco.MjSpec.from_xml_string(xml, assets=assets)
+    return spec
+
+
+def spec_to_model(spec: mujoco.MjSpec) -> mujoco.MjModel:
+    """Converts a mujoco spec to a mujoco model."""
+    return spec.compile()
+
+
 def make_pipeline_model(env_model: mujoco.MjModel) -> mjx.Model:
     return mjx.put_model(env_model)

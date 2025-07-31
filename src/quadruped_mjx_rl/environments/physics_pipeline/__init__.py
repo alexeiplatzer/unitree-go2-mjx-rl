@@ -1,6 +1,7 @@
 GLOBAL_PHYSICS_PIPELINE = "brax"  # or brax
 
 from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
+from quadruped_mjx_rl.environments.physics_pipeline.loading import load_to_spec, spec_to_model
 
 if GLOBAL_PHYSICS_PIPELINE == "local":
     from quadruped_mjx_rl.environments.physics_pipeline.base import Motion, Transform
