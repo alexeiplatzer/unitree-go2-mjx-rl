@@ -32,8 +32,8 @@ def get_networks_factory(
         networks_factory = functools.partial(
             guided_networks.make_teacher_student_networks,
             model_config=model_config,
-            teacher_encoder_obs_key="pixels/view_terrain",
-            student_encoder_obs_key="pixels/view_frontal_ego",
+            teacher_obs_key="pixels/view_terrain",
+            student_obs_key="pixels/view_frontal_ego",
         )
     elif isinstance(model_config, TeacherStudentConfig):
         networks_factory = functools.partial(
