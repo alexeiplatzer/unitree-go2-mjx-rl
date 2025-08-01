@@ -475,8 +475,8 @@ def train(
         randomization_fn=randomization_fn,
         vision=madrona_backend,
     )
-    make_teacher_policy = lambda *args: make_policies(*args)[0]
-    make_student_policy = lambda *args: make_policies(*args)[1]
+    make_teacher_policy = lambda *args, **kwargs: make_policies(*args, **kwargs)[0]
+    make_student_policy = lambda *args, **kwargs: make_policies(*args, **kwargs)[1]
     teacher_evaluator = acting.Evaluator(
         eval_env,
         functools.partial(make_teacher_policy, deterministic=deterministic_eval),
