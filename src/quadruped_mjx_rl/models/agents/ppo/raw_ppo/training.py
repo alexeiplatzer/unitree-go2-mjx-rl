@@ -71,7 +71,7 @@ def train(
     normalize_advantage: bool = True,
     network_factory: types.NetworkFactory[
         ppo_networks.ActorCriticNetworks
-    ] = ppo_networks.make_networks,
+    ] = ppo_networks.make_actor_critic_networks,
     seed: int = 0,
     # evaluation settings
     num_evals: int = 1,
