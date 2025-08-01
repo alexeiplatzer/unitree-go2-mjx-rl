@@ -95,7 +95,7 @@ def make_arena(
 def tile_center_qpos(
     col: int,
     row: int,
-    base_qpos: jnp.ndarray,
+    base_qpos,
     square_length: float = 2.0,
     floor_height: float = 0.05,
 ):
@@ -130,10 +130,9 @@ def tile_center_qpos(
         A 7-element vector you can plug into `model.qpos0[:7]` (or pass to
         your simulator’s reset method).
     """
-    x = col * 2 * square_length
-    y = col * 2 * square_length
-    z = floor_height + base_qpos[2]
-    base_qpos = base_qpos.at[:3].set([x, y, z])
+    base_qpos[0] = col * 2 * square_length
+    base_qpos[1] = col * 2 * square_length
+    base_qpos[2] = floor_height + base_qpos[2]
     return base_qpos
 
 
