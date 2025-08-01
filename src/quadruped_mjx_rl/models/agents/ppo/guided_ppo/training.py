@@ -178,7 +178,7 @@ def train(
     # --- Networks ---
     preprocess_fn = running_statistics.normalize if normalize_observations else lambda x, y: x
 
-    teacher_student_networks = teacher_student_netowrk_factory(
+    teacher_student_networks = teacher_student_network_factory(
         observation_size=obs_shape,
         action_size=env.action_size,
         preprocess_observations_fn=preprocess_fn,
