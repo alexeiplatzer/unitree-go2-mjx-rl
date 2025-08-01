@@ -63,9 +63,11 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         robot_config: RobotConfig,
         env_model: EnvModel,
         vision_config: VisionConfig | None = None,
+        init_qpos: jax.Array | None = None,
         # renderer=None,
     ):
         super().__init__(environment_config, robot_config, env_model)
+        self._init_q = self._init_q if init_qpos is None else init_qpos
 
         self._use_vision = environment_config.use_vision
         if self._use_vision:
@@ -88,9 +90,10 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         env_model.geom_size[floor_id, :2] = [5.0, 5.0]
         return env_model
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: jax.Array, start_qpos: jax.Array | None = None) -> State:
+        init_q = self._init_q if start_qpos is None else start_qpos
         pipeline_state = self.pipeline_init(
-            self._init_q + jax.random.uniform(
+            init_q + jax.random.uniform(
                 rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
             ),
             jnp.zeros(self._nv),

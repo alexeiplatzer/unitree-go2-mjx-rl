@@ -16,7 +16,9 @@ from quadruped_mjx_rl.models.io import save_params
 
 # Training
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.environments import EnvironmentConfig, get_base_model, get_env_factory
+from quadruped_mjx_rl.environments import (
+    EnvironmentConfig, get_base_model, get_env_factory, resolve_env_class
+)
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
@@ -25,6 +27,7 @@ from quadruped_mjx_rl.policy_rendering import (
     render_rollout, RenderConfig, RolloutRenderer, PolicyRenderingFn, render_policy_rollout
 )
 from quadruped_mjx_rl.models.agents.ppo.training_utils import maybe_wrap_env
+from quadruped_mjx_rl.terrain_gen.tile import make_arena, tile_center_qpos
 
 
 # Configurations
