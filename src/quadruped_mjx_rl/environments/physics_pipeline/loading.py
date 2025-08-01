@@ -390,7 +390,7 @@ def load_to_spec(path: PathLike) -> mujoco.MjSpec:
     meshdir = _get_meshdir(elem)
     assets = _find_assets(elem, Path(path), meshdir)
     xml = ElementTree.tostring(elem, encoding='unicode')
-    spec = mujoco.MjSpec.from_xml_string(xml, assets=assets)
+    spec = mujoco.MjSpec.from_string(xml, assets=assets)
     return spec
 
 
