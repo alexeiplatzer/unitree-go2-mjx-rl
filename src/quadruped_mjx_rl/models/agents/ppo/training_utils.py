@@ -23,14 +23,6 @@ from quadruped_mjx_rl.models.architectures import ActorCriticAgentParams
 PMAP_AXIS_NAME = "i"
 
 
-@flax_struct.dataclass
-class TrainingState:
-    """Contains the training state for the learner."""
-    agent_optimizer_state: optax.OptState
-    agent_params: ActorCriticAgentParams
-    env_steps: jnp.ndarray
-
-
 def unpmap(v):
     return jax.tree_util.tree_map(lambda x: x[0], v)
 

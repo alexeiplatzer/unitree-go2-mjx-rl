@@ -23,8 +23,7 @@ from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, 
 
 # Networks
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
-    TeacherNetworkParams,
-    StudentNetworkParams,
+    TeacherStudentNetworkParams, TeacherStudentAgentParams
 )
 from quadruped_mjx_rl.models.architectures import guided_actor_critic as ppo_networks
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import (
@@ -36,12 +35,10 @@ InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 
 @flax_dataclass
 class TrainingState:
-    """Contains training state for the learner."""
+    """Contains the training state for the learner."""
     teacher_optimizer_state: optax.OptState
-    teacher_params: TeacherNetworkParams
     student_optimizer_state: optax.OptState
-    student_params: StudentNetworkParams
-    normalizer_params: running_statistics.RunningStatisticsState
+    agent_params: TeacherStudentAgentParams
     env_steps: jnp.ndarray
 
 
@@ -61,15 +58,10 @@ def train(
     randomization_fn: (
         Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
-    # Teacher network
-    teacher_network_factory: types.NetworkFactory[
-        ppo_networks.TeacherNetworks
-    ] = ppo_networks.make_teacher_networks,
+    teacher_student_netowrk_factory: types.NetworkFactory[
+        ppo_networks.TeacherStudentNetworks
+    ] = ppo_networks.make_teacher_student_networks,
     teacher_learning_rate: float = 1e-4,
-    # Student network
-    student_network_factory: types.NetworkFactory[
-        ppo_networks.StudentNetworks
-    ] = ppo_networks.make_student_networks,
     student_learning_rate: float = 1e-4,
     student_steps_per_teacher_step: int = 2,
     # PPO parameters
@@ -99,7 +91,7 @@ def train(
     progress_fn: Callable[[int, ...], None] = lambda *args: None,
     policy_params_fn: Callable[..., None] = lambda *args: None,
     # checkpointing
-    restore_params=None,
+    restore_params: TeacherStudentAgentParams | None = None,
     restore_value_fn: bool = True,
 ):
     # Check arguments
@@ -186,20 +178,12 @@ def train(
     # --- Networks ---
     preprocess_fn = running_statistics.normalize if normalize_observations else lambda x, y: x
 
-    teacher_network = teacher_network_factory(
+    teacher_student_networks = teacher_student_netowrk_factory(
         observation_size=obs_shape,
         action_size=env.action_size,
         preprocess_observations_fn=preprocess_fn,
     )
-    make_teacher_policy = ppo_networks.make_teacher_inference_fn(teacher_network)
-
-    student_network = student_network_factory(
-        observation_size=obs_shape,
-        preprocess_observations_fn=preprocess_fn,
-    )
-    make_student_policy = ppo_networks.make_student_inference_fn(
-        teacher_network, student_network
-    )
+    make_policies = ppo_networks.make_teacher_student_inference_fns(teacher_student_networks)
 
     # --- Optimizers ---
     def make_optmizer(learning_rate: float):
@@ -218,7 +202,7 @@ def train(
 
     teacher_loss_fn = functools.partial(
         compute_teacher_loss,
-        teacher_network=teacher_network,
+        teacher_student_networks=teacher_student_networks,
         entropy_cost=entropy_cost,
         discounting=discounting,
         reward_scaling=reward_scaling,
@@ -228,8 +212,7 @@ def train(
     )
     student_loss_fn = functools.partial(
         compute_student_loss,
-        teacher_network=teacher_network,
-        student_network=student_network,
+        teacher_student_networks=teacher_student_networks,
     )
 
     teacher_gradient_update_fn = gradients.gradient_update_fn(
@@ -249,10 +232,10 @@ def train(
         data: types.Transition,
         normalizer_params: running_statistics.RunningStatisticsState,
     ):
-        t_opt_state, t_params, s_opt_state, s_params, key = carry
+        t_opt_state, s_opt_state, ts_params, key = carry
         key, key_loss = jax.random.split(key)
-        (t_loss, t_metrics), t_params, t_opt_state = teacher_gradient_update_fn(
-            t_params,
+        (t_loss, t_metrics), ts_params, t_opt_state = teacher_gradient_update_fn(
+            ts_params,
             normalizer_params,
             data,
             key_loss,
@@ -260,24 +243,24 @@ def train(
         )
 
         def student_step(carry, unused_t):
-            s_opt_state, s_params = carry
-            (s_loss, s_metrics), s_params, s_opt_state = student_gradient_update_fn(
-                s_params,
-                jax.lax.stop_gradient(t_params),
+            s_opt_state, ts_params = carry
+            (s_loss, s_metrics), ts_params, s_opt_state = student_gradient_update_fn(
+                ts_params,
+                #jax.lax.stop_gradient(t_params),
                 normalizer_params,
                 data,
                 optimizer_state=s_opt_state,
             )
-            return (s_opt_state, s_params), s_metrics
+            return (s_opt_state, ts_params), s_metrics
 
-        (s_opt_state, s_params), s_metrics = jax.lax.scan(
+        (s_opt_state, ts_params), s_metrics = jax.lax.scan(
             student_step,
-            (s_opt_state, s_params),
+            (s_opt_state, ts_params),
             (),
             length=student_steps_per_teacher_step,
         )
 
-        return (t_opt_state, t_params, s_opt_state, s_params, key), (t_metrics, s_metrics)
+        return (t_opt_state, s_opt_state, ts_params, key), (t_metrics, s_metrics)
 
     def sgd_step(
         carry,
@@ -285,7 +268,7 @@ def train(
         data: types.Transition,
         normalizer_params: running_statistics.RunningStatisticsState,
     ):
-        t_opt_state, t_params, s_opt_state, s_params, key = carry
+        t_opt_state, s_opt_state, ts_params, key = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
 
         if augment_pixels:
@@ -306,13 +289,13 @@ def train(
             return x
 
         shuffled_data = jax.tree_util.tree_map(convert_data, data)
-        (t_opt_state, t_params, s_opt_state, s_params, ignore_key), metrics = jax.lax.scan(
+        (t_opt_state, s_opt_state, ts_params, ignore_key), metrics = jax.lax.scan(
             functools.partial(minibatch_step, normalizer_params=normalizer_params),
-            (t_opt_state, t_params, s_opt_state, s_params, key_grad),
+            (t_opt_state, s_opt_state, ts_params, key_grad),
             shuffled_data,
             length=num_minibatches,
         )
-        return (t_opt_state, t_params, s_opt_state, s_params, key), metrics
+        return (t_opt_state, s_opt_state, ts_params, key), metrics
 
     def training_step(
         carry: tuple[TrainingState, State, PRNGKey], unused_t
@@ -320,13 +303,8 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        policy = make_teacher_policy(
-            (
-                training_state.normalizer_params,
-                training_state.teacher_params.encoder,
-                training_state.teacher_params.policy,
-                training_state.teacher_params.value,
-            )
+        teacher_policy, student_policy = make_policies(
+            training_state.agent_params
         )
 
         def roll(carry, unused_t):
@@ -335,7 +313,7 @@ def train(
             next_state, data = acting.generate_unroll(
                 env,
                 current_state,
-                policy,
+                teacher_policy,
                 current_key,
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
@@ -362,18 +340,17 @@ def train(
 
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(
-            training_state.normalizer_params,
+            training_state.agent_params.preprocessor_params,
             _utils.remove_pixels(data.observation),
             pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
-        (t_opt_state, t_params, s_opt_state, s_params, ignore_key), metrics = jax.lax.scan(
+        (t_opt_state, s_opt_state, ts_params, ignore_key), metrics = jax.lax.scan(
             functools.partial(sgd_step, data=data, normalizer_params=normalizer_params),
             (
                 training_state.teacher_optimizer_state,
-                training_state.teacher_params,
                 training_state.student_optimizer_state,
-                training_state.student_params,
+                training_state.agent_params.network_params,
                 key_sgd,
             ),
             (),
@@ -382,10 +359,11 @@ def train(
 
         new_training_state = TrainingState(
             teacher_optimizer_state=t_opt_state,
-            teacher_params=t_params,
             student_optimizer_state=s_opt_state,
-            student_params=s_params,
-            normalizer_params=normalizer_params,
+            agent_params=TeacherStudentAgentParams(
+                network_params=ts_params,
+                preprocessor_params=normalizer_params,
+            ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
         return (new_training_state, state, new_key), metrics
@@ -430,19 +408,17 @@ def train(
             **{f"training/teacher/{name}": value for name, value in metrics[0].items()},
             **{f"training/student/{name}": value for name, value in metrics[1].items()},
         }
-        return (training_state, env_state, metrics)
+        return training_state, env_state, metrics
 
     # Initialize model params and training state.
-    teacher_init_params = TeacherNetworkParams(
-        encoder=teacher_network.encoder_network.init(key_encoder),
-        policy=teacher_network.policy_network.init(key_policy),
-        value=teacher_network.value_network.init(key_value),
+    network_init_params = TeacherStudentNetworkParams(
+        teacher_encoder=teacher_student_networks.teacher_encoder_network.init(key_encoder),
+        student_encoder=teacher_student_networks.student_encoder_network.init(key_encoder),
+        policy=teacher_student_networks.policy_network.init(key_policy),
+        value=teacher_student_networks.value_network.init(key_value),
     )
-    student_init_params = StudentNetworkParams(
-        encoder=student_network.encoder_network.init(key_adapter),
-    )
-    encoder_param_size = _utils.param_size(teacher_init_params.encoder)
-    policy_param_size = _utils.param_size(teacher_init_params.policy)
+    encoder_param_size = _utils.param_size(network_init_params.teacher_encoder)
+    policy_param_size = _utils.param_size(network_init_params.policy)
     logging.info(f"Encoder param size: {encoder_param_size}")
     logging.info(f"Policy param size: {policy_param_size}")
 
@@ -450,37 +426,36 @@ def train(
         lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
     )
     training_state = TrainingState(
-        teacher_optimizer_state=teacher_optimizer.init(teacher_init_params),
-        teacher_params=teacher_init_params,
-        student_optimizer_state=student_optimizer.init(student_init_params),
-        student_params=student_init_params,
-        normalizer_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
-        env_steps=jnp.array(0, dtype=jnp.int64),
+        teacher_optimizer_state=teacher_optimizer.init(network_init_params),
+        student_optimizer_state=student_optimizer.init(network_init_params),
+        agent_params=TeacherStudentAgentParams(
+            network_params=network_init_params,
+            preprocessor_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
+        ),
+        env_steps=jnp.array(0, dtype=jnp.int32),
     )
 
     if restore_params is not None:
         logging.info("Restoring TrainingState from `restore_params`.")
-        value_params = restore_params[3] if restore_value_fn else teacher_init_params.value
-        training_state = training_state.replace(
-            normalizer_params=restore_params[0],
-            teacher_params=training_state.teacher_params.replace(
-                encoder=restore_params[1], policy=restore_params[2], value=value_params
+        value_params = (
+            restore_params.network_params.value
+            if restore_value_fn
+            else network_init_params.value
+        )
+        training_state = training_state.agent_params.replace(
+            normalizer_params=restore_params.preprocessor_params,
+            network_params=training_state.agent_params.network_params.replace(
+                teacher_encoder=restore_params.network_params.teacher_encoder,
+                student_encoder=restore_params.network_params.student_encoder,
+                policy=restore_params.network_params.policy,
+                value=value_params,
             ),
-            student_params=training_state.student_params.replace(
-                encoder=restore_params[4],
-            )
         )
 
     if num_timesteps == 0:
         return (
-            make_student_policy,
-            (
-                training_state.normalizer_params,
-                training_state.teacher_params.encoder,
-                training_state.teacher_params.policy,
-                training_state.teacher_params.value,
-                training_state.student_params.encoder,
-            ),
+            make_policies,
+            training_state.agent_params,
             {},
         )
 
@@ -500,6 +475,8 @@ def train(
         randomization_fn=randomization_fn,
         vision=madrona_backend,
     )
+    make_teacher_policy = lambda *args: make_policies(*args)[0]
+    make_student_policy = lambda *args: make_policies(*args)[1]
     teacher_evaluator = acting.Evaluator(
         eval_env,
         functools.partial(make_teacher_policy, deterministic=deterministic_eval),
@@ -522,27 +499,14 @@ def train(
     student_metrics = {}
     if process_id == 0 and num_evals > 1:
         teacher_metrics = teacher_evaluator.run_evaluation(
-            _utils.unpmap(
-                (
-                    training_state.normalizer_params,
-                    training_state.teacher_params.encoder,
-                    training_state.teacher_params.policy,
-                    training_state.teacher_params.value,
-                )
-            ),
+            _utils.unpmap(training_state.agent_params),
             training_metrics={},
         )
         logging.info(teacher_metrics)
         progress_fn(0, teacher_metrics)
 
         student_metrics = student_evaluator.run_evaluation(
-            _utils.unpmap(
-                (
-                    training_state.normalizer_params,
-                    training_state.student_params.encoder,
-                    training_state.teacher_params.policy,
-                )
-            ),
+            _utils.unpmap(training_state.agent_params),
             training_metrics={},
         )
         logging.info(student_metrics)
@@ -558,7 +522,7 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            (training_state, env_state, training_metrics) = training_epoch_with_timing(
+            training_state, env_state, training_metrics = training_epoch_with_timing(
                 training_state, env_state, epoch_keys
             )
             current_step = int(_utils.unpmap(training_state.env_steps))
@@ -572,33 +536,19 @@ def train(
             continue
 
         # Process id == 0.
-        teacher_params = _utils.unpmap(
-            (
-                training_state.normalizer_params,
-                training_state.teacher_params.encoder,
-                training_state.teacher_params.policy,
-                training_state.teacher_params.value,
-            )
-        )
-        student_params = _utils.unpmap(
-            (
-                training_state.normalizer_params,
-                training_state.student_params.encoder,
-                training_state.teacher_params.policy,
-            )
-        )
+        teacher_student_params = _utils.unpmap(training_state.agent_params)
 
-        policy_params_fn(current_step, make_teacher_policy, teacher_params)
+        policy_params_fn(current_step, make_teacher_policy, teacher_student_params)
 
         if num_evals > 0:
             teacher_metrics = teacher_evaluator.run_evaluation(
-                teacher_params,
+                teacher_student_params,
                 training_metrics,
             )
             logging.info(teacher_metrics)
             progress_fn(current_step, teacher_metrics)
             student_metrics = student_evaluator.run_evaluation(
-                student_params,
+                teacher_student_params,
                 training_metrics,
             )
             logging.info(student_metrics)
@@ -613,22 +563,8 @@ def train(
     # If there were no mistakes, the training_state should still be identical on all
     # devices.
     pmap.assert_is_replicated(training_state)
-    teacher_params = _utils.unpmap(
-        (
-            training_state.normalizer_params,
-            training_state.teacher_params.encoder,
-            training_state.teacher_params.policy,
-            training_state.teacher_params.value,
-        )
-    )
-    student_params = _utils.unpmap(
-        (
-            training_state.normalizer_params,
-            training_state.student_params.encoder,
-            training_state.teacher_params.policy,
-        )
-    )
+    teacher_student_params = _utils.unpmap(training_state.agent_params)
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
     metrics = (teacher_metrics, student_metrics)
-    return make_student_policy, (teacher_params, student_params), metrics
+    return make_policies, teacher_student_params, metrics
