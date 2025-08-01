@@ -110,12 +110,12 @@ def compute_student_loss(
     teacher_student_params: TeacherStudentNetworkParams,
     normalizer_params,
     data: types.Transition,
-    teacher_student_network: TeacherStudentNetworks,
+    teacher_student_networks: TeacherStudentNetworks,
 ) -> tuple[jnp.ndarray, types.Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = teacher_student_network.teacher_encoder_network.apply
-    adapter_apply = teacher_student_network.student_encoder_network.apply
+    encoder_apply = teacher_student_networks.teacher_encoder_network.apply
+    adapter_apply = teacher_student_networks.student_encoder_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
