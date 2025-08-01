@@ -58,7 +58,7 @@ def train(
     randomization_fn: (
         Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
-    teacher_student_netowrk_factory: types.NetworkFactory[
+    teacher_student_network_factory: types.NetworkFactory[
         ppo_networks.TeacherStudentNetworks
     ] = ppo_networks.make_teacher_student_networks,
     teacher_learning_rate: float = 1e-4,
