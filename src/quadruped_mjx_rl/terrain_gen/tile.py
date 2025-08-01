@@ -11,7 +11,8 @@ from quadruped_mjx_rl.terrain_gen import obstacles
 def add_tile(
     spec: mj.MjSpec | None = None,
     grid_loc: list[int] | None = None,
-    distribution: list[tuple[obstacles.ObstacleMaker, int]] | None = None
+    distribution: list[tuple[obstacles.ObstacleMaker, int]] | None = None,
+    name: str = "obstacle",
 ):
     if spec is None:
         spec = mj.MjSpec()
@@ -25,7 +26,7 @@ def add_tile(
     obstacle_makers, weights = zip(*distribution)
 
     chosen_obstacle_maker = random.choices(obstacle_makers, weights=weights, k=1)[0]
-    chosen_obstacle_maker(spec, grid_loc)
+    chosen_obstacle_maker(spec, grid_loc, name=name)
     return spec
 
     # tile_type = random.randint(0, 9)
@@ -69,14 +70,24 @@ def make_arena(
     easy_level = [(obstacles.flat, 1)]
 
     for i in range(-8, 0):
-        add_tile(spec=spec, grid_loc=[i * 2 * SQUARE_LENGTH, 0], distribution=easy_level)
+        add_tile(
+            spec=spec,
+            grid_loc=[i * 2 * SQUARE_LENGTH, 0],
+            distribution=easy_level,
+            name=f"obstacle_{i}",
+        )
 
     # TODO: continue with partial functions increasing difficulty
 
     for i in range(0, 8):
         stripe_w = 0.05 * (i + 1)
         harder_level = [(functools.partial(obstacles.stripes, stripe_w=stripe_w), 1)]
-        add_tile(spec=spec, grid_loc=[i * 2 * SQUARE_LENGTH, 0], distribution=harder_level)
+        add_tile(
+            spec=spec,
+            grid_loc=[i * 2 * SQUARE_LENGTH, 0],
+            distribution=harder_level,
+            name=f"obstacle_{i}",
+        )
 
     return spec
 
