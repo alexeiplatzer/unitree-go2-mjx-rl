@@ -317,8 +317,7 @@ def get_training_fn(
     if isinstance(model_config, TeacherStudentConfig):
         return functools.partial(
             guided_ppo_train,
-            teacher_network_factory=networks_factory["teacher"],
-            student_network_factory=networks_factory["student"],
+            teacher_student_network_factory=networks_factory,
             teacher_learning_rate=learning_rate,
             student_learning_rate=learning_rate,
             **training_params,
