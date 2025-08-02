@@ -59,6 +59,6 @@ def get_env_factory(
         env_class,
         robot_config=robot_config,
         environment_config=environment_config,
-        env_model=env_model,
+        env_spec=env_model,
         **env_kwargs,
     )

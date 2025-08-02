@@ -130,6 +130,6 @@ def tile_center_qpos(
         your simulator’s reset method).
     """
     base_qpos[0] = col * 2 * square_length
-    base_qpos[1] = 0
+    base_qpos[1] = row * 2 * square_length
     base_qpos[2] = floor_height + base_qpos[2]
     return base_qpos
