@@ -10,6 +10,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     PipelineState,
     PipelineModel,
     EnvModel,
+    model_load,
 )
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.quadruped.base import (
@@ -33,7 +34,8 @@ QuadrupedEnvFactory = Callable[[], type(QuadrupedBaseEnv)]
 
 
 def get_base_model(init_scene_path: PathLike, env_config: EnvironmentConfig) -> EnvModel:
-    return resolve_env_class(env_config).customize_model(init_scene_path, env_config)
+    base_model = model_load(init_scene_path)
+    return resolve_env_class(env_config).customize_model(base_model, env_config)
 
 
 def resolve_env_class(env_config: EnvironmentConfig) -> type(QuadrupedBaseEnv):

@@ -43,10 +43,12 @@ def render_model(
         return renderer.render()
 
 
-def large_overview_camera() -> mujoco.MjvCamera:
+def large_overview_camera(lookat=None) -> mujoco.MjvCamera:
     camera = mujoco.MjvCamera()
     mujoco.mjv_defaultCamera(camera)
-    camera.lookat = [-2, 0, -2]
+    if lookat is None:
+        lookat = [-2, 0, -2]
+    camera.lookat = lookat
     camera.distance = 18
     camera.elevation = -30
     return camera
