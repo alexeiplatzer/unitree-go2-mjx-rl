@@ -1,9 +1,10 @@
-
 # Typing
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Optional, Any
 
 from brax import base
+
 # Supporting
 from etils.epath import PathLike
 
@@ -16,7 +17,13 @@ import numpy as np
 import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel, State
+from quadruped_mjx_rl.environments.physics_pipeline import (
+    PipelineState,
+    EnvModel,
+    State,
+    EnvSpec,
+    PipelineModel,
+)
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
@@ -61,12 +68,12 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         self,
         environment_config: QuadrupedVisionEnvConfig,
         robot_config: RobotConfig,
-        env_model: EnvModel,
+        env_spec: EnvSpec | EnvModel,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
-        # renderer=None,
+        renderer_maker: Callable[[PipelineModel], ...] | None = None,
     ):
-        super().__init__(environment_config, robot_config, env_model)
+        super().__init__(environment_config, robot_config, env_spec)
         self._init_q = self._init_q if init_qpos is None else init_qpos
 
         self._use_vision = environment_config.use_vision
@@ -77,15 +84,13 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             #     raise ValueError("use_vision set to false, renderer not provided.")
 
             self._num_vision_envs = vision_config.render_batch_size
-            self.renderer = None  # must be set!
+            self.renderer = renderer_maker(self.pipeline_model)
 
     @staticmethod
     def customize_model(
-        init_scene_path: PathLike, environment_config: QuadrupedVisionEnvConfig
+        env_model: EnvSpec | EnvModel, environment_config: QuadrupedVisionEnvConfig
     ):
-        env_model = QuadrupedJoystickBaseEnv.customize_model(
-            init_scene_path, environment_config
-        )
+        env_model = QuadrupedJoystickBaseEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [5.0, 5.0]
         return env_model
@@ -93,9 +98,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
     def reset(self, rng: jax.Array, start_qpos: jax.Array | None = None) -> State:
         init_q = self._init_q if start_qpos is None else start_qpos
         pipeline_state = self.pipeline_init(
-            init_q + jax.random.uniform(
-                rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
-            ),
+            init_q + jax.random.uniform(rng, shape=self._init_q.shape, minval=0.0, maxval=0.0),
             jnp.zeros(self._nv),
         )
 
@@ -110,9 +113,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
 
         reward, done = jnp.zeros(2)
 
-        metrics = {
-            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
-        }
+        metrics = {f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()}
         metrics["total_dist"] = jnp.zeros(())
 
         state = State(pipeline_state, obs, reward, done, metrics, state_info)

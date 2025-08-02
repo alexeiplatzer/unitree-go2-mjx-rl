@@ -28,7 +28,7 @@ def render_tile(tile_func, direction=None, cam_distance=6, cam_elevation=-30):
     main = spec.default
     main.geom.type = mj.mjtGeom.mjGEOM_BOX
 
-    name = 'base_tile'
+    name = "base_tile"
 
     spec.worldbody.add_body(pos=[-3, 0, 0], name=name)
     if direction:

@@ -17,7 +17,7 @@ def rotate(vec: jax.Array, quat: jax.Array):
       ndarray(3) containing vec rotated by quat.
     """
     if len(vec.shape) != 1:
-        raise ValueError('vec must have no batch dimensions.')
+        raise ValueError("vec must have no batch dimensions.")
     s, u = quat[0], quat[1:]
     r = 2 * (jp.dot(u, vec) * u) + (s * s - jp.dot(u, u)) * vec
     r = r + 2 * s * jp.cross(u, vec)
@@ -48,7 +48,7 @@ def rotate_np(vec: np.ndarray, quat: np.ndarray):
       ndarray(3) containing vec rotated by quat.
     """
     if len(vec.shape) != 1:
-        raise ValueError('vec must have no batch dimensions.')
+        raise ValueError("vec must have no batch dimensions.")
     s, u = quat[0], quat[1:]
     r = 2 * (np.dot(u, vec) * u) + (s * s - np.dot(u, u)) * vec
     r = r + 2 * s * np.cross(u, vec)
@@ -167,9 +167,7 @@ def quat_mul_ang(q: jax.Array, ang: jax.Array) -> jax.Array:
     return jp.dot(ang, mat)
 
 
-def signed_angle(
-    axis: jax.Array, ref_p: jax.Array, ref_c: jax.Array
-) -> jax.Array:
+def signed_angle(axis: jax.Array, ref_p: jax.Array, ref_c: jax.Array) -> jax.Array:
     """Calculates the signed angle between two vectors along an axis.
 
     Args:
@@ -268,9 +266,7 @@ def solve_pgs(a: jax.Array, b: jax.Array, num_iters: int) -> jax.Array:
     return x
 
 
-def inv_approximate(
-    a: jax.Array, a_inv: jax.Array, num_iter: int = 10
-) -> jax.Array:
+def inv_approximate(a: jax.Array, a_inv: jax.Array, num_iter: int = 10) -> jax.Array:
     """Use Newton-Schulz iteration to solve ``A^-1``.
 
     Args:
@@ -298,9 +294,7 @@ def inv_approximate(
     return a_inv
 
 
-def safe_norm(
-    x: jax.Array, axis: tuple[int, ...] | int | None = None
-) -> jax.Array:
+def safe_norm(x: jax.Array, axis: tuple[int, ...] | int | None = None) -> jax.Array:
     """Calculates a linalg.norm(x) that's safe for gradients at x=0.
 
     Avoids a poorly defined gradient for jnp.linal.norm(0) see

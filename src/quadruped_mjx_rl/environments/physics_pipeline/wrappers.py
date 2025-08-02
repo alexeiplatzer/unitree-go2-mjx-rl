@@ -37,17 +37,17 @@ class EpisodeWrapper(Wrapper):
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
-        state.info['steps'] = jnp.zeros(rng.shape[:-1])
-        state.info['truncation'] = jnp.zeros(rng.shape[:-1])
+        state.info["steps"] = jnp.zeros(rng.shape[:-1])
+        state.info["truncation"] = jnp.zeros(rng.shape[:-1])
         # Keep a separate record of episode-done as state.info['done'] can be erased
         # by AutoResetWrapper
-        state.info['episode_done'] = jnp.zeros(rng.shape[:-1])
+        state.info["episode_done"] = jnp.zeros(rng.shape[:-1])
         episode_metrics = dict()
-        episode_metrics['sum_reward'] = jnp.zeros(rng.shape[:-1])
-        episode_metrics['length'] = jnp.zeros(rng.shape[:-1])
+        episode_metrics["sum_reward"] = jnp.zeros(rng.shape[:-1])
+        episode_metrics["length"] = jnp.zeros(rng.shape[:-1])
         for metric_name in state.metrics.keys():
             episode_metrics[metric_name] = jnp.zeros(rng.shape[:-1])
-        state.info['episode_metrics'] = episode_metrics
+        state.info["episode_metrics"] = episode_metrics
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
@@ -57,27 +57,25 @@ class EpisodeWrapper(Wrapper):
 
         state, rewards = jax.lax.scan(f, state, (), self.action_repeat)
         state = state.replace(reward=jnp.sum(rewards, axis=0))
-        steps = state.info['steps'] + self.action_repeat
+        steps = state.info["steps"] + self.action_repeat
         one = jnp.ones_like(state.done)
         zero = jnp.zeros_like(state.done)
         episode_length = jnp.array(self.episode_length, dtype=jnp.int32)
         done = jnp.where(steps >= episode_length, one, state.done)
-        state.info['truncation'] = jnp.where(
-            steps >= episode_length, 1 - state.done, zero
-        )
-        state.info['steps'] = steps
+        state.info["truncation"] = jnp.where(steps >= episode_length, 1 - state.done, zero)
+        state.info["steps"] = steps
 
         # Aggregate state metrics into episode metrics
-        prev_done = state.info['episode_done']
-        state.info['episode_metrics']['sum_reward'] += jnp.sum(rewards, axis=0)
-        state.info['episode_metrics']['sum_reward'] *= (1 - prev_done)
-        state.info['episode_metrics']['length'] += self.action_repeat
-        state.info['episode_metrics']['length'] *= (1 - prev_done)
+        prev_done = state.info["episode_done"]
+        state.info["episode_metrics"]["sum_reward"] += jnp.sum(rewards, axis=0)
+        state.info["episode_metrics"]["sum_reward"] *= 1 - prev_done
+        state.info["episode_metrics"]["length"] += self.action_repeat
+        state.info["episode_metrics"]["length"] *= 1 - prev_done
         for metric_name in state.metrics.keys():
-            if metric_name != 'reward':
-                state.info['episode_metrics'][metric_name] += state.metrics[metric_name]
-                state.info['episode_metrics'][metric_name] *= (1 - prev_done)
-        state.info['episode_done'] = done
+            if metric_name != "reward":
+                state.info["episode_metrics"][metric_name] += state.metrics[metric_name]
+                state.info["episode_metrics"][metric_name] *= 1 - prev_done
+        state.info["episode_done"] = done
         return state.replace(done=done)
 
 
@@ -86,13 +84,13 @@ class AutoResetWrapper(Wrapper):
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
-        state.info['first_pipeline_state'] = state.pipeline_state
-        state.info['first_obs'] = state.obs
+        state.info["first_pipeline_state"] = state.pipeline_state
+        state.info["first_obs"] = state.obs
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        if 'steps' in state.info:
-            steps = state.info['steps']
+        if "steps" in state.info:
+            steps = state.info["steps"]
             steps = jnp.where(state.done, jnp.zeros_like(steps), steps)
             state.info.update(steps=steps)
         state = state.replace(done=jnp.zeros_like(state.done))
@@ -105,9 +103,9 @@ class AutoResetWrapper(Wrapper):
             return jnp.where(done, x, y)
 
         pipeline_state = jax.tree.map(
-            where_done, state.info['first_pipeline_state'], state.pipeline_state
+            where_done, state.info["first_pipeline_state"], state.pipeline_state
         )
-        obs = jax.tree.map(where_done, state.info['first_obs'], state.obs)
+        obs = jax.tree.map(where_done, state.info["first_obs"], state.obs)
         return state.replace(pipeline_state=pipeline_state, obs=obs)
 
 
@@ -132,29 +130,25 @@ class EvalWrapper(Wrapper):
 
     def reset(self, rng: jax.Array) -> State:
         reset_state = self.env.reset(rng)
-        reset_state.metrics['reward'] = reset_state.reward
+        reset_state.metrics["reward"] = reset_state.reward
         eval_metrics = EvalMetrics(
-            episode_metrics=jax.tree_util.tree_map(
-                jnp.zeros_like, reset_state.metrics
-            ),
+            episode_metrics=jax.tree_util.tree_map(jnp.zeros_like, reset_state.metrics),
             active_episodes=jnp.ones_like(reset_state.reward),
             episode_steps=jnp.zeros_like(reset_state.reward),
         )
-        reset_state.info['eval_metrics'] = eval_metrics
+        reset_state.info["eval_metrics"] = eval_metrics
         return reset_state
 
     def step(self, state: State, action: jax.Array) -> State:
-        state_metrics = state.info['eval_metrics']
+        state_metrics = state.info["eval_metrics"]
         if not isinstance(state_metrics, EvalMetrics):
-            raise ValueError(
-                f'Incorrect type for state_metrics: {type(state_metrics)}'
-            )
-        del state.info['eval_metrics']
+            raise ValueError(f"Incorrect type for state_metrics: {type(state_metrics)}")
+        del state.info["eval_metrics"]
         nstate = self.env.step(state, action)
-        nstate.metrics['reward'] = nstate.reward
+        nstate.metrics["reward"] = nstate.reward
         episode_steps = jnp.where(
             state_metrics.active_episodes,
-            nstate.info['steps'],
+            nstate.info["steps"],
             state_metrics.episode_steps,
         )
         episode_metrics = jax.tree_util.tree_map(
@@ -169,7 +163,7 @@ class EvalWrapper(Wrapper):
             active_episodes=active_episodes,
             episode_steps=episode_steps,
         )
-        nstate.info['eval_metrics'] = eval_metrics
+        nstate.info["eval_metrics"] = eval_metrics
         return nstate
 
 
@@ -202,7 +196,5 @@ class DomainRandomizationVmapWrapper(Wrapper):
             env = self._env_fn(pipeline_model=pipeline_model)
             return env.step(s, a)
 
-        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(
-            self._sys_v, state, action
-        )
+        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(self._sys_v, state, action)
         return res

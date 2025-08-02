@@ -25,9 +25,9 @@ def wrap_for_training(
     env: Env,
     episode_length: int = 1000,
     action_repeat: int = 1,
-    randomization_fn: Callable[
-        [PipelineModel], tuple[PipelineModel, PipelineModel]
-    ] | None = None,
+    randomization_fn: (
+        Callable[[PipelineModel], tuple[PipelineModel, PipelineModel]] | None
+    ) = None,
     vision: bool = False,
     num_vision_envs: int = 1,
 ) -> Wrapper:
@@ -47,7 +47,7 @@ def wrap_for_training(
     Returns:
         An environment that is wrapped with Episode and AutoReset wrappers.  If the
         environment did not already have batch dimensions, it is additionally Vmap-wrapped.
-  """
+    """
     if vision:
         env = MadronaWrapper(env, num_vision_envs, randomization_fn)
     elif randomization_fn is None:
@@ -82,9 +82,7 @@ def _identity_vision_randomization_fn(
                 jnp.expand_dims(pipeline_model.geom_rgba, 0), num_worlds, axis=0
             ),
             "geom_matid": jnp.repeat(
-                jnp.expand_dims(
-                    jnp.repeat(-1, pipeline_model.geom_matid.shape[0], 0), 0
-                ),
+                jnp.expand_dims(jnp.repeat(-1, pipeline_model.geom_matid.shape[0], 0), 0),
                 num_worlds,
                 axis=0,
             ),
@@ -149,9 +147,9 @@ class MadronaWrapper(Wrapper):
         self,
         env: Env,
         num_worlds: int,
-        randomization_fn: Callable[
-            [PipelineModel], tuple[PipelineModel, PipelineModel]
-        ] | None = None,
+        randomization_fn: (
+            Callable[[PipelineModel], tuple[PipelineModel, PipelineModel]] | None
+        ) = None,
     ):
         if not randomization_fn:
             randomization_fn = functools.partial(

@@ -33,7 +33,7 @@ def actor_step(
         reward=nstate.reward,
         discount=1 - nstate.done,
         next_observation=nstate.obs,
-        extras={'policy_extras': policy_extras, 'state_extras': state_extras},
+        extras={"policy_extras": policy_extras, "state_extras": state_extras},
     )
 
 
@@ -56,9 +56,7 @@ def generate_unroll(
         )
         return (nstate, next_key), transition
 
-    (final_state, _), data = jax.lax.scan(
-        f, (env_state, key), (), length=unroll_length
-    )
+    (final_state, _), data = jax.lax.scan(f, (env_state, key), (), length=unroll_length)
     return final_state, data
 
 
@@ -89,9 +87,7 @@ class Evaluator:
 
         eval_env = EvalWrapper(eval_env)
 
-        def generate_eval_unroll(
-            policy_params: PolicyParams, key: PRNGKey
-        ) -> State:
+        def generate_eval_unroll(policy_params: PolicyParams, key: PRNGKey) -> State:
             reset_keys = jax.random.split(key, num_eval_envs)
             eval_first_state = eval_env.reset(reset_keys)
             return generate_unroll(
@@ -116,27 +112,25 @@ class Evaluator:
 
         t = time.time()
         eval_state = self._generate_eval_unroll(policy_params, unroll_key)
-        eval_metrics = eval_state.info['eval_metrics']
+        eval_metrics = eval_state.info["eval_metrics"]
         eval_metrics.active_episodes.block_until_ready()
         epoch_eval_time = time.time() - t
         metrics = {}
         for fn in [np.mean, np.std]:
-            suffix = '_std' if fn == np.std else ''
+            suffix = "_std" if fn == np.std else ""
             metrics.update(
                 {
-                    f'eval/episode_{name}{suffix}': (
-                        fn(value) if aggregate_episodes else value
-                    )
+                    f"eval/episode_{name}{suffix}": (fn(value) if aggregate_episodes else value)
                     for name, value in eval_metrics.episode_metrics.items()
                 }
             )
-        metrics['eval/avg_episode_length'] = np.mean(eval_metrics.episode_steps)
-        metrics['eval/std_episode_length'] = np.std(eval_metrics.episode_steps)
-        metrics['eval/epoch_eval_time'] = epoch_eval_time
-        metrics['eval/sps'] = self._steps_per_unroll / epoch_eval_time
+        metrics["eval/avg_episode_length"] = np.mean(eval_metrics.episode_steps)
+        metrics["eval/std_episode_length"] = np.std(eval_metrics.episode_steps)
+        metrics["eval/epoch_eval_time"] = epoch_eval_time
+        metrics["eval/sps"] = self._steps_per_unroll / epoch_eval_time
         self._eval_walltime = self._eval_walltime + epoch_eval_time
         metrics = {
-            'eval/walltime': self._eval_walltime,
+            "eval/walltime": self._eval_walltime,
             **training_metrics,
             **metrics,
         }

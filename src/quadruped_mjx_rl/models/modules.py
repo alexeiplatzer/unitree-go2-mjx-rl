@@ -14,6 +14,7 @@ Initializer = Callable
 
 class MLP(linen.Module):
     """MLP module."""
+
     layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
@@ -40,6 +41,7 @@ class MLP(linen.Module):
 
 class HeadMLP(linen.Module):
     """MLP module over pre-processed latent vectors."""
+
     layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
@@ -85,7 +87,7 @@ class CNN(linen.Module):
             hidden = self.activation(hidden)
             hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
 
-        #hidden = hidden.reshape((hidden.shape[0], -1))
+        # hidden = hidden.reshape((hidden.shape[0], -1))
         hidden = jnp.mean(hidden, axis=(-2, -3))
         return MLP(
             layer_sizes=self.dense_layer_sizes,

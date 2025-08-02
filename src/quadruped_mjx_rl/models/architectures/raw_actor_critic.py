@@ -1,4 +1,3 @@
-
 # Typing
 from collections.abc import Sequence
 from quadruped_mjx_rl import types
@@ -70,16 +69,13 @@ def make_actor_critic_networks(
     value_obs_key: str = "state",
     model_config: configs.ActorCriticConfig = configs.ActorCriticConfig(),
     activation: modules.ActivationFn = linen.swish,
-
 ) -> ActorCriticNetworks:
     """Make Actor Critic networks with preprocessor."""
     parametric_action_distribution = distributions.NormalTanhDistribution(
         event_size=action_size
     )
     policy_module = modules.MLP(
-        layer_sizes=(
-            model_config.modules.policy + [parametric_action_distribution.param_size]
-        ),
+        layer_sizes=(model_config.modules.policy + [parametric_action_distribution.param_size]),
         activation=activation,
         activate_final=False,
     )

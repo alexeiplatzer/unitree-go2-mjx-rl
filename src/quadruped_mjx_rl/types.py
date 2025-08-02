@@ -14,11 +14,12 @@ Action = ndarray
 Extra = Mapping[str, Any]
 PreprocessorParams = RunningStatisticsState
 PolicyParams = Tuple[PreprocessorParams, Params]
-NetworkType = TypeVar('NetworkType')
+NetworkType = TypeVar("NetworkType")
 
 
 class Transition(NamedTuple):
     """Container for a transition."""
+
     observation: NestedArray
     action: NestedArray
     reward: NestedArray
@@ -60,4 +61,3 @@ class NetworkFactory(Protocol[NetworkType]):
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     ) -> NetworkType:
         pass
-    

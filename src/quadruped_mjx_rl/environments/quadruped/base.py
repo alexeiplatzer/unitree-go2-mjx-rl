@@ -18,7 +18,12 @@ from quadruped_mjx_rl import math
 # from brax.io.mjcf import load as load_system
 import mujoco
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel, PipelineModel, PipelineState, State, model_load
+    EnvModel,
+    EnvSpec,
+    PipelineModel,
+    PipelineState,
+    State,
+    model_load,
 )
 from quadruped_mjx_rl.environments.base import PipelineEnv
 
@@ -113,9 +118,9 @@ _environment_config_classes = {}
 
 
 def register_environment_config_class(environment_config_class: type[EnvironmentConfig]):
-    _environment_config_classes[
-        environment_config_class.environment_class_key()
-    ] = environment_config_class
+    _environment_config_classes[environment_config_class.environment_class_key()] = (
+        environment_config_class
+    )
 
 
 register_environment_config_class(EnvironmentConfig)
@@ -127,10 +132,10 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         environment_config: EnvironmentConfig,
         robot_config: RobotConfig,
-        env_model: EnvModel,
+        env_spec: EnvSpec | EnvModel,
     ):
         super().__init__(
-            env_model=env_model,
+            env_spec=env_spec,
             sim_dt=environment_config.sim.sim_dt,
             ctrl_dt=environment_config.sim.ctrl_dt,
         )
@@ -196,12 +201,11 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     @staticmethod
     def customize_model(
-        init_scene_path: PathLike, environment_config: EnvironmentConfig
+        model: EnvModel | EnvSpec, environment_config: EnvironmentConfig
     ) -> EnvModel:
-        env_model = model_load(init_scene_path)
-        env_model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
-        env_model.actuator_biasprm[:, 1] = -environment_config.sim.override.Kp
-        return env_model
+        model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
+        model.actuator_biasprm[:, 1] = -environment_config.sim.override.Kp
+        return model
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self._nv))
@@ -217,9 +221,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         reward, done = jnp.zeros(2)
 
-        metrics = {
-            f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()
-        }
+        metrics = {f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()}
 
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
@@ -244,9 +246,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         state.info["last_act"] = action
 
         # reset the step counter when done
-        state.info["step"] = jnp.where(
-            done, 0, state.info["step"]
-        )
+        state.info["step"] = jnp.where(done, 0, state.info["step"])
 
         state.metrics.update({f"reward/{k}": v for k, v in rewards.items()})
 

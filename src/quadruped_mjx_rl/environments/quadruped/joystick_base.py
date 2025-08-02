@@ -13,7 +13,13 @@ from quadruped_mjx_rl import math
 
 # Sim
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel, PipelineModel, PipelineState, State, Motion, Transform
+    EnvModel,
+    EnvSpec,
+    PipelineModel,
+    PipelineState,
+    State,
+    Motion,
+    Transform,
 )
 
 # Definitions
@@ -134,9 +140,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self,
         environment_config: JoystickBaseEnvConfig,
         robot_config: RobotConfig,
-        env_model: EnvModel,
+        env_spec: EnvModel | EnvSpec,
     ):
-        super().__init__(environment_config, robot_config, env_model)
+        super().__init__(environment_config, robot_config, env_spec)
 
         self._kick_interval = environment_config.domain_rand.kick_interval
         self._kick_vel = environment_config.domain_rand.kick_vel
@@ -146,9 +152,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     @staticmethod
     def customize_model(
-        init_scene_path: PathLike, environment_config: JoystickBaseEnvConfig
+        model: EnvModel | EnvSpec, environment_config: JoystickBaseEnvConfig
     ) -> EnvModel:
-        env_model = QuadrupedBaseEnv.customize_model(init_scene_path, environment_config)
+        env_model = QuadrupedBaseEnv.customize_model(model, environment_config)
         env_model.dof_damping[6:] = environment_config.sim.override.Kd
         return env_model
 
@@ -227,9 +233,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
         state_obs = QuadrupedJoystickBaseEnv._get_state_obs(self, pipeline_state, state_info)
         obs_history = jnp.zeros(state_obs.size * 15)  # keep track of the last 15 steps
-        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(
-            self, obs_history, state_obs
-        )
+        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(self, obs_history, state_obs)
         return obs_history
 
     def _get_obs(
@@ -241,9 +245,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         assert isinstance(previous_obs, jax.Array)
         obs_history = previous_obs
         state_obs = QuadrupedJoystickBaseEnv._get_state_obs(self, pipeline_state, state_info)
-        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(
-            self, obs_history, state_obs
-        )
+        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(self, obs_history, state_obs)
         return obs_history
 
     def _update_obs_history(self, obs_history: jax.Array, current_obs: jax.Array) -> jax.Array:
@@ -295,15 +297,17 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         rewards = {
             "tracking_lin_vel": self._reward_tracking_lin_vel(state_info["command"], x, xd),
             "tracking_ang_vel": self._reward_tracking_ang_vel(state_info["command"], x, xd),
-            "lin_vel_z": self._reward_lin_vel_z(xd), "ang_vel_xy": self._reward_ang_vel_xy(xd),
+            "lin_vel_z": self._reward_lin_vel_z(xd),
+            "ang_vel_xy": self._reward_ang_vel_xy(xd),
             "orientation": self._reward_orientation(x),
             "torques": self._reward_torques(pipeline_state.qfrc_actuator),
             "action_rate": self._reward_action_rate(action, state_info["last_act"]),
             "stand_still": self._reward_stand_still(state_info["command"], joint_angles),
             "feet_air_time": self._reward_feet_air_time(
                 state_info["feet_air_time"], first_contact, state_info["command"]
-            ), "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
-            "termination": self._reward_termination(done, state_info["step"])
+            ),
+            "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
+            "termination": self._reward_termination(done, state_info["step"]),
         }
 
         state_info["last_vel"] = joint_vel

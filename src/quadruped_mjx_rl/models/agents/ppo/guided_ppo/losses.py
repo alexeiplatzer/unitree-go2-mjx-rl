@@ -4,7 +4,8 @@ import jax
 import jax.numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
-    TeacherStudentNetworks, TeacherStudentNetworkParams
+    TeacherStudentNetworks,
+    TeacherStudentNetworkParams,
 )
 from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
 
@@ -53,9 +54,7 @@ def compute_teacher_loss(
     policy_logits = policy_apply(
         normalizer_params, params.policy, data.observation, latent_vector
     )
-    baseline = value_apply(
-        normalizer_params, params.value, data.observation, latent_vector
-    )
+    baseline = value_apply(normalizer_params, params.value, data.observation, latent_vector)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
     terminal_latent = encoder_apply(normalizer_params, params.teacher_encoder, terminal_obs)
     bootstrap_value = value_apply(

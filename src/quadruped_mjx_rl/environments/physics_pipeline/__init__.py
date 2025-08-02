@@ -1,18 +1,21 @@
 GLOBAL_PHYSICS_PIPELINE = "brax"  # or brax
 
+from mujoco import MjModel as EnvModel, MjSpec as EnvSpec
 from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
 from quadruped_mjx_rl.environments.physics_pipeline.loading import load_to_spec, spec_to_model
 
 if GLOBAL_PHYSICS_PIPELINE == "local":
     from quadruped_mjx_rl.environments.physics_pipeline.base import Motion, Transform
-    from mujoco import MjModel as EnvModel
     from mujoco.mjx import Model as PipelineModel, Data as PipelineState
     from quadruped_mjx_rl.environments.physics_pipeline.physics_pipeline import (
-        pipeline_init, pipeline_step
+        pipeline_init,
+        pipeline_step,
     )
+
     # from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
     from quadruped_mjx_rl.environments.physics_pipeline.loading import (
-        model_load, make_pipeline_model
+        model_load,
+        make_pipeline_model,
     )
     from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
     from quadruped_mjx_rl.environments.physics_pipeline.wrappers import (
@@ -25,9 +28,9 @@ if GLOBAL_PHYSICS_PIPELINE == "local":
     )
 elif GLOBAL_PHYSICS_PIPELINE == "brax":
     from brax.base import Motion, Transform, System as PipelineModel
-    from mujoco import MjModel as EnvModel
     from brax.mjx.base import State as PipelineState
     from brax.mjx.pipeline import init as pipeline_init, step as pipeline_step
+
     # from brax.io.image import render_array
     from brax.io.mjcf import load_mjmodel as model_load, load_model as make_pipeline_model
     from brax.envs.base import Env, State, Wrapper
@@ -37,7 +40,7 @@ elif GLOBAL_PHYSICS_PIPELINE == "brax":
         VmapWrapper,
         AutoResetWrapper,
         EpisodeWrapper,
-        DomainRandomizationVmapWrapper
+        DomainRandomizationVmapWrapper,
     )
 else:
     raise NotImplementedError

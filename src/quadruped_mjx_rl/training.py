@@ -17,14 +17,21 @@ from quadruped_mjx_rl.models.io import save_params
 # Training
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments import (
-    EnvironmentConfig, get_base_model, get_env_factory, resolve_env_class
+    EnvironmentConfig,
+    get_base_model,
+    get_env_factory,
+    resolve_env_class,
 )
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
 from quadruped_mjx_rl.policy_rendering import (
-    render_rollout, RenderConfig, RolloutRenderer, PolicyRenderingFn, render_policy_rollout
+    render_rollout,
+    RenderConfig,
+    RolloutRenderer,
+    PolicyRenderingFn,
+    render_policy_rollout,
 )
 from quadruped_mjx_rl.models.agents.ppo.training_utils import maybe_wrap_env
 from quadruped_mjx_rl.terrain_gen.tile import make_arena, tile_center_qpos
@@ -141,14 +148,15 @@ def train_with_vision(
     vision_config: VisionConfig,
     params_save_path: PathLike,
     policy_rendering_fn=functools.partial(
-        render_policy_rollout, render_config=RenderConfig(),
+        render_policy_rollout,
+        render_config=RenderConfig(),
     ),
 ):
     logging.info("Getting the base model...")
     env_model = get_base_model(init_scene_path, env_config)
 
     env_factory = get_env_factory(
-        robot_config, env_config, env_model, vision_config=vision_config #, renderer=renderer
+        robot_config, env_config, env_model, vision_config=vision_config  # , renderer=renderer
     )
     logging.info("Creating the environment...")
     env = env_factory()
@@ -200,7 +208,8 @@ def train_wrong(
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
     policy_rendering_fn=functools.partial(
-        render_policy_rollout, render_config=RenderConfig(),
+        render_policy_rollout,
+        render_config=RenderConfig(),
     ),
 ):
     if checkpoints_save_path is not None:
@@ -252,7 +261,8 @@ def train(
     model_save_path: PathLike,
     checkpoints_save_path: PathLike | None = None,
     policy_rendering_fn=functools.partial(
-        render_policy_rollout, render_config=RenderConfig(),
+        render_policy_rollout,
+        render_config=RenderConfig(),
     ),
 ):
     if checkpoints_save_path is not None:

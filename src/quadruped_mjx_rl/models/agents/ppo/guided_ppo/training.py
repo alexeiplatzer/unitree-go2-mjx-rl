@@ -1,4 +1,3 @@
-
 # Typing
 from collections.abc import Callable, Mapping
 from quadruped_mjx_rl import running_statistics, types
@@ -23,11 +22,13 @@ from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, 
 
 # Networks
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
-    TeacherStudentNetworkParams, TeacherStudentAgentParams
+    TeacherStudentNetworkParams,
+    TeacherStudentAgentParams,
 )
 from quadruped_mjx_rl.models.architectures import guided_actor_critic as ppo_networks
 from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import (
-    compute_teacher_loss, compute_student_loss
+    compute_teacher_loss,
+    compute_student_loss,
 )
 
 InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
@@ -36,6 +37,7 @@ InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 @flax_dataclass
 class TrainingState:
     """Contains the training state for the learner."""
+
     teacher_optimizer_state: optax.OptState
     student_optimizer_state: optax.OptState
     agent_params: TeacherStudentAgentParams
@@ -246,7 +248,7 @@ def train(
             s_opt_state, ts_params = carry
             (s_loss, s_metrics), ts_params, s_opt_state = student_gradient_update_fn(
                 ts_params,
-                #jax.lax.stop_gradient(t_params),
+                # jax.lax.stop_gradient(t_params),
                 normalizer_params,
                 data,
                 optimizer_state=s_opt_state,
@@ -303,9 +305,7 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        teacher_policy, student_policy = make_policies(
-            training_state.agent_params
-        )
+        teacher_policy, student_policy = make_policies(training_state.agent_params)
 
         def roll(carry, unused_t):
             current_state, current_key = carry
@@ -463,17 +463,21 @@ def train(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
 
-    eval_env = env if madrona_backend else _utils.maybe_wrap_env(
-        eval_env or environment,
-        wrap_env,
-        num_eval_envs,
-        episode_length,
-        action_repeat,
-        device_count=1,  # eval on the host only
-        key_env=eval_key,
-        wrap_env_fn=wrap_env_fn,
-        randomization_fn=randomization_fn,
-        vision=madrona_backend,
+    eval_env = (
+        env
+        if madrona_backend
+        else _utils.maybe_wrap_env(
+            eval_env or environment,
+            wrap_env,
+            num_eval_envs,
+            episode_length,
+            action_repeat,
+            device_count=1,  # eval on the host only
+            key_env=eval_key,
+            wrap_env_fn=wrap_env_fn,
+            randomization_fn=randomization_fn,
+            vision=madrona_backend,
+        )
     )
     make_teacher_policy = lambda *args, **kwargs: make_policies(*args, **kwargs)[0]
     make_student_policy = lambda *args, **kwargs: make_policies(*args, **kwargs)[1]

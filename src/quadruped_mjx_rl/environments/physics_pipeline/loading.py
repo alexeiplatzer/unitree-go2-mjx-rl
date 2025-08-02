@@ -14,6 +14,7 @@ import numpy as np
 # Sim
 import mujoco
 from mujoco import mjx
+
 # from quadruped_mjx_rl.environments.utils import (
 #     Actuator,
 #     DoF,
@@ -87,8 +88,8 @@ from mujoco import mjx
 
 def _get_meshdir(elem: ElementTree.Element) -> str | None:
     """Gets the mesh directory specified by the mujoco compiler tag."""
-    elems = list(elem.iter('compiler'))
-    return elems[0].get('meshdir') if elems else None
+    elems = list(elem.iter("compiler"))
+    return elems[0].get("meshdir") if elems else None
 
 
 def _find_assets(
@@ -99,8 +100,8 @@ def _find_assets(
     """Loads assets from an xml given a base path."""
     assets = {}
     path = path if path.is_dir() else path.parent
-    fname = elem.attrib.get('file') or elem.attrib.get('filename')
-    if fname and fname.endswith('.xml'):
+    fname = elem.attrib.get("file") or elem.attrib.get("filename")
+    if fname and fname.endswith(".xml"):
         # an asset can be another xml!  if so, we must traverse it, too
         asset = (path / fname).read_text()
         asset_xml = ElementTree.fromstring(asset)
@@ -120,8 +121,8 @@ def _find_assets(
 
 
 def _get_name(mj: mujoco.MjModel, i: int) -> str:
-    names = mj.names[i:].decode('utf-8')
-    return names[: names.find('\x00')]
+    names = mj.names[i:].decode("utf-8")
+    return names[: names.find("\x00")]
 
 
 # def validate_model(mj: mujoco.MjModel) -> None:
@@ -368,7 +369,7 @@ def model_loads(xml: str, asset_path: PathLike | None = None) -> mujoco.MjModel:
         meshdir = _get_meshdir(elem)
         asset_path = Path(asset_path)
         assets = _find_assets(elem, asset_path, meshdir)
-    xml = ElementTree.tostring(elem, encoding='unicode')
+    xml = ElementTree.tostring(elem, encoding="unicode")
     mj = mujoco.MjModel.from_xml_string(xml, assets=assets)
     return mj
 
@@ -376,10 +377,10 @@ def model_loads(xml: str, asset_path: PathLike | None = None) -> mujoco.MjModel:
 def model_load(path: PathLike) -> mujoco.MjModel:
     """Loads an mj model from a MuJoCo mjcf file path."""
     elem = ElementTree.fromstring(Path(path).read_text())
-    #_fuse_bodies(elem)
+    # _fuse_bodies(elem)
     meshdir = _get_meshdir(elem)
     assets = _find_assets(elem, Path(path), meshdir)
-    xml = ElementTree.tostring(elem, encoding='unicode')
+    xml = ElementTree.tostring(elem, encoding="unicode")
     mj = mujoco.MjModel.from_xml_string(xml, assets=assets)
     return mj
 
@@ -389,8 +390,9 @@ def load_to_spec(path: PathLike) -> mujoco.MjSpec:
     elem = ElementTree.fromstring(Path(path).read_text())
     meshdir = _get_meshdir(elem)
     assets = _find_assets(elem, Path(path), meshdir)
-    xml = ElementTree.tostring(elem, encoding='unicode')
-    spec = mujoco.MjSpec.from_string(xml, assets=assets)
+    # xml = ElementTree.tostring(elem, encoding='unicode')
+    # spec = mujoco.MjSpec.from_string(xml, assets=assets)
+    spec = mujoco.MjSpec.from_file(Path(path).as_posix(), assets=assets)
     return spec
 
 

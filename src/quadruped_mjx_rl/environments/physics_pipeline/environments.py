@@ -16,13 +16,15 @@ import mujoco
 from mujoco import mjx
 from quadruped_mjx_rl.environments.physics_pipeline.base import Base
 from quadruped_mjx_rl.environments.physics_pipeline.physics_pipeline import (
-    pipeline_init, pipeline_n_steps
+    pipeline_init,
+    pipeline_n_steps,
 )
 
 
 @flax_dataclass
 class State(Base):
     """Environment state for training and inference."""
+
     pipeline_state: mjx.Data
     obs: Observation
     reward: jax.Array
@@ -63,7 +65,7 @@ class Env(ABC):
         """Mjx model of the environment."""
 
     @property
-    def unwrapped(self) -> 'Env':
+    def unwrapped(self) -> "Env":
         return self
 
 
@@ -100,6 +102,6 @@ class Wrapper(Env):
         return self.env.unwrapped
 
     def __getattr__(self, name):
-        if name == '__setstate__':
+        if name == "__setstate__":
             raise AttributeError(name)
         return getattr(self.env, name)

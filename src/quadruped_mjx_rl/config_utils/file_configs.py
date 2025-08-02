@@ -39,8 +39,8 @@ def assemble_configs_from_dicts(*loaded_configs: dict) -> dict[str, dict]:
     keyword_to_config = {}
     for loaded_config in loaded_configs:
         for keyword in loaded_config:
-            keyword_to_config[keyword] = (
-                loaded_config[keyword] | keyword_to_config.get(keyword, {})
+            keyword_to_config[keyword] = loaded_config[keyword] | keyword_to_config.get(
+                keyword, {}
             )
     return keyword_to_config
 

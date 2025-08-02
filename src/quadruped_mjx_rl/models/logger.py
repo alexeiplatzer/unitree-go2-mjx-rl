@@ -9,9 +9,7 @@ import numpy as np
 class EpisodeMetricsLogger:
     """Logs training metrics for each episode."""
 
-    def __init__(
-        self, buffer_size=100, steps_between_logging=1e5, progress_fn=None
-    ):
+    def __init__(self, buffer_size=100, steps_between_logging=1e5, progress_fn=None):
         self._metrics_buffer = collections.defaultdict(
             lambda: collections.deque(maxlen=buffer_size)
         )
@@ -35,15 +33,12 @@ class EpisodeMetricsLogger:
     def log_metrics(self, pad=35):
         """Log metrics to console."""
         self._log_count += 1
-        log_string = (
-            f"\n{'Steps':>{pad}} Env: {self._num_steps} Log: {self._log_count}\n"
-        )
+        log_string = f"\n{'Steps':>{pad}} Env: {self._num_steps} Log: {self._log_count}\n"
         mean_metrics = {}
         for metric_name in self._metrics_buffer:
             mean_metrics[metric_name] = np.mean(self._metrics_buffer[metric_name])
             log_string += (
-                f"{f'Episode {metric_name}:':>{pad}}"
-                f" {mean_metrics[metric_name]:.4f}\n"
+                f"{f'Episode {metric_name}:':>{pad}}" f" {mean_metrics[metric_name]:.4f}\n"
             )
         logging.info(log_string)
         if self._progress_fn is not None:

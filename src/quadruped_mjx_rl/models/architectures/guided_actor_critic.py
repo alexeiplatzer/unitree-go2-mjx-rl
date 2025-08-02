@@ -1,4 +1,3 @@
-
 # Typing
 from collections.abc import Sequence, Mapping
 from quadruped_mjx_rl import types
@@ -16,7 +15,8 @@ from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudent
 from quadruped_mjx_rl.models.modules import ActivationFn, MLP, HeadMLP, CNN
 from quadruped_mjx_rl.models.networks import make_network, FeedForwardNetwork, AgentParams
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
-    ActorCriticNetworks, ActorCriticNetworkParams
+    ActorCriticNetworks,
+    ActorCriticNetworkParams,
 )
 
 
@@ -29,6 +29,7 @@ class TeacherStudentNetworks(ActorCriticNetworks):
 @flax_dataclass
 class TeacherStudentNetworkParams(ActorCriticNetworkParams):
     """Contains training state for the learner."""
+
     teacher_encoder: types.Params
     student_encoder: types.Params
 

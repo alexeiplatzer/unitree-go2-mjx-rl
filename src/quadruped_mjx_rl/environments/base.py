@@ -3,6 +3,7 @@ from collections.abc import Sequence
 import jax
 import numpy as np
 from quadruped_mjx_rl.environments.physics_pipeline import (
+    EnvSpec,
     EnvModel,
     PipelineModel,
     PipelineState,
@@ -11,13 +12,18 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     pipeline_init,
     make_pipeline_model,
     State,
-    render_array
+    render_array,
+    load_to_spec,
+    spec_to_model,
 )
 from quadruped_mjx_rl.types import ObservationSize
 
 
 def pipeline_n_steps(
-    pipeline_model: PipelineModel, pipeline_state: PipelineState, act: jax.Array, n_steps: int = 1
+    pipeline_model: PipelineModel,
+    pipeline_state: PipelineState,
+    act: jax.Array,
+    n_steps: int = 1,
 ) -> PipelineState:
     """Performs n sequential pipeline steps"""
     return jax.lax.scan(
@@ -33,7 +39,7 @@ class PipelineEnv(Env):
 
     def __init__(
         self,
-        env_model: EnvModel,
+        env_spec: EnvSpec | EnvModel,
         sim_dt: float = 0.004,
         ctrl_dt: float = 0.02,
     ):
@@ -44,6 +50,10 @@ class PipelineEnv(Env):
             sim_dt: the timestep of the physical simulation
             ctrl_dt: the time interval between reinforcement learning steps
         """
+        if isinstance(env_spec, EnvSpec):
+            env_model = spec_to_model(env_spec)
+        else:
+            env_model = env_spec
         self._env_model = env_model
         self._env_model.opt.timestep = sim_dt
         self._pipeline_model = make_pipeline_model(self._env_model)
@@ -120,4 +130,3 @@ class PipelineEnv(Env):
 
     def backend(self) -> str:
         return "mjx"
-    

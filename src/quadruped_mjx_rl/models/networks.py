@@ -63,8 +63,11 @@ def preprocess_by_key(
     if not isinstance(obs, Mapping):
         return preprocess_obs_fn(obs, processor_params)
     return {
-        obs_key: obs[obs_key] if obs_key not in preprocess_obs_keys
-        else preprocess_obs_fn(obs[obs_key], normalizer_select(processor_params, obs_key))
+        obs_key: (
+            obs[obs_key]
+            if obs_key not in preprocess_obs_keys
+            else preprocess_obs_fn(obs[obs_key], normalizer_select(processor_params, obs_key))
+        )
         for obs_key in obs
     }
 

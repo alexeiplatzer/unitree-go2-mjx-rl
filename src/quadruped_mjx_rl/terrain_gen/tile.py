@@ -1,4 +1,3 @@
-
 import random
 import functools
 import mujoco as mj
@@ -134,8 +133,3 @@ def tile_center_qpos(
     base_qpos[1] = col * 2 * square_length
     base_qpos[2] = floor_height + base_qpos[2]
     return base_qpos
-
-
-
-
-

@@ -14,6 +14,7 @@ from flax import struct as flax_struct
 @dataclass(frozen=True)
 class Array:
     """Describes a numpy array or scalar shape and dtype."""
+
     shape: tuple[int, ...]
     dtype: jnp.dtype
 
@@ -22,7 +23,7 @@ class Array:
 NestedArray = jnp.ndarray
 NestedTensor = Any
 
-NestedSpec = Array | Iterable['NestedSpec'] | Mapping[Any, 'NestedSpec']
+NestedSpec = Array | Iterable["NestedSpec"] | Mapping[Any, "NestedSpec"]
 
 Nest = NestedArray | NestedTensor | NestedSpec
 
@@ -38,6 +39,7 @@ def _ones_like(nest: Nest, dtype=None) -> Nest:
 @flax_struct.dataclass
 class NestedMeanStd:
     """A container for running statistics (mean, std) of possibly nested data."""
+
     mean: Nest
     std: Nest
 
@@ -45,6 +47,7 @@ class NestedMeanStd:
 @flax_struct.dataclass
 class RunningStatisticsState(NestedMeanStd):
     """Full state of running statistics computation."""
+
     count: jnp.ndarray
     summed_variance: Nest
 
@@ -58,14 +61,12 @@ def init_state(nest: Nest) -> RunningStatisticsState:
         mean=_zeros_like(nest, dtype=dtype),
         summed_variance=_zeros_like(nest, dtype=dtype),
         # Initialize with ones to make sure normalization works correctly in the initial state.
-        std=_ones_like(nest, dtype=dtype)
+        std=_ones_like(nest, dtype=dtype),
     )
 
 
 def _validate_batch_shapes(
-    batch: NestedArray,
-    reference_sample: NestedArray,
-    batch_dims: tuple[int, ...]
+    batch: NestedArray, reference_sample: NestedArray, batch_dims: tuple[int, ...]
 ) -> None:
     """
     Verifies shapes of the batch leaves against the reference sample.
@@ -83,12 +84,9 @@ def _validate_batch_shapes(
         None.
     """
 
-    def validate_node_shape(
-        reference_sample: jnp.ndarray,
-        batch: jnp.ndarray
-    ) -> None:
+    def validate_node_shape(reference_sample: jnp.ndarray, batch: jnp.ndarray) -> None:
         expected_shape = batch_dims + reference_sample.shape
-        assert batch.shape == expected_shape, f'{batch.shape} != {expected_shape}'
+        assert batch.shape == expected_shape, f"{batch.shape} != {expected_shape}"
 
     jax.tree_util.tree_map(validate_node_shape, reference_sample, batch)
 
@@ -101,7 +99,7 @@ def update(
     std_min_value: float = 1e-6,
     std_max_value: float = 1e6,
     pmap_axis_name: str | None = None,
-    validate_shapes: bool = True
+    validate_shapes: bool = True,
 ) -> RunningStatisticsState:
     """
     Updates the running statistics with the given batch of data.
@@ -127,7 +125,7 @@ def update(
 
         Returns:
             Updated running statistics.
-        """
+    """
     # We require exactly the same structure to avoid issues
     # when flattened batch and state have different order of elements.
     assert jax.tree_util.tree_structure(batch) == jax.tree_util.tree_structure(state.mean)
@@ -136,7 +134,7 @@ def update(
         return state
     batch_shape = batch_leaves[0].shape
     # We assume the batch dimensions always go first.
-    batch_dims = batch_shape[:len(batch_shape) - jax.tree_util.tree_leaves(state.mean)[0].ndim]
+    batch_dims = batch_shape[: len(batch_shape) - jax.tree_util.tree_leaves(state.mean)[0].ndim]
     batch_axis = range(len(batch_dims))
     if weights is None:
         step_increment = jnp.prod(jnp.array(batch_dims))
@@ -151,7 +149,7 @@ def update(
     if validate_shapes:
         if weights is not None:
             if weights.shape != batch_dims:
-                raise ValueError(f'{weights.shape} != {batch_dims}')
+                raise ValueError(f"{weights.shape} != {batch_dims}")
         _validate_batch_shapes(batch, state.mean, batch_dims)
 
     def _compute_node_statistics(
@@ -164,15 +162,12 @@ def update(
         diff_to_old_mean = batch - mean
         if weights is not None:
             expanded_weights = jnp.reshape(
-                weights,
-                list(weights.shape) + [1] * (batch.ndim - weights.ndim)
+                weights, list(weights.shape) + [1] * (batch.ndim - weights.ndim)
             )
             diff_to_old_mean = diff_to_old_mean * expanded_weights
         mean_update = jnp.sum(diff_to_old_mean, axis=batch_axis) / count
         if pmap_axis_name is not None:
-            mean_update = jax.lax.psum(
-                mean_update, axis_name=pmap_axis_name
-            )
+            mean_update = jax.lax.psum(mean_update, axis_name=pmap_axis_name)
         mean = mean + mean_update
 
         diff_to_new_mean = batch - mean
@@ -184,15 +179,11 @@ def update(
         return mean, summed_variance
 
     updated_stats = jax.tree_util.tree_map(
-        _compute_node_statistics, state.mean,
-        state.summed_variance, batch
+        _compute_node_statistics, state.mean, state.summed_variance, batch
     )
     # Extract `mean` and `summed_variance` from `updated_stats` nest.
     mean = jax.tree_util.tree_map(lambda _, x: x[0], state.mean, updated_stats)
-    summed_variance = jax.tree_util.tree_map(
-        lambda _, x: x[1], state.mean,
-        updated_stats
-    )
+    summed_variance = jax.tree_util.tree_map(lambda _, x: x[1], state.mean, updated_stats)
 
     def compute_std(
         summed_variance: jnp.ndarray,
@@ -213,16 +204,11 @@ def update(
 
 
 def normalize(
-    batch: NestedArray,
-    mean_std: NestedMeanStd,
-    max_abs_value: float | None = None
+    batch: NestedArray, mean_std: NestedMeanStd, max_abs_value: float | None = None
 ) -> NestedArray:
     """Normalizes data using running statistics."""
 
-    def normalize_leaf(
-        data: jnp.ndarray, mean: jnp.ndarray,
-        std: jnp.ndarray
-    ) -> jnp.ndarray:
+    def normalize_leaf(data: jnp.ndarray, mean: jnp.ndarray, std: jnp.ndarray) -> jnp.ndarray:
         # Only normalize inexact
         if not jnp.issubdtype(data.dtype, jnp.inexact):
             return data
@@ -234,10 +220,7 @@ def normalize(
     return jax.tree_util.tree_map(normalize_leaf, batch, mean_std.mean, mean_std.std)
 
 
-def denormalize(
-    batch: NestedArray,
-    mean_std: NestedMeanStd
-) -> NestedArray:
+def denormalize(batch: NestedArray, mean_std: NestedMeanStd) -> NestedArray:
     """
     Denormalizes values in a nested structure using the given mean/std.
 
@@ -252,10 +235,7 @@ def denormalize(
         Nested structure with denormalized values.
     """
 
-    def denormalize_leaf(
-        data: jnp.ndarray, mean: jnp.ndarray,
-        std: jnp.ndarray
-    ) -> jnp.ndarray:
+    def denormalize_leaf(data: jnp.ndarray, mean: jnp.ndarray, std: jnp.ndarray) -> jnp.ndarray:
         # Only denormalize inexact
         if not jnp.issubdtype(data.dtype, jnp.inexact):
             return data

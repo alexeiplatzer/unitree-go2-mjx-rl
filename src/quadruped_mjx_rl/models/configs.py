@@ -68,9 +68,7 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
         adapter_convolutional: list[int] = field(default_factory=lambda: [32, 64, 64])
         adapter_dense: list[int] = field(default_factory=lambda: [256, 256])
 
-    modules: ModulesConfig = field(
-        default_factory=ModulesConfig
-    )
+    modules: ModulesConfig = field(default_factory=ModulesConfig)
 
     @classmethod
     def model_class_key(cls) -> str:
@@ -78,7 +76,11 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
 
 
 _model_config_classes = {
-    config.model_class_key(): config for config in (
-        ModelConfig, ActorCriticConfig, TeacherStudentConfig, TeacherStudentVisionConfig
+    config.model_class_key(): config
+    for config in (
+        ModelConfig,
+        ActorCriticConfig,
+        TeacherStudentConfig,
+        TeacherStudentVisionConfig,
     )
 }

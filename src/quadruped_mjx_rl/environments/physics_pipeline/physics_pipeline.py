@@ -11,6 +11,7 @@ from quadruped_mjx_rl import math
 # Sim
 from mujoco import mjx
 from quadruped_mjx_rl.environments.physics_pipeline.base import Transform, Motion
+
 # from quadruped_mjx_rl.environments.utils import (
 #     # Contact,
 #     # Motion,
@@ -104,6 +105,7 @@ def get_world_frame_coordinates(
     offset = Transform.create(pos=offset)
     xd = offset.vmap().do(cvel)
     return x, xd
+
 
 #
 # def rotate_to_world_frame(vector: jax.Array, base_xquat: jax.Array) -> jax.Array:

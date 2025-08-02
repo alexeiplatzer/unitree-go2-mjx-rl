@@ -23,7 +23,7 @@ def render_array(
     def get_image(state: mjx.Data) -> np.ndarray:
         d = mujoco.MjData(env_model)
         d.qpos, d.qvel = state.qpos, state.qvel
-        if hasattr(state, 'mocap_pos') and hasattr(state, 'mocap_quat'):
+        if hasattr(state, "mocap_pos") and hasattr(state, "mocap_quat"):
             d.mocap_pos, d.mocap_quat = state.mocap_pos, state.mocap_quat
         mujoco.mj_forward(env_model, d)
         renderer.update_scene(d, camera=camera)

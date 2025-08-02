@@ -1,4 +1,3 @@
-
 # Typing
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -67,7 +66,7 @@ def render_policy_rollout(
     env: PipelineEnv,
     ppo_inference_fn,
     render_config: RenderConfig,
-    #animation_save_path: PathLike | dict[str, PathLike] | None,
+    # animation_save_path: PathLike | dict[str, PathLike] | None,
     video_maker: PolicyRenderingFn = show_video,
     vision: bool = False,
 ):
@@ -110,11 +109,13 @@ def render_rollout(
     reset_fn = jax.jit(env.reset)
     step_fn = jax.jit(env.step)
     act_fn = jax.jit(inference_fn)
-    command = jnp.array([
-        render_config.command["x_vel"],
-        render_config.command["y_vel"],
-        render_config.command["ang_vel"]
-    ])
+    command = jnp.array(
+        [
+            render_config.command["x_vel"],
+            render_config.command["y_vel"],
+            render_config.command["ang_vel"],
+        ]
+    )
     render_every = render_config.render_every
 
     rng = jax.random.key(render_config.seed)

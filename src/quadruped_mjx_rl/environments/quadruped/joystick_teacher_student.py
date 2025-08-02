@@ -12,7 +12,7 @@ import jax.numpy as jnp
 
 # Sim
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel, EnvSpec
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 
 # Definitions
@@ -43,9 +43,9 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         self,
         environment_config: TeacherStudentEnvironmentConfig,
         robot_config: RobotConfig,
-        env_model: EnvModel,
+        env_spec: EnvSpec | EnvModel,
     ):
-        super().__init__(environment_config, robot_config, env_model)
+        super().__init__(environment_config, robot_config, env_spec)
 
     def _init_obs(
         self,

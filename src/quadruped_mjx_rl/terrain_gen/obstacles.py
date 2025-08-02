@@ -9,9 +9,7 @@ ObstacleMaker = Callable[[mj.MjSpec, list[float], ...], None]
 
 
 def flat(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[float] | None = None,
-    name: str = 'flat'
+    spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "flat"
 ) -> None:
     SQUARE_LENGTH = 2
     BROWN = [0.460, 0.362, 0.216, 1.0]
@@ -38,7 +36,7 @@ def stripes(
     stripe_w: float = 0.10,  # total width of one stripe (m)
     amplitude: float = 0.05,  # extra height for the raised stripes (m)
     base_thickness: float = 0.05,  # thickness of the “flat” stripes (m)
-    name: str = 'stripes',
+    name: str = "stripes",
 ) -> None:
     """
     Generates a 2 m × 2 m tile whose surface is made of long, thin
@@ -65,7 +63,7 @@ def stripes(
     x_start = -SQUARE_LENGTH + stripe_w / 2  # centre of first stripe
 
     for k in range(n_stripes):
-        is_high = (k % 2 == 1)  # alternate low/high
+        is_high = k % 2 == 1  # alternate low/high
         height = base_thickness + (amplitude if is_high else 0.0)
         z_center = height / 2  # MuJoCo boxes are centred
         x_center = x_start + k * stripe_w
@@ -73,7 +71,7 @@ def stripes(
         body.add_geom(
             pos=[x_center, 0, z_center],
             size=[stripe_w / 2, SQUARE_LENGTH, height / 2],
-            rgba=BROWN
+            rgba=BROWN,
         )
 
 
@@ -82,7 +80,7 @@ def stairs(
     grid_loc: list[float] | None = None,
     num_stairs: int = 4,
     direction: int = 1,
-    name: str = 'stair'
+    name: str = "stair",
 ) -> None:
     SQUARE_LENGTH = 2
     V_SIZE = 0.076
@@ -142,9 +140,7 @@ def stairs(
 
 
 def debris_with_simple_geoms(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[float] | None = None,
-    name: str = 'plane'
+    spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "plane"
 ) -> None:
     SQUARE_LENGTH = 2
     THICKNESS = 0.05
@@ -187,15 +183,13 @@ def debris_with_simple_geoms(
             g_type = mj.mjtGeom.mjGEOM_CYLINDER
             size = [0.1, 0.02, 0]
 
-        body = spec.worldbody.add_body(pos=pos, name=f'g{i}_{name}', mass=1)
+        body = spec.worldbody.add_body(pos=pos, name=f"g{i}_{name}", mass=1)
         body.add_geom(type=g_type, size=size, rgba=RED)
         body.add_freejoint()
 
 
 def debris(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[float] | None = None,
-    name: str = 'debris'
+    spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "debris"
 ) -> None:
     SQUARE_LENGTH = 2
     THICKNESS = 0.05
@@ -238,23 +232,22 @@ def debris(
             mesh = np.vstack((base, top))
 
             # Create body and add the mesh to the geom of the body
-            spec.add_mesh(name=f'd{i}_{j}_{name}', uservert=mesh.flatten())
+            spec.add_mesh(name=f"d{i}_{j}_{name}", uservert=mesh.flatten())
             pos = [
-                grid_loc[0] + x_beginning + i * STEP, grid_loc[1] + y_beginning - j * STEP, 0.2
+                grid_loc[0] + x_beginning + i * STEP,
+                grid_loc[1] + y_beginning - j * STEP,
+                0.2,
             ]
 
-            body = spec.worldbody.add_body(pos=pos, name=f'd{i}_{j}_{name}', mass=1)
-            body.add_geom(
-                type=mj.mjtGeom.mjGEOM_MESH, meshname=f'd{i}_{j}_{name}',
-                rgba=RED
-            )
+            body = spec.worldbody.add_body(pos=pos, name=f"d{i}_{j}_{name}", mass=1)
+            body.add_geom(type=mj.mjtGeom.mjGEOM_MESH, meshname=f"d{i}_{j}_{name}", rgba=RED)
             body.add_freejoint()
 
 
 def boxy_terrain(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
-    name: str = 'boxy_terrain'
+    name: str = "boxy_terrain",
 ) -> None:
     SQUARE_LENGTH = 2
     CUBE_LENGTH = 0.05
@@ -283,10 +276,10 @@ def boxy_terrain(
                 pos=[
                     x_beginning + i * STEP,
                     y_beginning - j * STEP,
-                    random.randint(-1, 1) * CUBE_LENGTH
+                    random.randint(-1, 1) * CUBE_LENGTH,
                 ],
                 size=[CUBE_LENGTH] * 3,
-                rgba=BROWN
+                rgba=BROWN,
             )
 
 
@@ -294,7 +287,7 @@ def box_extrusions(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
     complex: bool = False,
-    name: str = 'box_extrusions'
+    name: str = "box_extrusions",
 ) -> None:
     # Warning! complex sometimes leads to creation of holes
     SQUARE_LENGTH = 2
@@ -326,7 +319,7 @@ def box_extrusions(
             ref = body.add_geom(
                 pos=[x_beginning + i * STEP, y_beginning - j * STEP, 0],
                 size=[CUBE_LENGTH] * 3,
-                rgba=BROWN
+                rgba=BROWN,
             )
             grid[i][j] = ref
 
@@ -355,9 +348,7 @@ def box_extrusions(
 
 
 def h_field(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[float] | None = None,
-    name: str = 'h_field'
+    spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "h_field"
 ) -> None:
     SQUARE_LENGTH = 2
     HEIGHT = 0.1
@@ -383,24 +374,18 @@ def h_field(
     # Create height field
     hfield = spec.add_hfield(
         name=name,
-        size=[SQUARE_LENGTH, SQUARE_LENGTH,
-            HEIGHT, HEIGHT / 10],
+        size=[SQUARE_LENGTH, SQUARE_LENGTH, HEIGHT, HEIGHT / 10],
         nrow=noise.shape[0],
         ncol=noise.shape[1],
-        userdata=noise.flatten()
+        userdata=noise.flatten(),
     )
 
     body = spec.worldbody.add_body(pos=grid_loc + [0], name=name)
-    body.add_geom(
-        type=mj.mjtGeom.mjGEOM_HFIELD, hfieldname=name,
-        rgba=BROWN_RGBA
-    )
+    body.add_geom(type=mj.mjtGeom.mjGEOM_HFIELD, hfieldname=name, rgba=BROWN_RGBA)
 
 
 def floating_platform(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[float] | None = None,
-    name: str = 'platform'
+    spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "platform"
 ) -> None:
     PLATFORM_LENGTH = 0.5
     WIDTH = 0.12
@@ -431,43 +416,39 @@ def floating_platform(
     for x_dir in [-1, 1]:
         for y_dir in [-1, 1]:
             # Add site to world
-            vector = np.array(
-                [x_dir * PLATFORM_LENGTH,
-                    y_dir * (WIDTH - INWARD_OFFSET)]
-            )
+            vector = np.array([x_dir * PLATFORM_LENGTH, y_dir * (WIDTH - INWARD_OFFSET)])
             x_w = grid_loc[0] + vector[0]
             y_w = grid_loc[1] + vector[1]
             z_w = grid_loc[2] + TENDON_LENGTH
             # Rotate sites by theta
             spec.worldbody.add_site(
-                name=f'{name}_hook_{x_dir}_{y_dir}',
-                pos=[x_w, y_w, z_w],
-                size=[0.01, 0, 0]
+                name=f"{name}_hook_{x_dir}_{y_dir}", pos=[x_w, y_w, z_w], size=[0.01, 0, 0]
             )
             # Add site to platform
             x_p = x_dir * PLATFORM_LENGTH
             y_p = y_dir * (WIDTH - INWARD_OFFSET)
             platform.add_site(
-                name=f'{name}_anchor_{x_dir}_{y_dir}',
+                name=f"{name}_anchor_{x_dir}_{y_dir}",
                 pos=[x_p, y_p, THICKNESS * 2],
-                size=[0.01, 0, 0]
+                size=[0.01, 0, 0],
             )
 
             # Connect tendon to sites
             thread = spec.add_tendon(
-                name=f'{name}_thread_{x_dir}_{y_dir}',
+                name=f"{name}_thread_{x_dir}_{y_dir}",
                 limited=True,
-                range=[0, TENDON_LENGTH], width=0.01
+                range=[0, TENDON_LENGTH],
+                width=0.01,
             )
-            thread.wrap_site(f'{name}_hook_{x_dir}_{y_dir}')
-            thread.wrap_site(f'{name}_anchor_{x_dir}_{y_dir}')
+            thread.wrap_site(f"{name}_hook_{x_dir}_{y_dir}")
+            thread.wrap_site(f"{name}_anchor_{x_dir}_{y_dir}")
 
 
 def simple_suspended_stair(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
     num_stair: int = 20,
-    name: str = "simple_suspended_stair"
+    name: str = "simple_suspended_stair",
 ) -> None:
     BROWN = [0.460, 0.362, 0.216, 1.0]
     SQUARE_LENGTH = 2
@@ -496,7 +477,7 @@ def simple_suspended_stair(
         floating_platform(
             spec,
             [grid_loc[0], OFFSET_Y + grid_loc[1] + i * 2 * H_STEP, i * V_STEP],
-            name=f'{name}_p_{i}'
+            name=f"{name}_p_{i}",
         )
 
 
@@ -504,7 +485,7 @@ def sin_suspended_stair(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
     num_stair: int = 40,
-    name: str = "sin_suspended_stair"
+    name: str = "sin_suspended_stair",
 ) -> None:
     BROWN = [0.460, 0.362, 0.216, 1.0]
     SQUARE_LENGTH = 2
@@ -535,7 +516,7 @@ def sin_suspended_stair(
         floating_platform(
             spec,
             [grid_loc[0] + x_step, OFFSET_Y + grid_loc[1] + i * 2 * H_STEP, i * V_STEP],
-            name=f'{name}_p_{i}'
+            name=f"{name}_p_{i}",
         )
 
 
@@ -543,7 +524,7 @@ def floating_platform_for_circular_stair(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
     theta: float = 0,
-    name: str = 'platform'
+    name: str = "platform",
 ) -> None:
     PLATFORM_LENGTH = 0.5
     TENDON_LENGTH = 0.5
@@ -590,9 +571,7 @@ def floating_platform_for_circular_stair(
 
             # Add site to world
             spec.worldbody.add_site(
-                name=f'{name}_hook_{x_dir}_{y_dir}',
-                pos=[x_w, y_w, z_w],
-                size=[0.01, 0, 0]
+                name=f"{name}_hook_{x_dir}_{y_dir}", pos=[x_w, y_w, z_w], size=[0.01, 0, 0]
             )
             # Add site to platform
             x_p = x_dir * PLATFORM_LENGTH
@@ -600,25 +579,27 @@ def floating_platform_for_circular_stair(
             if i + j == 2:
                 y_p = y_dir * 6 * WIDTH
             platform.add_site(
-                name=f'{name}_anchor_{x_dir}_{y_dir}',
+                name=f"{name}_anchor_{x_dir}_{y_dir}",
                 pos=[x_p, y_p, THICKNESS * 2],
-                size=[0.01, 0, 0]
+                size=[0.01, 0, 0],
             )
 
             # Connect tendon to sites
             thread = spec.add_tendon(
-                name=f'{name}_thread_{x_dir}_{y_dir}', limited=True,
-                range=[0, TENDON_LENGTH], width=0.01
+                name=f"{name}_thread_{x_dir}_{y_dir}",
+                limited=True,
+                range=[0, TENDON_LENGTH],
+                width=0.01,
             )
-            thread.wrap_site(f'{name}_hook_{x_dir}_{y_dir}')
-            thread.wrap_site(f'{name}_anchor_{x_dir}_{y_dir}')
+            thread.wrap_site(f"{name}_hook_{x_dir}_{y_dir}")
+            thread.wrap_site(f"{name}_anchor_{x_dir}_{y_dir}")
 
 
 def circular_stairs(
     spec: mj.MjSpec | None = None,
     grid_loc: list[float] | None = None,
     num_stair: int = 60,
-    name: str = "circular_stairs"
+    name: str = "circular_stairs",
 ) -> None:
     BROWN_RGBA = [0.460, 0.362, 0.216, 1.0]
     SQUARE_LENGTH = 2
@@ -649,4 +630,4 @@ def circular_stairs(
         y = grid_loc[1] + RADIUS * np.sin(theta)
         z = i * V_STEP
 
-        floating_platform_for_circular_stair(spec, [x, y, z], theta=theta, name=f'{name}_p_{i}')
+        floating_platform_for_circular_stair(spec, [x, y, z], theta=theta, name=f"{name}_p_{i}")

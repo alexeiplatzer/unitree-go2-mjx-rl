@@ -1,4 +1,3 @@
-
 import mujoco as mj
 import numpy as np
 import mediapy as media
@@ -31,7 +30,7 @@ def perlin(shape, res, tileable=(False, False), interpolant=interpolant):
     """
     delta = (res[0] / shape[0], res[1] / shape[1])
     d = (shape[0] // res[0], shape[1] // res[1])
-    grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]].transpose(1, 2, 0) % 1
+    grid = np.mgrid[0 : res[0] : delta[0], 0 : res[1] : delta[1]].transpose(1, 2, 0) % 1
     # Gradients
     angles = 2 * np.pi * np.random.rand(res[0] + 1, res[1] + 1)
     gradients = np.dstack((np.cos(angles), np.sin(angles)))
@@ -40,10 +39,10 @@ def perlin(shape, res, tileable=(False, False), interpolant=interpolant):
     if tileable[1]:
         gradients[:, -1] = gradients[:, 0]
     gradients = gradients.repeat(d[0], 0).repeat(d[1], 1)
-    g00 = gradients[:-d[0], :-d[1]]
-    g10 = gradients[d[0]:, :-d[1]]
-    g01 = gradients[:-d[0], d[1]:]
-    g11 = gradients[d[0]:, d[1]:]
+    g00 = gradients[: -d[0], : -d[1]]
+    g10 = gradients[d[0] :, : -d[1]]
+    g01 = gradients[: -d[0], d[1] :]
+    g11 = gradients[d[0] :, d[1] :]
     # Ramps
     n00 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1])) * g00, 2)
     n10 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1])) * g10, 2)
@@ -64,13 +63,9 @@ def edge_slope(size, border_width=5, blur_iterations=20):
     img[:, :border_width] = 0
     img[:, -border_width:] = 0
 
-    kernel = np.array(
-        [[1, 1, 1],
-            [1, 1, 1],
-            [1, 1, 1]]
-    ) / 9.0
+    kernel = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]]) / 9.0
 
     for _ in range(blur_iterations):
-        img = convolve2d(img, kernel, mode='same', boundary='symm')
+        img = convolve2d(img, kernel, mode="same", boundary="symm")
 
     return img

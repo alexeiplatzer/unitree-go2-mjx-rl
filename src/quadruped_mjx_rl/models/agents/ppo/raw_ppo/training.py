@@ -1,4 +1,3 @@
-
 # Typing
 from collections.abc import Callable
 from quadruped_mjx_rl import running_statistics, types
@@ -32,6 +31,7 @@ InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 @flax_dataclass
 class TrainingState:
     """Contains training state for the learner."""
+
     optimizer_state: optax.OptState
     params: ActorCriticNetworkParams
     normalizer_params: running_statistics.RunningStatisticsState

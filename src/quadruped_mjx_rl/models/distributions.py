@@ -70,9 +70,7 @@ class ParametricDistribution(ABC):
         """Return the entropy of the given distribution."""
         dist = self.create_dist(parameters)
         entropy = dist.entropy()
-        entropy += self._postprocessor.forward_log_det_jacobian(
-            dist.sample(seed=seed)
-        )
+        entropy += self._postprocessor.forward_log_det_jacobian(dist.sample(seed=seed))
         if self._event_ndims == 1:
             entropy = jnp.sum(entropy, axis=-1)
         return entropy

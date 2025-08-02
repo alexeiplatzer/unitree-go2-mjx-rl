@@ -1,4 +1,5 @@
 """Utility functions to help visualize mujoco environments."""
+
 from etils.epath import PathLike, Path
 import mediapy as media
 import mujoco

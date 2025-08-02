@@ -16,8 +16,8 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import math
 
 # f: free, 1: 1-dof, 2: 2-dof, 3: 3-dof
-Q_WIDTHS = {'f': 7, '1': 1, '2': 2, '3': 3}
-QD_WIDTHS = {'f': 6, '1': 1, '2': 2, '3': 3}
+Q_WIDTHS = {"f": 7, "1": 1, "2": 2, "3": 3}
+QD_WIDTHS = {"f": 6, "1": 1, "2": 2, "3": 3}
 
 
 @flax_dataclass
@@ -52,7 +52,7 @@ class Base:
         return tree_map(lambda x: x[beg:end], self)
 
     def take(self, i, axis=0):
-        return tree_map(lambda x: jnp.take(x, i, axis=axis, mode='wrap'), self)
+        return tree_map(lambda x: jnp.take(x, i, axis=axis, mode="wrap"), self)
 
     def concatenate(self, *others, axis: int = 0):
         return tree_map(lambda *x: jnp.concatenate(x, axis=axis), self, *others)
@@ -91,9 +91,7 @@ class Base:
 
         return VmapField(in_axes, out_axes)
 
-    def tree_replace(
-        self, params: dict[str, jax.typing.ArrayLike | None]
-    ) -> 'Base':
+    def tree_replace(self, params: dict[str, jax.typing.ArrayLike | None]) -> "Base":
         """Creates a new object with all parameters set.
 
         Args:
@@ -109,7 +107,7 @@ class Base:
         """
         new = self
         for k, v in params.items():
-            new = _tree_replace(new, k.split('.'), v)
+            new = _tree_replace(new, k.split("."), v)
         return new
 
     @property
@@ -133,7 +131,7 @@ def _tree_replace(
         for i, g in enumerate(lst):
             if not hasattr(g, attr[1]):
                 continue
-            v = val if not hasattr(val, '__iter__') else val[i]
+            v = val if not hasattr(val, "__iter__") else val[i]
             lst[i] = _tree_replace(g, attr[1:], v)
 
         return base.replace(**{attr[0]: lst})
@@ -141,9 +139,7 @@ def _tree_replace(
     if len(attr) == 1:
         return base.replace(**{attr[0]: val})
 
-    return base.replace(
-        **{attr[0]: _tree_replace(getattr(base, attr[0]), attr[1:], val)}
-    )
+    return base.replace(**{attr[0]: _tree_replace(getattr(base, attr[0]), attr[1:], val)})
 
 
 @flax_dataclass
@@ -166,19 +162,17 @@ class Transform(Base):
         """Apply the inverse of the transform."""
         return _transform_inv_do(o, self)
 
-    def to_local(self, t: 'Transform') -> 'Transform':
+    def to_local(self, t: "Transform") -> "Transform":
         """Move transform into basis of t."""
         pos = math.rotate(self.pos - t.pos, math.quat_inv(t.rot))
         rot = math.quat_mul(math.quat_inv(t.rot), self.rot)
         return Transform(pos=pos, rot=rot)
 
     @classmethod
-    def create(
-        cls, pos: jax.Array | None = None, rot: jax.Array | None = None
-    ) -> 'Transform':
+    def create(cls, pos: jax.Array | None = None, rot: jax.Array | None = None) -> "Transform":
         """Creates a transform with either pos, rot, or both."""
         if pos is None and rot is None:
-            raise ValueError('must specify either pos or rot')
+            raise ValueError("must specify either pos or rot")
         elif pos is None and rot is not None:
             pos = jnp.zeros(rot.shape[:-1] + (3,))
         elif rot is None and pos is not None:
@@ -186,7 +180,7 @@ class Transform(Base):
         return Transform(pos=pos, rot=rot)
 
     @classmethod
-    def zero(cls, shape=()) -> 'Transform':
+    def zero(cls, shape=()) -> "Transform":
         """Returns a zero transform with a batch shape."""
         pos = jnp.zeros(shape + (3,))
         rot = jnp.tile(jnp.array([1.0, 0.0, 0.0, 0.0]), shape + (1,))
@@ -217,18 +211,16 @@ class Motion(Base):
         return jnp.concatenate([self.ang, self.vel], axis=-1)
 
     @classmethod
-    def create(
-        cls, ang: jax.Array | None = None, vel: jax.Array | None = None
-    ) -> "Motion":
+    def create(cls, ang: jax.Array | None = None, vel: jax.Array | None = None) -> "Motion":
         if ang is None and vel is None:
-            raise ValueError('must specify either ang or vel')
+            raise ValueError("must specify either ang or vel")
         ang = jnp.zeros_like(vel) if ang is None else ang
         vel = jnp.zeros_like(ang) if vel is None else vel
 
         return Motion(ang=ang, vel=vel)
 
     @classmethod
-    def zero(cls, shape=()) -> 'Motion':
+    def zero(cls, shape=()) -> "Motion":
         ang = jnp.zeros(shape + (3,))
         vel = jnp.zeros(shape + (3,))
         return Motion(ang, vel)

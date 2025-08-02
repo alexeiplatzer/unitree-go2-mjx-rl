@@ -1,4 +1,3 @@
-
 # Supporting
 from etils.epath import PathLike
 
@@ -12,7 +11,10 @@ import numpy as np
 # from brax.envs.base import State, PipelineEnv
 # from brax.io.mjcf import load as load_system
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    PipelineModel, PipelineState, model_load, State
+    PipelineModel,
+    PipelineState,
+    model_load,
+    State,
 )
 from quadruped_mjx_rl.environments.base import PipelineEnv
 
@@ -37,6 +39,7 @@ class VisionDebugEnv(PipelineEnv):
 
         # Setup vision with the madrona mjx engine
         from madrona_mjx.renderer import BatchRenderer
+
         self.renderer = BatchRenderer(
             m=self.sys,
             gpu_id=vision_config.gpu_id,
@@ -52,9 +55,8 @@ class VisionDebugEnv(PipelineEnv):
 
     def reset(self, rng: jax.Array) -> State:
         pipeline_state = self.pipeline_init(
-            self._init_q + jax.random.uniform(
-                rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
-            ),
+            self._init_q
+            + jax.random.uniform(rng, shape=self._init_q.shape, minval=0.0, maxval=0.0),
             jnp.zeros(self._nv),
         )
 
