@@ -21,11 +21,12 @@ from quadruped_mjx_rl.environments import PipelineModel, Env, State
 from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
 
 # Networks
-from quadruped_mjx_rl.models.architectures.raw_actor_critic import ActorCriticNetworkParams
+from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
+    ActorCriticNetworkParams,
+    ActorCriticAgentParams,
+)
 from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks
 from quadruped_mjx_rl.models.agents.ppo.raw_ppo.losses import compute_ppo_loss
-
-InferenceParams = tuple[running_statistics.NestedMeanStd, Params]
 
 
 @flax_dataclass
@@ -33,8 +34,7 @@ class TrainingState:
     """Contains training state for the learner."""
 
     optimizer_state: optax.OptState
-    params: ActorCriticNetworkParams
-    normalizer_params: running_statistics.RunningStatisticsState
+    agent_params: ActorCriticAgentParams
     env_steps: jnp.ndarray
 
 
@@ -320,13 +320,7 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        policy = make_policy(
-            (
-                training_state.normalizer_params,
-                training_state.params.policy,
-                training_state.params.value,
-            )
-        )
+        policy = make_policy(training_state.agent_params)
 
         def f(carry, unused_t):
             current_state, current_key = carry
@@ -361,14 +355,18 @@ def train(
 
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(
-            training_state.normalizer_params,
+            training_state.agent_params.preprocessor_params,
             _utils.remove_pixels(data.observation),
             pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
         (optimizer_state, params, _), metrics = jax.lax.scan(
             functools.partial(sgd_step, data=data, normalizer_params=normalizer_params),
-            (training_state.optimizer_state, training_state.params, key_sgd),
+            (
+                training_state.optimizer_state,
+                training_state.agent_params.network_params,
+                key_sgd,
+            ),
             (),
             length=num_updates_per_batch,
         )
@@ -427,7 +425,7 @@ def train(
         )
 
     # Initialize model params and training state.
-    init_params = ActorCriticNetworkParams(
+    network_init_params = ActorCriticNetworkParams(
         policy=ppo_network.policy_network.init(key_policy),
         value=ppo_network.value_network.init(key_value),
     )
@@ -436,28 +434,33 @@ def train(
         lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
     )
     training_state = TrainingState(
-        optimizer_state=optimizer.init(init_params),
-        params=init_params,
-        normalizer_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
-        env_steps=jnp.array(0, dtype=jnp.int64),
+        optimizer_state=optimizer.init(network_init_params),
+        agent_params=ActorCriticAgentParams(
+            network_params=network_init_params,
+            preprocessor_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
+        ),
+        env_steps=jnp.array(0, dtype=jnp.int32),
     )
 
     if restore_params is not None:
         logging.info("Restoring TrainingState from `restore_params`.")
-        value_params = restore_params[2] if restore_value_fn else init_params.value
-        training_state = training_state.replace(
-            normalizer_params=restore_params[0],
-            params=training_state.params.replace(policy=restore_params[1], value=value_params),
+        value_params = (
+            restore_params.network_params.value
+            if restore_value_fn
+            else network_init_params.value
+        )
+        training_state = training_state.agent_params.replace(
+            normalizer_params=restore_params.preprocessor_params,
+            network_params=training_state.agent_params.network_params.replace(
+                policy=restore_params.network_params.policy,
+                value=value_params,
+            ),
         )
 
     if num_timesteps == 0:
         return (
             make_policy,
-            (
-                training_state.normalizer_params,
-                training_state.params.policy,
-                training_state.params.value,
-            ),
+            training_state.agent_params,
             {},
         )
 
@@ -527,13 +530,7 @@ def train(
             continue
 
         # Process id == 0.
-        params = _utils.unpmap(
-            (
-                training_state.normalizer_params,
-                training_state.params.policy,
-                training_state.params.value,
-            )
-        )
+        params = _utils.unpmap(training_state.agent_params)
 
         policy_params_fn(current_step, make_policy, params)
 
@@ -551,16 +548,9 @@ def train(
             f"Total steps {total_steps} is less than `num_timesteps`=" f" {num_timesteps}."
         )
 
-    # If there were no mistakes, the training_state should still be identical on all
-    # devices.
+    # If there were no mistakes, the training_state should still be identical on all devices.
     pmap.assert_is_replicated(training_state)
-    params = _utils.unpmap(
-        (
-            training_state.normalizer_params,
-            training_state.params.policy,
-            training_state.params.value,
-        )
-    )
+    params = _utils.unpmap(training_state.agent_params)
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
     return make_policy, params, metrics
