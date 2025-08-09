@@ -19,6 +19,11 @@ from quadruped_mjx_rl.robots import RobotConfig
 
 @dataclass
 class JoystickSimpleEnvConfig(EnvCfg):
+    observation_noise: EnvCfg.ObservationNoiseConfig = field(
+        default_factory=EnvCfg.ObservationNoiseConfig
+    )
+    domain_rand: EnvCfg.DomainRandConfig = field(default_factory=EnvCfg.DomainRandConfig)
+
     @dataclass
     class ControlConfig(EnvCfg.ControlConfig):
         action_scale: float | list[float] = 0.3
