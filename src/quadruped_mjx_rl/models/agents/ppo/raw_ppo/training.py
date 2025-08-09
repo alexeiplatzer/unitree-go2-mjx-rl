@@ -493,13 +493,7 @@ def train(
     metrics = {}
     if process_id == 0 and num_evals > 1:
         metrics = evaluator.run_evaluation(
-            _utils.unpmap(
-                (
-                    training_state.normalizer_params,
-                    training_state.params.policy,
-                    training_state.params.value,
-                )
-            ),
+            _utils.unpmap(training_state.agent_params),
             training_metrics={},
         )
         logging.info(metrics)
