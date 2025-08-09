@@ -10,7 +10,7 @@ environment:
     resampling_time: 500
   control:
     action_scale: 0.3
-  environment_class: JoystickBase
+  environment_class: JoystickSimple
   observation_noise:
     general_noise: 0.05
   rewards:
