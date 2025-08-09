@@ -51,7 +51,7 @@ class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
     observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
 
     @classmethod
-    def environment_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "QuadrupedVision"
 
     @classmethod

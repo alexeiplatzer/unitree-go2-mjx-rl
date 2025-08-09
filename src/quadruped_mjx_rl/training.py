@@ -65,19 +65,12 @@ class TrainingConfig(Configuration):
         return "training"
 
     @classmethod
-    def training_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "PPO"
 
     @classmethod
-    def from_dict(cls, config_dict: dict) -> Configuration:
-        training_class_key = config_dict.pop("training_class")
-        training_config_class = _training_config_classes[training_class_key]
-        return super(TrainingConfig, training_config_class).from_dict(config_dict)
-
-    def to_dict(self) -> dict:
-        config_dict = super().to_dict()
-        config_dict["training_class"] = type(self).training_class_key()
-        return config_dict
+    def _get_config_class_dict(cls) -> dict[str, type["Configuration"]]:
+        return _training_config_classes
 
 
 register_config_base_class(TrainingConfig)
@@ -101,7 +94,7 @@ class TrainingWithVisionConfig(TrainingConfig):
     # num_resets_per_eval: int = 1
 
     @classmethod
-    def training_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "PPO_Vision"
 
 

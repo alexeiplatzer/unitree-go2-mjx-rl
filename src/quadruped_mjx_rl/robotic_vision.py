@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
+import functools
+
 import numpy as np
 
-from quadruped_mjx_rl.environments import PipelineModel
-
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+from quadruped_mjx_rl.environments import PipelineModel
 
 
 @dataclass
@@ -22,6 +23,10 @@ class VisionConfig(Configuration):
 
 
 register_config_base_class(VisionConfig)
+
+
+def get_renderer_maker(vision_config: VisionConfig):
+    return functools.partial(get_renderer, vision_config=vision_config)
 
 
 def get_renderer(pipeline_model: PipelineModel, vision_config: VisionConfig):

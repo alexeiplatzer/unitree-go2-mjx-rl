@@ -12,19 +12,12 @@ class ModelConfig(Configuration):
         return "model"
 
     @classmethod
-    def model_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "custom"
 
     @classmethod
-    def from_dict(cls, config_dict: dict) -> Configuration:
-        model_class_key = config_dict.pop("model_class")
-        model_config_class = _model_config_classes[model_class_key]
-        return super(ModelConfig, model_config_class).from_dict(config_dict)
-
-    def to_dict(self) -> dict:
-        config_dict = super().to_dict()
-        config_dict["model_class"] = type(self).model_class_key()
-        return config_dict
+    def _get_config_class_dict(cls) -> dict[str, type["Configuration"]]:
+        return _model_config_classes
 
 
 register_config_base_class(ModelConfig)
@@ -40,7 +33,7 @@ class ActorCriticConfig(ModelConfig):
     modules: ModulesConfig = field(default_factory=ModulesConfig)
 
     @classmethod
-    def model_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "ActorCritic"
 
 
@@ -55,7 +48,7 @@ class TeacherStudentConfig(ActorCriticConfig):
     latent_size: int = 16
 
     @classmethod
-    def model_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "TeacherStudent"
 
 
@@ -71,12 +64,12 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
     modules: ModulesConfig = field(default_factory=ModulesConfig)
 
     @classmethod
-    def model_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "TeacherStudentVision"
 
 
 _model_config_classes = {
-    config.model_class_key(): config
+    config.config_class_key(): config
     for config in (
         ModelConfig,
         ActorCriticConfig,

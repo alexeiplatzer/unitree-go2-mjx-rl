@@ -93,7 +93,7 @@ class EnvironmentConfig(Configuration):
         return "environment"
 
     @classmethod
-    def environment_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "QuadrupedBase"
 
     @classmethod
@@ -101,27 +101,15 @@ class EnvironmentConfig(Configuration):
         return QuadrupedBaseEnv
 
     @classmethod
-    def from_dict(cls, config_dict: dict) -> Configuration:
-        environment_class_key = config_dict.pop("environment_class")
-        environment_config_class = _environment_config_classes[environment_class_key]
-        return super(EnvironmentConfig, environment_config_class).from_dict(config_dict)
-
-    def to_dict(self) -> dict:
-        config_dict = super().to_dict()
-        config_dict["environment_class"] = type(self).environment_class_key()
-        return config_dict
+    def _get_config_class_dict(cls) -> dict[str, type["Configuration"]]:
+        return _environment_config_classes
 
 
 register_config_base_class(EnvironmentConfig)
 
 _environment_config_classes = {}
 
-
-def register_environment_config_class(environment_config_class: type[EnvironmentConfig]):
-    _environment_config_classes[environment_config_class.environment_class_key()] = (
-        environment_config_class
-    )
-
+register_environment_config_class = EnvironmentConfig.make_register_config_class()
 
 register_environment_config_class(EnvironmentConfig)
 

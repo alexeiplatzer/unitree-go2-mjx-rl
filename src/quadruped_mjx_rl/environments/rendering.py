@@ -43,6 +43,10 @@ def render_model(
         return renderer.render()
 
 
+def render_vision_observations():
+    pass
+
+
 def large_overview_camera(lookat=None) -> mujoco.MjvCamera:
     camera = mujoco.MjvCamera()
     mujoco.mjv_defaultCamera(camera)

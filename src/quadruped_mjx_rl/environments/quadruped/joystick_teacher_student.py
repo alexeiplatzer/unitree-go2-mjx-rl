@@ -26,7 +26,7 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
 @dataclass
 class TeacherStudentEnvironmentConfig(JoystickBaseEnvConfig):
     @classmethod
-    def environment_class_key(cls) -> str:
+    def config_class_key(cls) -> str:
         return "TeacherStudent"
 
     @classmethod

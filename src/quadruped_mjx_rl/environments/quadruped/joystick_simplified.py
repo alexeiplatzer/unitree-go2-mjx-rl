@@ -1,45 +1,24 @@
-"""Base environment for training quadruped joystick policies in MJX."""
+"""Simplified environment for training quadruped joystick policies in MJX."""
 
-# Typing
 from dataclasses import dataclass, field
 
-# Supporting
-from etils.epath import PathLike
-
-# Math
 import jax
 import jax.numpy as jnp
+
 from quadruped_mjx_rl import math
-
-# Sim
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel,
-    EnvSpec,
-    PipelineModel,
-    PipelineState,
-    State,
-    Motion,
-    Transform,
+    EnvModel, EnvSpec, Motion, PipelineState, State, Transform,
 )
-
-# Definitions
-from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig as EnvCfg,
     QuadrupedBaseEnv,
     register_environment_config_class,
 )
+from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass
-class JoystickBaseEnvConfig(EnvCfg):
-
-    @dataclass
-    class ObservationNoiseConfig(EnvCfg.ObservationNoiseConfig):
-        general_noise: float = 0.05
-
-    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
-
+class JoystickSimpleEnvConfig(EnvCfg):
     @dataclass
     class ControlConfig(EnvCfg.ControlConfig):
         action_scale: float | list[float] = 0.3
@@ -53,24 +32,17 @@ class JoystickBaseEnvConfig(EnvCfg):
         @dataclass
         class RangesConfig:
             # min max [m/s]
-            lin_vel_x_min: float = -0.6
-            lin_vel_x_max: float = 1.5
-            lin_vel_y_min: float = -0.8
-            lin_vel_y_max: float = 0.8
+            lin_vel_x_min: float = 0.0
+            lin_vel_x_max: float = 1.0
+            lin_vel_y_min: float = 0.0
+            lin_vel_y_max: float = 0.0
             # min max [rad/s]
-            ang_vel_yaw_min: float = -0.7
-            ang_vel_yaw_max: float = 0.7
+            ang_vel_yaw_min: float = 0.0
+            ang_vel_yaw_max: float = 0.0
 
         ranges: RangesConfig = field(default_factory=RangesConfig)
 
     command: CommandConfig = field(default_factory=CommandConfig)
-
-    @dataclass
-    class DomainRandConfig(EnvCfg.DomainRandConfig):
-        kick_vel: float = 0.05
-        kick_interval: int = 10
-
-    domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
 
     @dataclass
     class SimConfig(EnvCfg.SimConfig):
@@ -123,14 +95,14 @@ class JoystickBaseEnvConfig(EnvCfg):
 
     @classmethod
     def config_class_key(cls) -> str:
-        return "JoystickBase"
+        return "JoystickSimple"
 
     @classmethod
     def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
         return QuadrupedJoystickBaseEnv
 
 
-register_environment_config_class(JoystickBaseEnvConfig)
+register_environment_config_class(JoystickSimpleEnvConfig)
 
 
 class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
@@ -138,23 +110,20 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
     def __init__(
         self,
-        environment_config: JoystickBaseEnvConfig,
+        environment_config: JoystickSimpleEnvConfig,
         robot_config: RobotConfig,
         env_spec: EnvModel | EnvSpec,
     ):
         super().__init__(environment_config, robot_config, env_spec)
-
-        self._kick_interval = environment_config.domain_rand.kick_interval
-        self._kick_vel = environment_config.domain_rand.kick_vel
 
         self._resampling_time = environment_config.command.resampling_time
         self._command_ranges = environment_config.command.ranges
 
     @staticmethod
     def customize_model(
-        model: EnvModel | EnvSpec, environment_config: JoystickBaseEnvConfig
+        env_model: EnvModel, environment_config: JoystickSimpleEnvConfig
     ) -> EnvModel:
-        env_model = QuadrupedBaseEnv.customize_model(model, environment_config)
+        env_model = QuadrupedBaseEnv.customize_model(env_model, environment_config)
         env_model.dof_damping[6:] = environment_config.sim.override.Kd
         return env_model
 
@@ -189,13 +158,10 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        rng, command_key, kick_noise = jax.random.split(state.info["rng"], 3)
+        rng, command_key = jax.random.split(state.info["rng"], 3)
 
         # give the robot a random kick for robustness
-        kick = self._compute_kick(step_count=state.info["step"], kick_noise=kick_noise)
-        state = self._kick_robot(state, kick)
         state.info["rng"] = rng
-        state.info["kick"] = kick
 
         state = super().step(state, action)
 
@@ -259,10 +225,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         obs = jnp.concatenate(obs_list)
 
         # clip, noise
-        obs_noise = self._obs_noise_config.general_noise * jax.random.uniform(
-            state_info["rng"], obs.shape, minval=-1, maxval=1
-        )
-        obs = jnp.clip(obs, -100.0, 100.0) + obs_noise
+        obs = jnp.clip(obs, -100.0, 100.0)
         return obs
 
     def _get_raw_obs_list(
@@ -315,19 +278,6 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         state_info["feet_air_time"] *= ~contact_filt_mm
 
         return rewards
-
-    # ----------- utility computations ------------
-    def _compute_kick(self, step_count: jnp.int32, kick_noise: jax.Array) -> jax.Array:
-        kick_interval = self._kick_interval
-        kick_theta = jax.random.uniform(kick_noise, maxval=2 * jnp.pi)
-        kick = jnp.array([jnp.cos(kick_theta), jnp.sin(kick_theta)])
-        kick *= jnp.mod(step_count, kick_interval) == 0
-        return kick
-
-    def _kick_robot(self, state: State, kick: jax.Array) -> State:
-        qvel = state.pipeline_state.qvel
-        qvel = qvel.at[:2].set(kick * self._kick_vel + qvel[:2])
-        return state.tree_replace({"pipeline_state.qvel": qvel})
 
     # ------------ reward functions----------------
     def _reward_tracking_lin_vel(
