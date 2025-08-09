@@ -164,7 +164,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        rng, command_key = jax.random.split(state.info["rng"], 3)
+        rng, command_key = jax.random.split(state.info["rng"], 2)
 
         # give the robot a random kick for robustness
         state.info["rng"] = rng
