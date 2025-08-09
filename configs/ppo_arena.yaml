@@ -57,7 +57,7 @@ training:
   episode_length: 1000
   learning_rate: 0.0004
   normalize_observations: true
-  num_envs: 8192
+  num_envs: 2048
   num_evals: 20
   num_minibatches: 32
   num_timesteps: 1_000_000_000
