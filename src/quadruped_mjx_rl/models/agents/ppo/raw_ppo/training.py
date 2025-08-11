@@ -373,8 +373,10 @@ def train(
 
         new_training_state = TrainingState(
             optimizer_state=optimizer_state,
-            params=params,
-            normalizer_params=normalizer_params,
+            agent_params=ActorCriticAgentParams(
+                network_params=params,
+                preprocessor_params=normalizer_params,
+            ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
         return (new_training_state, state, new_key), metrics
