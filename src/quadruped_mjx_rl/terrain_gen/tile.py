@@ -1,10 +1,26 @@
-import random
 import functools
+import random
+from dataclasses import dataclass
+
 import mujoco as mj
 import numpy as np
-import jax.numpy as jnp
 
+from quadruped_mjx_rl.config_utils import Configuration
 from quadruped_mjx_rl.terrain_gen import obstacles
+
+
+@dataclass
+class TerrainConfig(Configuration):
+    terrain_type: str
+    terrain_params: dict[str, ...]
+
+    @classmethod
+    def config_base_class_key(cls) -> str:
+        return "terrain"
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "custom"
 
 
 def add_tile(
