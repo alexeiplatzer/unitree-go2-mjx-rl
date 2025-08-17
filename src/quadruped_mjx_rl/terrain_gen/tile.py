@@ -6,146 +6,81 @@ import mujoco as mj
 import numpy as np
 
 from quadruped_mjx_rl.config_utils import Configuration
-from quadruped_mjx_rl.terrain_gen import obstacles
+from quadruped_mjx_rl.terrain_gen.obstacles import TerrainTileConfig, FlatTile, StripesTile
 
 
 @dataclass
 class TerrainConfig(Configuration):
-    terrain_type: str
-    terrain_params: dict[str, ...]
+    tiles: list[list[TerrainTileConfig]]
 
     @classmethod
     def config_base_class_key(cls) -> str:
         return "terrain"
 
-    @classmethod
-    def config_class_key(cls) -> str:
-        return "custom"
+    def check_tiles(self):
+        square_side = self.tiles[0][0].square_side
+        row_length = len(self.tiles[0])
+        for row in self.tiles:
+            if len(row) != row_length:
+                return False
+            for tile in row:
+                if tile.square_side != square_side:
+                    return False
+        return True
+
+    def make_arena(self, empty_arena_spec: mj.MjSpec):
+        spec = empty_arena_spec
+
+        # Add lights
+        for x in [-1, 1]:
+            for y in [-1, 1]:
+                spec.worldbody.add_light(pos=[x, y, 40], dir=[-x, -y, -15])
+
+        # Sanity check
+        if not self.check_tiles():
+            raise ValueError("Tiles do not form a rectangular grid!")
+
+        square_side = self.tiles[0][0].square_side
+        for i in range(len(self.tiles)):
+            for j in range(len(self.tiles[0])):
+                self.tiles[i][j].create_tile(
+                    spec=spec,
+                    grid_loc=[j * 2 * square_side, i * 2 * square_side],
+                    name=f"obstacle_{i}_{j}",
+                )
+
+        return spec
+
+    def get_tile_center_qpos(self, row, col):
+        square_side = self.tiles[0][0].square_side
+        x = col * 2 * square_side
+        y = row * 2 * square_side
+        z_offset = self.tiles[row][col].floor_thickness
+        return x, y, z_offset
 
 
-def add_tile(
-    spec: mj.MjSpec | None = None,
-    grid_loc: list[int] | None = None,
-    distribution: list[tuple[obstacles.ObstacleMaker, int]] | None = None,
-    name: str = "obstacle",
+def get_randomized_terrain(
+    n_rows: int = 4,
+    n_columns: int = 4,
+    obstacles_weights: list[tuple[TerrainTileConfig, int]] | None = None,
 ):
-    if spec is None:
-        spec = mj.MjSpec()
-
-    if grid_loc is None:
-        grid_loc = [0, 0]
-
-    if distribution is None:
-        distribution = [(obstacles.stripes, 1)]
-
-    obstacle_makers, weights = zip(*distribution)
-
-    chosen_obstacle_maker = random.choices(obstacle_makers, weights=weights, k=1)[0]
-    chosen_obstacle_maker(spec, grid_loc, name=name)
-    return spec
-
-    # tile_type = random.randint(0, 9)
-    #
-    # if tile_type == 0:
-    #     debris_with_simple_geoms(spec, grid_loc, name=f"plane_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 1:
-    #     stairs(spec, grid_loc, name=f"stairs_up_{grid_loc[0]}_{grid_loc[1]}", direction=1)
-    # elif tile_type == 2:
-    #     stairs(spec, grid_loc, name=f"stairs_down_{grid_loc[0]}_{grid_loc[1]}", direction=-1)
-    # elif tile_type == 3:
-    #     debris(spec, grid_loc, name=f"debris_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 4:
-    #     box_extrusions(spec, grid_loc, name=f"box_extrusions_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 5:
-    #     boxy_terrain(spec, grid_loc, name=f"boxy_terrain_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 6:
-    #     h_field(spec, grid_loc, name=f"h_field_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 7:
-    #     simple_suspended_stair(spec, grid_loc, name=f"sss_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 8:
-    #     sin_suspended_stair(spec, grid_loc, name=f"sinss_{grid_loc[0]}_{grid_loc[1]}")
-    # elif tile_type == 9:
-    #     stripes(spec, grid_loc, name=f"stripes_{grid_loc[0]}_{grid_loc[1]}")
-    # return spec
+    if obstacles_weights is None:
+        obstacles_weights = [(FlatTile, 1)]
+    obstacles, weights = zip(*obstacles_weights)
+    return TerrainConfig(
+        tiles=[random.choices(obstacles, weights=weights, k=n_columns) for _ in range(n_rows)]
+    )
 
 
-def make_arena(
-    empty_arena_spec: mj.MjSpec,
-):
-    spec = empty_arena_spec
-
-    # Add lights
-    for x in [-1, 1]:
-        for y in [-1, 1]:
-            spec.worldbody.add_light(pos=[x, y, 40], dir=[-x, -y, -15])
-
-    SQUARE_LENGTH = 2
-    #     add_tile(spec=spec, grid_loc=[i * 2 * SQUARE_LENGTH, j * 2 * SQUARE_LENGTH])
-
-    easy_level = [(obstacles.flat, 1)]
-
-    for i in range(-8, 0):
-        add_tile(
-            spec=spec,
-            grid_loc=[i * 2 * SQUARE_LENGTH, 0],
-            distribution=easy_level,
-            name=f"obstacle_{i}",
-        )
-
-    # TODO: continue with partial functions increasing difficulty
-
-    for i in range(0, 8):
-        stripe_w = 0.05 * (i + 1)
-        harder_level = [(functools.partial(obstacles.stripes, stripe_w=stripe_w), 1)]
-        add_tile(
-            spec=spec,
-            grid_loc=[i * 2 * SQUARE_LENGTH, 0],
-            distribution=harder_level,
-            name=f"obstacle_{i}",
-        )
-
-    return spec
 
 
-def tile_center_qpos(
-    col: int,
-    row: int,
-    base_qpos,
-    square_length: float = 2.0,
-    floor_height: float = 0.05,
-):
-    """
-    Return the 7-tuple (x, y, z, qw, qx, qy, qz) that puts the robot in the
-    centre of the requested tile.
+    # for i in range(0, 8):
+    #     stripe_w = 0.05 * (i + 1)
+    #     harder_level = [(functools.partial(obstacles.stripes, stripe_w=stripe_w), 1)]
+    #     add_tile(
+    #         spec=spec,
+    #         grid_loc=[i * 2 * SQUARE_LENGTH, 0],
+    #         distribution=harder_level,
+    #         name=f"obstacle_{i}",
+    #     )
 
-    Parameters
-    ----------
-    col, row : int
-        Your “user grid” where (0, 0) is the **top-left** tile generated by
-
-            for i in range(-8, 8):   # columns → x
-            for j in range(-1, 1):   # rows    → y
-
-        • `col` increases to the right
-        • `row` increases downward
-    base_qpos : 7-element iterable
-        The robot’s default pose.  Only the first three numbers (xyz) are
-        overwritten; the quaternion stays untouched so the robot keeps its
-        usual upright orientation.
-    square_length : float
-        Half-length of one tile (matches the value used when you built the
-        terrain).  Default is 2 m, so each tile’s centre-to-centre spacing
-        is `2 * square_length = 4 m`.
-    floor_height : float
-        Height of the terrain floor. Default is 0.05 m. Robot should not start below floor.
-
-    Returns
-    -------
-    np.ndarray
-        A 7-element vector you can plug into `model.qpos0[:7]` (or pass to
-        your simulator’s reset method).
-    """
-    base_qpos[0] = col * 2 * square_length
-    base_qpos[1] = row * 2 * square_length
-    base_qpos[2] = floor_height + base_qpos[2]
-    return base_qpos
