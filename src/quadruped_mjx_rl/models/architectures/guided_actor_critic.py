@@ -1,6 +1,7 @@
 # Typing
 from collections.abc import Sequence, Mapping
 from quadruped_mjx_rl import types
+from dataclasses import dataclass
 
 # Supporting
 import functools
@@ -18,6 +19,7 @@ from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticNetworks,
     ActorCriticNetworkParams,
 )
+from quadruped_mjx_rl.models.architectures.raw_actor_critic import OptimizerConfig
 
 
 @flax_dataclass
@@ -37,6 +39,12 @@ class TeacherStudentNetworkParams(ActorCriticNetworkParams):
 @flax_dataclass
 class TeacherStudentAgentParams(AgentParams[TeacherStudentNetworkParams]):
     """Contains training state for the full agent."""
+
+
+@dataclass
+class TeacherStudentOptimizer(OptimizerConfig):
+    student_learning_rate: float = 0.0004
+    student_substeps: int = 2
 
 
 def make_teacher_student_inference_fns(teacher_student_networks: TeacherStudentNetworks):

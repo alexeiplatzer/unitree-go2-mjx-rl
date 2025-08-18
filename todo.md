@@ -1,8 +1,7 @@
 ## Todo list
 
-- [ ] check the observations key errors
+- [ ] update the notebook to roll through graphs
 
-- [ ] visualise cameras output
 - [ ] try training full setup
 - [ ] try training partial setups
 - [ ] add training checkpoints

@@ -1,17 +1,21 @@
+from quadruped_mjx_rl import types
+import optax
 import jax
 import jax.numpy as jnp
-from quadruped_mjx_rl import types
 
-from quadruped_mjx_rl.models.agents.ppo.losses import compute_gae
-from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
+    TeacherStudentNetworks,
+    TeacherStudentNetworkParams,
+)
+from quadruped_mjx_rl.training.algorithms.ppo.losses import compute_gae
 
 
-def compute_ppo_loss(
-    params: ppo_networks.ActorCriticNetworkParams,
-    normalizer_params: ...,
+def compute_teacher_loss(
+    params: TeacherStudentNetworkParams,
+    normalizer_params,
     data: types.Transition,
     rng: jnp.ndarray,
-    ppo_network: ppo_networks.ActorCriticNetworks,
+    teacher_student_networks: TeacherStudentNetworks,
     entropy_cost: float = 1e-4,
     discounting: float = 0.9,
     reward_scaling: float = 1.0,
@@ -28,7 +32,7 @@ def compute_ppo_loss(
         are ['state_extras']['truncation'] ['policy_extras']['raw_action']
         ['policy_extras']['log_prob']
       rng: Random key
-      ppo_network: PPO networks.
+      teacher_student_networks: PPO networks.
       entropy_cost: entropy cost.
       discounting: discounting,
       reward_scaling: reward multiplier.
@@ -39,17 +43,23 @@ def compute_ppo_loss(
     Returns:
       A tuple (loss, metrics)
     """
-    parametric_action_distribution = ppo_network.parametric_action_distribution
-    policy_apply = ppo_network.policy_network.apply
-    value_apply = ppo_network.value_network.apply
+    parametric_action_distribution = teacher_student_networks.parametric_action_distribution
+    encoder_apply = teacher_student_networks.teacher_encoder_network.apply
+    policy_apply = teacher_student_networks.policy_network.apply
+    value_apply = teacher_student_networks.value_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    policy_logits = policy_apply(normalizer_params, params.policy, data.observation)
-
-    baseline = value_apply(normalizer_params, params.value, data.observation)
+    latent_vector = encoder_apply(normalizer_params, params.teacher_encoder, data.observation)
+    policy_logits = policy_apply(
+        normalizer_params, params.policy, data.observation, latent_vector
+    )
+    baseline = value_apply(normalizer_params, params.value, data.observation, latent_vector)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    bootstrap_value = value_apply(normalizer_params, params.value, terminal_obs)
+    terminal_latent = encoder_apply(normalizer_params, params.teacher_encoder, terminal_obs)
+    bootstrap_value = value_apply(
+        normalizer_params, params.value, terminal_obs, terminal_latent
+    )
 
     rewards = data.reward * reward_scaling
     truncation = data.extras["state_extras"]["truncation"]
@@ -93,3 +103,27 @@ def compute_ppo_loss(
         "v_loss": v_loss,
         "entropy_loss": entropy_loss,
     }
+
+
+def compute_student_loss(
+    teacher_student_params: TeacherStudentNetworkParams,
+    normalizer_params,
+    data: types.Transition,
+    teacher_student_networks: TeacherStudentNetworks,
+) -> tuple[jnp.ndarray, types.Metrics]:
+    """Computes Adaptation module loss."""
+
+    encoder_apply = teacher_student_networks.teacher_encoder_network.apply
+    adapter_apply = teacher_student_networks.student_encoder_network.apply
+
+    # Put the time dimension first.
+    data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
+    teacher_latent_vector = encoder_apply(
+        normalizer_params, teacher_student_params.teacher_encoder, data.observation
+    )
+    student_latent_vector = adapter_apply(
+        normalizer_params, teacher_student_params.student_encoder, data.observation
+    )
+    total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
+
+    return total_loss, {"total_loss": total_loss}

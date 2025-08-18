@@ -1,8 +1,7 @@
 """Main module to execute the training, given all necessary configs"""
 
 # Typing
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Supporting
 import functools
@@ -13,6 +12,7 @@ from etils.epath import Path, PathLike
 from flax.training import orbax_utils
 from orbax import checkpoint as ocp
 from quadruped_mjx_rl.models.io import save_params
+from IPython.display import display
 
 # Training
 from quadruped_mjx_rl.robots import RobotConfig
@@ -20,89 +20,20 @@ from quadruped_mjx_rl.environments import (
     EnvironmentConfig,
     get_base_model,
     get_env_factory,
-    resolve_env_class,
 )
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.training import train as guided_ppo_train
-from quadruped_mjx_rl.models.agents.ppo.raw_ppo.training import train as raw_ppo_train
+from quadruped_mjx_rl.training.algorithms.ppo.guided_ppo.training import train as guided_ppo_train
+from quadruped_mjx_rl.training.algorithms.ppo.raw_ppo.training import train as raw_ppo_train
 from quadruped_mjx_rl.policy_rendering import (
-    render_rollout,
     RenderConfig,
-    RolloutRenderer,
-    PolicyRenderingFn,
     render_policy_rollout,
 )
-from quadruped_mjx_rl.models.agents.ppo.training_utils import maybe_wrap_env
-from quadruped_mjx_rl.terrain_gen.tile import make_arena, tile_center_qpos
-
 
 # Configurations
-from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.models.configs import ActorCriticConfig, ModelConfig, TeacherStudentConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig, get_renderer
-
-
-@dataclass
-class TrainingConfig(Configuration):
-    num_timesteps: int = 100_000_000
-    num_evals: int = 10
-    reward_scaling: int = 1
-    episode_length: int = 1000
-    normalize_observations: bool = True
-    action_repeat: int = 1
-    unroll_length: int = 20
-    num_minibatches: int = 32
-    num_updates_per_batch: int = 4
-    discounting: float = 0.97
-    learning_rate: float = 0.0004
-    entropy_cost: float = 0.01
-    num_envs: int = 8192
-    batch_size: int = 256
-
-    @classmethod
-    def config_base_class_key(cls) -> str:
-        return "training"
-
-    @classmethod
-    def config_class_key(cls) -> str:
-        return "PPO"
-
-    @classmethod
-    def _get_config_class_dict(cls) -> dict[str, type["Configuration"]]:
-        return _training_config_classes
-
-
-register_config_base_class(TrainingConfig)
-
-
-@dataclass
-class TrainingWithVisionConfig(TrainingConfig):
-    num_timesteps: int = 1_000_000
-    num_evals: int = 5
-    action_repeat: int = 1
-    unroll_length: int = 20
-    num_minibatches: int = 8
-    num_updates_per_batch: int = 8
-    num_envs: int = 256
-    batch_size: int = 256
-
-    madrona_backend: bool = True
-    # wrap_env: bool = False
-    num_eval_envs: int = 256
-    max_grad_norm: float = 1.0
-    # num_resets_per_eval: int = 1
-
-    @classmethod
-    def config_class_key(cls) -> str:
-        return "PPO_Vision"
-
-
-_training_config_classes = {
-    "default": TrainingConfig,
-    "PPO": TrainingConfig,
-    "PPO_Vision": TrainingWithVisionConfig,
-}
+from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
 
 
 def make_progress_fn(num_timesteps, reward_max=40):
@@ -112,21 +43,24 @@ def make_progress_fn(num_timesteps, reward_max=40):
     times = [datetime.now()]
     max_y, min_y = reward_max, 0
 
+    fig, ax = plt.subplots()
+    handle = display(fig, display_id=True)
+
     def progress(num_steps, metrics):
         times.append(datetime.now())
         x_data.append(num_steps)
         y_data.append(metrics["eval/episode_reward"])
         ydataerr.append(metrics["eval/episode_reward_std"])
 
-        plt.xlim([0, num_timesteps * 1.25])
-        plt.ylim([min_y, max_y])
+        ax.clear()
+        ax.set_xlim(0, num_timesteps * 1.25)
+        ax.set_ylim(min_y, max_y)
+        ax.set_xlabel("# environment steps")
+        ax.set_ylabel("reward per episode")
+        ax.set_title(f"y={y_data[-1]:.3f}")
+        ax.errorbar(x_data, y_data, yerr=ydataerr)
 
-        plt.xlabel("# environment steps")
-        plt.ylabel("reward per episode")
-        plt.title(f"y={y_data[-1]:.3f}")
-
-        plt.errorbar(x_data, y_data, yerr=ydataerr)
-        plt.show()
+        handle.update(fig)
 
     return progress, times
 

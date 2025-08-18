@@ -1,13 +1,12 @@
 # Typing
 from collections.abc import Callable
 from quadruped_mjx_rl import running_statistics, types
-from quadruped_mjx_rl.types import Params, PRNGKey
+from quadruped_mjx_rl.types import PRNGKey
 
 # Supporting
 import time
 import functools
 import logging
-from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
 
 # Math
 from flax.struct import dataclass as flax_dataclass
@@ -18,7 +17,10 @@ import optax
 
 # Sim
 from quadruped_mjx_rl.environments import PipelineModel, Env, State
-from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
+from quadruped_mjx_rl.training import (
+    acting, gradients, logger as metric_logger, pmap,
+    training_utils as _utils,
+)
 
 # Networks
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
@@ -26,7 +28,7 @@ from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticAgentParams,
 )
 from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks
-from quadruped_mjx_rl.models.agents.ppo.raw_ppo.losses import compute_ppo_loss
+from quadruped_mjx_rl.training.algorithms.ppo.raw_ppo.losses import compute_ppo_loss
 
 
 @flax_dataclass

@@ -7,7 +7,6 @@ from quadruped_mjx_rl.types import Params, PRNGKey
 import time
 import functools
 import logging
-from quadruped_mjx_rl.models.agents.ppo import training_utils as _utils
 
 # Math
 from flax.struct import dataclass as flax_dataclass
@@ -18,7 +17,10 @@ import optax
 
 # Sim
 from quadruped_mjx_rl.environments import PipelineModel, Env, State
-from quadruped_mjx_rl.models import acting, gradients, logger as metric_logger, pmap
+from quadruped_mjx_rl.training import (
+    acting, gradients, logger as metric_logger, pmap,
+    training_utils as _utils,
+)
 
 # Networks
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
@@ -26,7 +28,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     TeacherStudentAgentParams,
 )
 from quadruped_mjx_rl.models.architectures import guided_actor_critic as ppo_networks
-from quadruped_mjx_rl.models.agents.ppo.guided_ppo.losses import (
+from quadruped_mjx_rl.training.algorithms.ppo.guided_ppo.losses import (
     compute_teacher_loss,
     compute_student_loss,
 )

@@ -1,6 +1,7 @@
 # Typing
 from collections.abc import Sequence
 from quadruped_mjx_rl import types
+from dataclasses import dataclass
 
 # Math
 from flax.struct import dataclass as flax_dataclass
@@ -24,6 +25,12 @@ class ActorCriticNetworkParams:
 @flax_dataclass
 class ActorCriticAgentParams(networks.AgentParams[ActorCriticNetworkParams]):
     """Full usable parameters for an actor critic architecture."""
+
+
+@dataclass
+class OptimizerConfig:
+    learning_rate: float = 0.0004
+    max_grad_norm: float | None = None
 
 
 def make_inference_fn(actor_critic_networks: ActorCriticNetworks):

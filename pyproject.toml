@@ -30,6 +30,7 @@ dependencies = [
     "orbax==0.1.9",
     "tqdm",
     "optax==0.2.4",
+    "IPython",
 ]
 
 [project.urls]

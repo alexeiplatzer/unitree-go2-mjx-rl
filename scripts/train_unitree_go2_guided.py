@@ -1,8 +1,6 @@
 from quadruped_mjx_rl.config_utils import prepare_configs, ConfigKey
 from quadruped_mjx_rl.environments import get_env_factory
-from quadruped_mjx_rl.training import train
-
-import jax
+from quadruped_mjx_rl.training.training import train
 
 # from jax import config
 # config.update("jax_debug_nans", True)

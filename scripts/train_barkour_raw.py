@@ -1,6 +1,6 @@
 from quadruped_mjx_rl.config_utils import prepare_configs, ConfigKey
 from quadruped_mjx_rl.environments import get_env_factory
-from quadruped_mjx_rl.training import train
+from quadruped_mjx_rl.training.training import train
 
 import paths
 
