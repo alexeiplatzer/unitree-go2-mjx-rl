@@ -28,7 +28,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     TeacherStudentAgentParams,
 )
 from quadruped_mjx_rl.models.architectures import guided_actor_critic as ppo_networks
-from quadruped_mjx_rl.training.algorithms.ppo.guided_ppo.losses import (
+from quadruped_mjx_rl.training.algorithms.ppo_old.guided_ppo.losses import (
     compute_teacher_loss,
     compute_student_loss,
 )

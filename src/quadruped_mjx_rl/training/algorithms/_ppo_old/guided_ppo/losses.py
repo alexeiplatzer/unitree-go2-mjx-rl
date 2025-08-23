@@ -7,7 +7,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     TeacherStudentNetworks,
     TeacherStudentNetworkParams,
 )
-from quadruped_mjx_rl.training.algorithms.ppo.losses import compute_gae
+from quadruped_mjx_rl.training.algorithms.ppo_old.losses import compute_gae
 
 
 def compute_teacher_loss(

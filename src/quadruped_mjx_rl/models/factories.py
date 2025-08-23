@@ -1,31 +1,25 @@
-# Supporting
+
 import functools
+
 from etils.epath import PathLike
-from quadruped_mjx_rl.models import io
 
-# Math
 from quadruped_mjx_rl import running_statistics
-
-# Definitions
-from quadruped_mjx_rl.models.configs import (
-    ModelConfig,
-    ActorCriticConfig,
-    TeacherStudentConfig,
-    TeacherStudentVisionConfig,
-)
+from quadruped_mjx_rl.models import io
 from quadruped_mjx_rl.models.architectures import (
-    raw_actor_critic as raw_networks,
-    guided_actor_critic as guided_networks,
-    ActorCriticNetworks,
-    TeacherStudentNetworks,
-    ActorCriticAgentParams,
+    guided_actor_critic as guided_networks, raw_actor_critic as raw_networks,
     TeacherStudentAgentParams,
+)
+from quadruped_mjx_rl.models.configs import (
+    ActorCriticConfig, ModelConfig, TeacherStudentConfig, TeacherStudentVisionConfig,
+)
+from quadruped_mjx_rl.models.networks import (
+    NetworkFactory,
 )
 
 
 def get_networks_factory(
     model_config: ModelConfig,
-) -> functools.partial[TeacherStudentNetworks] | functools.partial[ActorCriticNetworks]:
+) -> NetworkFactory:
     """Checks the model type from the configuration and returns the appropriate factory."""
     if isinstance(model_config, TeacherStudentVisionConfig):
         networks_factory = functools.partial(
@@ -54,6 +48,8 @@ def load_inference_fn(
     model_config: ModelConfig,
     action_size: int,
 ):
+    """Utility function to quickly get a policy function from a model config
+    and the saved pre-trained params path."""
     params = io.load_params(model_path)
     network_factories = get_networks_factory(model_config)
     if isinstance(model_config, TeacherStudentConfig):
@@ -73,12 +69,9 @@ def load_inference_fn(
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        teacher_student_inference_factory = guided_networks.make_teacher_student_inference_fns(
-            teacher_student_networks
-        )
-        teacher_inference_fn, student_inference_fn = teacher_student_inference_factory(
-            params=params
-        )
+        teacher_policy_factory, student_policy_factory = teacher_student_networks.policy_metafactory()
+        teacher_inference_fn = teacher_policy_factory(params, deterministic=True)
+        student_inference_fn = student_policy_factory(params, deterministic=True)
         return {
             "teacher": teacher_inference_fn,
             "student": student_inference_fn,
@@ -89,7 +82,7 @@ def load_inference_fn(
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        ppo_inference_factory = raw_networks.make_inference_fn(ppo_nets)
-        return ppo_inference_factory(params)
+        policy_factory, = ppo_nets.policy_metafactory()
+        return policy_factory(params, deterministic=True)
     else:
         raise NotImplementedError

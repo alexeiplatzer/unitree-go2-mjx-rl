@@ -1,19 +1,13 @@
 """Brax training acting functions."""
 
-# Typing
-from collections.abc import Callable, Sequence
-from quadruped_mjx_rl.types import Metrics, Policy, PolicyParams, PRNGKey, Transition
-
-# Supporting
 import time
+from collections.abc import Callable, Sequence
 
-# Math
 import jax
 import numpy as np
 
-# Sim
-from brax.envs.base import Env, State
-from brax.envs.wrappers.training import EvalWrapper
+from quadruped_mjx_rl.environments.physics_pipeline import Env, EvalWrapper, State
+from quadruped_mjx_rl.types import Metrics, Policy, PolicyParams, PRNGKey, Transition
 
 
 def actor_step(

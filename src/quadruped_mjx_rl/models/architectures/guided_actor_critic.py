@@ -1,31 +1,20 @@
-# Typing
-from collections.abc import Sequence, Mapping
-from quadruped_mjx_rl import types
-from dataclasses import dataclass
 
-# Supporting
-import functools
+from collections.abc import Mapping
 
-# Math
-from flax.struct import dataclass as flax_dataclass
+import jax
 from flax import linen
+from flax.struct import dataclass as flax_dataclass
+
+from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import distributions
-
-# Definitions
-from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
-from quadruped_mjx_rl.models.modules import ActivationFn, MLP, HeadMLP, CNN
-from quadruped_mjx_rl.models.networks import make_network, FeedForwardNetwork, AgentParams
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
-    ActorCriticNetworks,
-    ActorCriticNetworkParams,
+    ActorCriticNetworkParams, ActorCriticNetworks,
 )
-from quadruped_mjx_rl.models.architectures.raw_actor_critic import OptimizerConfig
-
-
-@flax_dataclass
-class TeacherStudentNetworks(ActorCriticNetworks):
-    teacher_encoder_network: FeedForwardNetwork
-    student_encoder_network: FeedForwardNetwork
+from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
+from quadruped_mjx_rl.models.modules import ActivationFn, CNN, HeadMLP, MLP
+from quadruped_mjx_rl.models.networks import (
+    AgentParams, ComponentNetworkArchitecture, FeedForwardNetwork, make_network,
+)
 
 
 @flax_dataclass
@@ -40,83 +29,112 @@ class TeacherStudentNetworkParams(ActorCriticNetworkParams):
 class TeacherStudentAgentParams(AgentParams[TeacherStudentNetworkParams]):
     """Contains training state for the full agent."""
 
+    def restore_params(
+        self,
+        restore_params: "TeacherStudentAgentParams",
+        restore_value: bool = False,
+    ):
+        value_params = (
+            restore_params.network_params.value
+            if restore_value
+            else self.network_params.value
+        )
+        return self.replace(
+            network_params=TeacherStudentNetworkParams(
+                policy=restore_params.network_params.policy,
+                value=value_params,
+                teacher_encoder=restore_params.network_params.teacher_encoder,
+                student_encoder=restore_params.network_params.student_encoder,
+            ),
+            preprocessor_params=restore_params.preprocessor_params,
+        )
 
-@dataclass
-class TeacherStudentOptimizer(OptimizerConfig):
-    student_learning_rate: float = 0.0004
-    student_substeps: int = 2
 
+@flax_dataclass
+class TeacherStudentNetworks(
+    ActorCriticNetworks, ComponentNetworkArchitecture[TeacherStudentNetworkParams]
+):
+    teacher_encoder_network: FeedForwardNetwork
+    student_encoder_network: FeedForwardNetwork
 
-def make_teacher_student_inference_fns(teacher_student_networks: TeacherStudentNetworks):
-    """Creates params and inference function for the Teacher and Student agents."""
+    def initialize(self, rng: types.PRNGKey) -> TeacherStudentNetworkParams:
+        policy_key, value_key, teacher_key, student_key = jax.random.split(rng, 4)
+        return TeacherStudentNetworkParams(
+            policy=self.policy_network.init(policy_key),
+            value=self.value_network.init(value_key),
+            teacher_encoder=self.teacher_encoder_network.init(teacher_key),
+            student_encoder=self.student_encoder_network.init(student_key),
+        )
 
-    def make_policies(
-        params: TeacherStudentAgentParams, deterministic: bool = False
-    ) -> tuple[types.Policy, types.Policy]:
-        teacher_encoder_network = teacher_student_networks.teacher_encoder_network
-        student_encoder_network = teacher_student_networks.student_encoder_network
-        policy_network = teacher_student_networks.policy_network
-        parametric_action_distribution = teacher_student_networks.parametric_action_distribution
+    def policy_metafactory(self):
+        """Creates params and inference function for the Teacher and Student agents."""
 
-        def teacher_policy(
-            observations: types.Observation, key_sample: types.PRNGKey
-        ) -> tuple[types.Action, types.Extra]:
-            normalizer_params = params.preprocessor_params
-            encoder_params = params.network_params.teacher_encoder
-            policy_params = params.network_params.policy
+        teacher_encoder_network = self.teacher_encoder_network
+        student_encoder_network = self.student_encoder_network
+        policy_network = self.policy_network
+        parametric_action_distribution = self.parametric_action_distribution
 
-            latent_vector = teacher_encoder_network.apply(
-                normalizer_params, encoder_params, observations
+        def make_teacher_policy(
+            params: TeacherStudentAgentParams, deterministic: bool = False
+        ):
+            return policy_factory(
+                normalizer_params=params.preprocessor_params,
+                policy_params=params.network_params.policy,
+                encoder_params=params.network_params.teacher_encoder,
+                policy_network=policy_network,
+                action_distribution=parametric_action_distribution,
+                encoder_networks=teacher_encoder_network,
+                deterministic=deterministic,
             )
-            logits = policy_network.apply(
-                normalizer_params,
-                policy_params,
-                observations,
-                latent_vector,
-            )
-            if deterministic:
-                return teacher_student_networks.parametric_action_distribution.mode(logits), {}
-            raw_actions = parametric_action_distribution.sample_no_postprocessing(
-                logits, key_sample
-            )
-            log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-            postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-            return postprocessed_actions, {
-                "log_prob": log_prob,
-                "raw_action": raw_actions,
-            }
 
-        def student_policy(
-            observations: types.Observation, key_sample: types.PRNGKey
-        ) -> tuple[types.Action, types.Extra]:
-            normalizer_params = params.preprocessor_params
-            encoder_params = params.network_params.student_encoder
-            policy_params = params.network_params.policy
-
-            latent_vector = student_encoder_network.apply(
-                normalizer_params, encoder_params, observations
+        def make_student_policy(
+            params: TeacherStudentAgentParams, deterministic: bool = False
+        ):
+            return policy_factory(
+                normalizer_params=params.preprocessor_params,
+                policy_params=params.network_params.policy,
+                encoder_params=params.network_params.student_encoder,
+                policy_network=policy_network,
+                action_distribution=parametric_action_distribution,
+                encoder_networks=student_encoder_network,
+                deterministic=deterministic,
             )
-            logits = policy_network.apply(
-                normalizer_params,
-                policy_params,
-                observations,
-                latent_vector,
-            )
-            if deterministic:
-                return teacher_student_networks.parametric_action_distribution.mode(logits), {}
-            raw_actions = parametric_action_distribution.sample_no_postprocessing(
-                logits, key_sample
-            )
-            log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-            postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-            return postprocessed_actions, {
-                "log_prob": log_prob,
-                "raw_action": raw_actions,
-            }
 
-        return teacher_policy, student_policy
+        return make_teacher_policy, make_student_policy
 
-    return make_policies
+
+def policy_factory(
+    normalizer_params,
+    policy_params,
+    encoder_params,
+    policy_network,
+    action_distribution,
+    encoder_networks,
+    deterministic: bool = False,
+):
+    def policy(
+        observations: types.Observation, key_sample: types.PRNGKey
+    ) -> tuple[types.Action, types.Extra]:
+        latent_vector = encoder_networks.teacher_encoder_network.apply(
+            normalizer_params, encoder_params, observations
+        )
+        logits = policy_network.apply(
+            normalizer_params,
+            policy_params,
+            observations,
+            latent_vector,
+        )
+        if deterministic:
+            return action_distribution.mode(logits), {}
+        raw_actions = action_distribution.sample_no_postprocessing(logits, key_sample)
+        log_prob = action_distribution.log_prob(logits, raw_actions)
+        postprocessed_actions = action_distribution.postprocess(raw_actions)
+        return postprocessed_actions, {
+            "log_prob": log_prob,
+            "raw_action": raw_actions,
+        }
+
+    return policy
 
 
 def make_teacher_student_networks(

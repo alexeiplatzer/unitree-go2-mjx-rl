@@ -1,24 +1,20 @@
 """Utility functions for instantiating neural networks."""
 
-# Typing
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Generic, TypeVar
-from collections.abc import Callable, Mapping, Collection, Sequence
-from quadruped_mjx_rl.types import (
-    Observation,
-    ObservationSize,
-    PreprocessObservationFn,
-    PreprocessorParams,
-    Params,
-    identity_observation_preprocessor,
-)
+from typing import Generic, TypeVar, Protocol
 
-# Math
 import jax
 import jax.numpy as jnp
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
+
 from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.types import (
+    identity_observation_preprocessor, Observation, ObservationSize, Params,
+    PreprocessObservationFn, PreprocessorParams, PRNGKey, Policy
+)
 
 
 @dataclass
@@ -34,6 +30,35 @@ AgentNetworkParams = TypeVar("AgentNetworkParams")
 class AgentParams(Generic[AgentNetworkParams]):
     preprocessor_params: PreprocessorParams
     network_params: AgentNetworkParams
+
+
+class PolicyFactory(Protocol[AgentNetworkParams]):
+    def __call__(
+        self,
+        params: AgentParams[AgentNetworkParams],
+        deterministic: bool,
+    ) -> Policy:
+        pass
+
+
+class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
+    @abstractmethod
+    def initialize(self, rng: PRNGKey) -> AgentNetworkParams:
+        pass
+
+    @abstractmethod
+    def policy_metafactory(self) -> tuple[PolicyFactory[AgentNetworkParams], ...]:
+        pass
+
+
+class NetworkFactory(Protocol[AgentNetworkParams]):
+    def __call__(
+        self,
+        observation_size: ObservationSize,
+        action_size: int,
+        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
+    ) -> ComponentNetworkArchitecture[AgentNetworkParams]:
+        pass
 
 
 def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:

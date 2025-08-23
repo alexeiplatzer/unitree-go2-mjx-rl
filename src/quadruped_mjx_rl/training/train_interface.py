@@ -20,34 +20,44 @@ from quadruped_mjx_rl.training import (
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
 )
-from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState, SimpleFitter
+from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState, SimpleFitter, get_fitter
 from quadruped_mjx_rl.training.training import TrainingConfig
 from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.training.train_main import train as ppo_train
+from quadruped_mjx_rl.models.configs import ModelConfig
+from quadruped_mjx_rl.models.factories import get_networks_factory
 
 
-@flax_dataclass
-class TrainingState:
-    """Contains the training state for the learner."""
-
-    optimizer_state: OptimizerState
-    agent_params: AgentParams
-    env_steps: jnp.ndarray
-
+def validate_args_for_vision(
+    vision: bool,
+    num_envs: int,
+    num_eval_envs: int,
+    action_repeat: int,
+    eval_env: Env | None = None,
+):
+    """Validates arguments for Madrona-MJX."""
+    if vision:
+        if eval_env:
+            raise ValueError("Madrona-MJX doesn't support multiple env instances")
+        if num_eval_envs != num_envs:
+            raise ValueError("Madrona-MJX requires a fixed batch size")
+        if action_repeat != 1:
+            raise ValueError(
+                "Implement action_repeat using PipelineEnv's _n_frames to avoid"
+                " unnecessary rendering!"
+            )
 
 def train(
     training_config: TrainingConfig,
-    environment: Env,
-    eval_env: Env | None = None,
+    model_config: ModelConfig,
+    training_env: Env,
+    evaluation_env: Env | None = None,
     max_devices_per_host: int | None = None,
     # environment wrapper
     wrap_env: bool = True,
-    wrap_env_fn: Callable | None = None,
     randomization_fn: (
         Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
-    # network architecture
-    network_factory: NetworkFactory = raw_actor_critic.make_actor_critic_networks,
-    make_fitter: type[Fitter] = SimpleFitter,
     # callbacks
     progress_fn: Callable[[int, ...], None] = lambda *args: None,
     policy_params_fn: Callable[..., None] = lambda *args: None,
@@ -73,8 +83,8 @@ def train(
             f"Batch size ({batch_size}) times number of minibatches ({num_minibatches}) "
             f"must be divisible by number of environments ({num_envs})."
         )
-    _utils.validate_madrona_args(
-        training_config.use_vision, num_envs, num_eval_envs, action_repeat, eval_env
+    validate_args_for_vision(
+        training_config.use_vision, num_envs, num_eval_envs, action_repeat, evaluation_env
     )
 
     xt = time.time()
@@ -133,14 +143,14 @@ def train(
         )
 
     env = _utils.maybe_wrap_env(
-        environment,
+        training_env,
         wrap_env,
         num_envs,
         training_config.episode_length,
         action_repeat,
         device_count,
         key_env,
-        wrap_env_fn,
+        None,
         randomization_fn,
         vision=training_config.use_vision,
     )
@@ -159,6 +169,8 @@ def train(
         else lambda x, y: x
     )
 
+    network_factory = get_networks_factory(model_config)
+
     ppo_networks = network_factory(
         observation_size=obs_shape,
         action_size=env.action_size,
@@ -166,6 +178,7 @@ def train(
     )
     policy_factories = ppo_networks.policy_metafactory()
 
+    make_fitter = get_fitter(model_config)
     fitter = make_fitter(
         optimizer_config=training_config.optimizer,
         network=ppo_networks,

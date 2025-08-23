@@ -28,7 +28,7 @@ from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticAgentParams,
 )
 from quadruped_mjx_rl.models.architectures import raw_actor_critic as ppo_networks
-from quadruped_mjx_rl.training.algorithms.ppo.raw_ppo.losses import compute_ppo_loss
+from quadruped_mjx_rl.training.algorithms.ppo_old.raw_ppo.losses import compute_ppo_loss
 
 
 @flax_dataclass

@@ -1,9 +1,7 @@
 """Definitions of neural network modules, basic building blocks for networks."""
 
-# Typing
-from collections.abc import Callable, Sequence, Mapping
+from collections.abc import Callable, Sequence
 
-# Math
 import jax
 import jax.numpy as jnp
 from flax import linen

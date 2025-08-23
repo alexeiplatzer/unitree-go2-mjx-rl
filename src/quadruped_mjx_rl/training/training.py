@@ -1,9 +1,7 @@
 """Main module to execute the training, given all necessary configs"""
 
-# Typing
 from dataclasses import dataclass, field
 
-# Supporting
 import functools
 import logging
 from datetime import datetime
@@ -14,7 +12,6 @@ from orbax import checkpoint as ocp
 from quadruped_mjx_rl.models.io import save_params
 from IPython.display import display
 
-# Training
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments import (
     EnvironmentConfig,
@@ -23,46 +20,17 @@ from quadruped_mjx_rl.environments import (
 )
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
 from quadruped_mjx_rl.models import get_networks_factory
-from quadruped_mjx_rl.training.algorithms.ppo.guided_ppo.training import train as guided_ppo_train
-from quadruped_mjx_rl.training.algorithms.ppo.raw_ppo.training import train as raw_ppo_train
 from quadruped_mjx_rl.policy_rendering import (
     RenderConfig,
     render_policy_rollout,
 )
 
-# Configurations
 from quadruped_mjx_rl.models.configs import ActorCriticConfig, ModelConfig, TeacherStudentConfig
 from quadruped_mjx_rl.robotic_vision import VisionConfig, get_renderer
 from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
-
-
-def make_progress_fn(num_timesteps, reward_max=40):
-    x_data = []
-    y_data = []
-    ydataerr = []
-    times = [datetime.now()]
-    max_y, min_y = reward_max, 0
-
-    fig, ax = plt.subplots()
-    handle = display(fig, display_id=True)
-
-    def progress(num_steps, metrics):
-        times.append(datetime.now())
-        x_data.append(num_steps)
-        y_data.append(metrics["eval/episode_reward"])
-        ydataerr.append(metrics["eval/episode_reward_std"])
-
-        ax.clear()
-        ax.set_xlim(0, num_timesteps * 1.25)
-        ax.set_ylim(min_y, max_y)
-        ax.set_xlabel("# environment steps")
-        ax.set_ylabel("reward per episode")
-        ax.set_title(f"y={y_data[-1]:.3f}")
-        ax.errorbar(x_data, y_data, yerr=ydataerr)
-
-        handle.update(fig)
-
-    return progress, times
+from quadruped_mjx_rl.training.train_main import train
+from quadruped_mjx_rl.environments.physics_pipeline import Env
+from quadruped_mjx_rl.training.evaluation import make_progress_fn
 
 
 def train_with_vision(
@@ -178,7 +146,7 @@ def train_wrong(
         policy_rendering_fn(rendering_env, make_inference_fn(params))
 
 
-def train(
+def train_from_configs(
     *,
     robot_config: RobotConfig,
     env_config: EnvironmentConfig,
@@ -240,31 +208,44 @@ def get_training_fn(
     vision: bool = False,
 ):
     networks_factory = get_networks_factory(model_config)
-    training_params = training_config.to_dict()
-    training_params.pop("training_class")
-    learning_rate = training_params.pop("learning_rate")
-    if vision and training_params.get("num_eval_envs", 0) != training_params["num_envs"]:
+    if vision and training_config.num_eval_envs != training_config.num_envs:
         # batch sizes should coincide when using vision
         logging.warning(
             "All batch sizes must coincide when using vision. "
             "Number of eval envs must be equal to num_envs. "
             "Setting num_eval_envs to num_envs."
         )
-        training_params["num_eval_envs"] = training_params["num_envs"]
-    if isinstance(model_config, TeacherStudentConfig):
-        return functools.partial(
-            guided_ppo_train,
-            teacher_student_network_factory=networks_factory,
-            teacher_learning_rate=learning_rate,
-            student_learning_rate=learning_rate,
-            **training_params,
-        )
-    elif isinstance(model_config, ActorCriticConfig):
-        return functools.partial(
-            raw_ppo_train,
-            network_factory=networks_factory,
-            learning_rate=learning_rate,
-            **training_params,
-        )
-    else:
-        raise NotImplementedError
+        training_config.num_eval_envs = training_config.num_envs
+    return functools.partial(
+        train,
+        training_config=training_config,
+        network_factory=networks_factory,
+    )
+
+
+def interface_training_fn(
+    *,
+    training_env: Env,
+    evaluation_env: Env | None,
+    model_config: ModelConfig,
+    training_config: TrainingConfig,
+    params_save_path: PathLike,
+    vision: bool = False,
+    params_restore_path: PathLike | None = None,
+    randomization_fn=None,
+):
+    if vision and evaluation_env is not None:
+        logging.warning("Vision training should reuse the training env for evaluation.")
+        evaluation_env = None
+
+
+    policy_factories, agent_params, metrics = train(
+        training_config=training_config,
+        environment=training_env,
+        eval_env=evaluation_env,
+        max_devices_per_host=None,
+        wrap_env=True,
+        wrap_env_fn=None,
+
+    )
+

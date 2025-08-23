@@ -1,19 +1,11 @@
-# Typing
-from collections.abc import Sequence
-from quadruped_mjx_rl import types
-from dataclasses import dataclass
-
-# Math
-from flax.struct import dataclass as flax_dataclass
 from flax import linen
-from quadruped_mjx_rl.models import modules, networks, distributions, configs
+from flax.struct import dataclass as flax_dataclass
+import jax
 
-
-@flax_dataclass
-class ActorCriticNetworks:
-    policy_network: networks.FeedForwardNetwork
-    value_network: networks.FeedForwardNetwork
-    parametric_action_distribution: distributions.ParametricDistribution
+from quadruped_mjx_rl import types
+from quadruped_mjx_rl.models import configs, distributions, modules, networks
+from quadruped_mjx_rl.models.networks import AgentNetworkParams, ComponentNetworkArchitecture
+from quadruped_mjx_rl.types import PRNGKey
 
 
 @flax_dataclass
@@ -26,43 +18,74 @@ class ActorCriticNetworkParams:
 class ActorCriticAgentParams(networks.AgentParams[ActorCriticNetworkParams]):
     """Full usable parameters for an actor critic architecture."""
 
+    def restore_params(
+        self,
+        restore_params: "ActorCriticAgentParams",
+        restore_value: bool = False,
+    ):
+        value_params = (
+            restore_params.network_params.value
+            if restore_value
+            else self.network_params.value
+        )
+        return self.replace(
+            network_params=ActorCriticNetworkParams(
+                policy=restore_params.network_params.policy,
+                value=value_params,
+            ),
+            preprocessor_params=restore_params.preprocessor_params,
+        )
 
-@dataclass
-class OptimizerConfig:
-    learning_rate: float = 0.0004
-    max_grad_norm: float | None = None
 
+@flax_dataclass
+class ActorCriticNetworks(ComponentNetworkArchitecture[ActorCriticNetworkParams]):
+    policy_network: networks.FeedForwardNetwork
+    value_network: networks.FeedForwardNetwork
+    parametric_action_distribution: distributions.ParametricDistribution
 
-def make_inference_fn(actor_critic_networks: ActorCriticNetworks):
-    """Creates params and inference function for the PPO agent."""
+    def initialize(self, rng: PRNGKey) -> ActorCriticNetworkParams:
+        policy_key, value_key = jax.random.split(rng)
+        return ActorCriticNetworkParams(
+            policy=self.policy_network.init(policy_key),
+            value=self.value_network.init(value_key),
+        )
 
-    def make_policy(
-        params: ActorCriticAgentParams, deterministic: bool = False
-    ) -> types.Policy:
-        policy_network = actor_critic_networks.policy_network
-        parametric_action_distribution = actor_critic_networks.parametric_action_distribution
+    def policy_metafactory(self):
+        """Creates params and inference function for the PPO agent."""
 
-        def policy(
-            observations: types.Observation, key_sample: types.PRNGKey
-        ) -> tuple[types.Action, types.Extra]:
-            normalizer_params = params.preprocessor_params
-            policy_params = params.network_params.policy
-            logits = policy_network.apply(normalizer_params, policy_params, observations)
-            if deterministic:
-                return actor_critic_networks.parametric_action_distribution.mode(logits), {}
-            raw_actions = parametric_action_distribution.sample_no_postprocessing(
-                logits, key_sample
-            )
-            log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-            postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-            return postprocessed_actions, {
-                "log_prob": log_prob,
-                "raw_action": raw_actions,
-            }
+        def make_policy(
+            params: ActorCriticAgentParams, deterministic: bool = False
+        ) -> types.Policy:
+            policy_network = self.policy_network
+            parametric_action_distribution = self.parametric_action_distribution
 
-        return policy
+            def policy(
+                observations: types.Observation, key_sample: types.PRNGKey
+            ) -> tuple[types.Action, types.Extra]:
+                normalizer_params = params.preprocessor_params
+                policy_params = params.network_params.policy
+                logits = policy_network.apply(
+                    normalizer_params, policy_params, observations
+                )
+                if deterministic:
+                    return self.parametric_action_distribution.mode(
+                        logits
+                    ), {}
+                raw_actions = parametric_action_distribution.sample_no_postprocessing(
+                    logits, key_sample
+                )
+                log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
+                postprocessed_actions = parametric_action_distribution.postprocess(
+                    raw_actions
+                )
+                return postprocessed_actions, {
+                    "log_prob": log_prob,
+                    "raw_action": raw_actions,
+                }
 
-    return make_policy
+            return policy
+
+        return (make_policy,)
 
 
 def make_actor_critic_networks(

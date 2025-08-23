@@ -5,3 +5,4 @@ from quadruped_mjx_rl.models.configs import (
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
 )
+from quadruped_mjx_rl.models.networks import FeedForwardNetwork, AgentParams

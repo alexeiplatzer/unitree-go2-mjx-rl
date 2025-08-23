@@ -1,18 +1,13 @@
-# Typing
+
 from dataclasses import dataclass, field
 
-# Configurations
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.models.architectures import OptimizerConfig, TeacherStudentOptimizer
+from quadruped_mjx_rl.training.fitting import OptimizerConfig
+from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerConfig
 
 
 @dataclass
-class AlgorithmHyperparams:
-    pass
-
-
-@dataclass
-class HyperparamsPPO(AlgorithmHyperparams):
+class HyperparamsPPO:
     discounting: float = 0.97
     entropy_cost: float = 0.01
     clipping_epsilon: float = 0.3
@@ -23,10 +18,17 @@ class HyperparamsPPO(AlgorithmHyperparams):
 
 @dataclass
 class TrainingConfig(Configuration):
+    use_vision: bool = False,
+    augment_pixels: bool = False,
     num_envs: int = 8192
     num_eval_envs: int = 8192
+    seed: int = 0
     num_timesteps: int = 100_000_000
+    log_training_metrics: bool = False,
+    training_metrics_steps: int | None = None,
     num_evals: int = 10
+    deterministic_eval: bool = False
+    num_resets_per_eval: int = 0
     episode_length: int = 1000
     unroll_length: int = 20
     normalize_observations: bool = True
@@ -35,7 +37,7 @@ class TrainingConfig(Configuration):
     num_updates_per_batch: int = 4
     num_minibatches: int = 32
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
-    rl_hyperparams: AlgorithmHyperparams = field(default_factory=HyperparamsPPO)
+    rl_hyperparams: HyperparamsPPO = field(default_factory=HyperparamsPPO)
 
     @classmethod
     def config_base_class_key(cls) -> str:
@@ -55,14 +57,18 @@ register_config_base_class(TrainingConfig)
 
 @dataclass
 class TrainingWithVisionConfig(TrainingConfig):
-    madrona_backend: bool = True
+    use_vision: bool = True,
+    augment_pixels: bool = False,
     num_envs: int = 256
     num_eval_envs: int = 256
     num_timesteps: int = 1_000_000
     batch_size: int = 256
     num_updates_per_batch: int = 8
     optimizer: OptimizerConfig = field(
-        default_factory=lambda: OptimizerConfig(max_grad_norm=1.0)
+        default_factory=lambda: TeacherStudentOptimizerConfig(
+            max_grad_norm=1.0,
+            student_learning_rate=0.001,
+        )
     )
 
     @classmethod
