@@ -20,9 +20,11 @@ from quadruped_mjx_rl.training import (
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
 )
-from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState, SimpleFitter
+from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState, SimpleFitter, get_fitter
 from quadruped_mjx_rl.training.training import TrainingConfig
 from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.models.configs import ModelConfig
+from quadruped_mjx_rl.models.factories import get_networks_factory
 
 
 @flax_dataclass
@@ -36,147 +38,35 @@ class TrainingState:
 
 def train(
     training_config: TrainingConfig,
-    environment: Env,
-    eval_env: Env | None = None,
-    max_devices_per_host: int | None = None,
-    # environment wrapper
-    wrap_env: bool = True,
-    wrap_env_fn: Callable | None = None,
-    randomization_fn: (
-        Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
-    ) = None,
-    # network architecture
-    network_factory: NetworkFactory = raw_actor_critic.make_actor_critic_networks,
-    make_fitter: type[Fitter] = SimpleFitter,
+    env: Env,
+    fitter: Fitter,
+    policy_factories,
+    metrics_aggregator: metric_logger.EpisodeMetricsLogger,
     # callbacks
-    progress_fn: Callable[[int, ...], None] = lambda *args: None,
-    policy_params_fn: Callable[..., None] = lambda *args: None,
-    # checkpointing
-    restore_params_fn: Callable | None = None,
-    # restore_params: AgentParams | None = None,
-    # restore_value_fn: bool = True,
-) -> tuple[tuple, AgentParams, list[dict]]:
+    policy_params_fn: Callable[..., None],
+    run_evaluations,
+    # numbers
+    env_step_per_training_step: int,
+    num_training_steps_per_epoch: int,
+    local_devices_to_use: int,
+    num_evals_after_init: int,
+    process_id: int,
+    training_state: TrainingState,
+    reset_fn: Callable[[PRNGKey], State],
+    local_key: PRNGKey,
+    key_envs: PRNGKey,
+    env_state: State,
+):
     # Unpack hyperparams
     num_envs = training_config.num_envs
-    num_eval_envs = training_config.num_eval_envs
     num_evals = training_config.num_evals
     num_timesteps = training_config.num_timesteps
     num_updates_per_batch = training_config.num_updates_per_batch
     num_minibatches = training_config.num_minibatches
     batch_size = training_config.batch_size
     unroll_length = training_config.unroll_length
-    action_repeat = training_config.action_repeat
-
-    # Check arguments
-    if batch_size * num_minibatches % num_envs != 0:
-        raise ValueError(
-            f"Batch size ({batch_size}) times number of minibatches ({num_minibatches}) "
-            f"must be divisible by number of environments ({num_envs})."
-        )
-    _utils.validate_madrona_args(
-        training_config.use_vision, num_envs, num_eval_envs, action_repeat, eval_env
-    )
 
     xt = time.time()
-
-    # Gather devices and processes info
-    process_count = jax.process_count()
-    process_id = jax.process_index()
-    local_device_count = jax.local_device_count()
-    local_devices_to_use = local_device_count
-    if max_devices_per_host:
-        local_devices_to_use = min(local_devices_to_use, max_devices_per_host)
-    logging.info(
-        "Device count: %d, process count: %d (id %d), local device count: %d, "
-        "devices to be used count: %d",
-        jax.device_count(),
-        process_count,
-        process_id,
-        local_device_count,
-        local_devices_to_use,
-    )
-    device_count = local_devices_to_use * process_count
-
-    # The number of environment steps executed for every training step.
-    env_step_per_training_step = batch_size * unroll_length * num_minibatches * action_repeat
-    num_evals_after_init = max(num_evals - 1, 1)
-    # The number of training_step calls per training_epoch call.
-    # Equals to ceil(
-    #   num_timesteps
-    #   / (
-    #       num_evals
-    #       * env_step_per_training_step
-    #       * num_resets_per_eval
-    #   )
-    # )
-    num_training_steps_per_epoch = np.ceil(
-        num_timesteps
-        / (
-            num_evals_after_init
-            * env_step_per_training_step
-            * max(training_config.num_resets_per_eval, 1)
-        )
-    ).astype(int)
-
-    key = jax.random.PRNGKey(training_config.seed)
-    global_key, local_key = jax.random.split(key)
-    del key
-    local_key = jax.random.fold_in(local_key, process_id)
-    local_key, key_env, eval_key = jax.random.split(local_key, 3)
-    # key_networks should be global, so that networks are initialized the same
-    # way for different processes.
-
-    if num_envs % device_count != 0:
-        raise ValueError(
-            f"Number of environments ({num_envs}) must be divisible by device count "
-            f"({device_count})."
-        )
-
-    env = _utils.maybe_wrap_env(
-        environment,
-        wrap_env,
-        num_envs,
-        training_config.episode_length,
-        action_repeat,
-        device_count,
-        key_env,
-        wrap_env_fn,
-        randomization_fn,
-        vision=training_config.use_vision,
-    )
-    reset_fn = jax.jit(jax.vmap(env.reset))
-    key_envs = jax.random.split(key_env, num_envs // process_count)
-    key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
-    env_state = reset_fn(key_envs)
-
-    # Shapes of different observation tensors
-    # Discard the batch axes over devices and envs.
-    obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], env_state.obs)
-
-    preprocess_fn = (
-        running_statistics.normalize
-        if training_config.normalize_observations
-        else lambda x, y: x
-    )
-
-    ppo_networks = network_factory(
-        observation_size=obs_shape,
-        action_size=env.action_size,
-        preprocess_observations_fn=preprocess_fn,
-    )
-    policy_factories = ppo_networks.policy_metafactory()
-
-    fitter = make_fitter(
-        optimizer_config=training_config.optimizer,
-        network=ppo_networks,
-        main_loss_fn=compute_ppo_loss,
-        algorithm_hyperparams=training_config.rl_hyperparams,
-    )
-
-    metrics_aggregator = metric_logger.EpisodeMetricsLogger(
-        steps_between_logging=training_config.training_metrics_steps or env_step_per_training_step,
-        progress_fn=progress_fn,
-    )
 
     def sgd_step(
         carry,
@@ -322,80 +212,6 @@ def train(
         }
         return training_state, env_state, metrics
 
-    # Initialize model params and training state.
-    network_init_params = ppo_networks.initialize(global_key)
-
-    obs_shape = jax.tree_util.tree_map(
-        lambda x: running_statistics.Array(x.shape[-1:], jnp.dtype("float32")), env_state.obs
-    )
-    training_state = TrainingState(
-        optimizer_state=fitter.optimizer_init(network_init_params),
-        agent_params=AgentParams(
-            network_params=network_init_params,
-            preprocessor_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
-        ),
-        env_steps=jnp.array(0, dtype=jnp.int32),
-    )
-
-    if restore_params_fn is not None:
-        logging.info("Restoring TrainingState from `restore_params`.")
-        training_state = training_state.replace(
-            agent_params=restore_params_fn(training_state.agent_params)
-        )
-
-    if num_timesteps == 0:
-        return (
-            policy_factories,
-            training_state.agent_params,
-            [{}],
-        )
-
-    training_state = jax.device_put_replicated(
-        training_state, jax.local_devices()[:local_devices_to_use]
-    )
-
-    eval_env = (
-        env
-        if training_config.use_vision
-        else _utils.maybe_wrap_env(
-            eval_env or environment,
-            wrap_env,
-            num_eval_envs,
-            training_config.episode_length,
-            action_repeat,
-            device_count=1,  # eval on the host only
-            key_env=eval_key,
-            wrap_env_fn=wrap_env_fn,
-            randomization_fn=randomization_fn,
-            vision=training_config.use_vision,
-        )
-    )
-    eval_keys = jax.random.split(eval_key, len(policy_factories))
-    evaluators = [
-        acting.Evaluator(
-            eval_env,
-            functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
-            num_eval_envs=num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=action_repeat,
-            key=policy_eval_key,
-        ) for policy_factory, policy_eval_key in zip(policy_factories, eval_keys)
-    ]
-    evaluators_metrics = [{} for evaluator in evaluators]
-
-    def run_evaluations(
-        params: AgentParams, training_metrics: types.Metrics,
-    ):
-        for idx in range(len(evaluators)):
-            evaluator_metrics = evaluators[idx].run_evaluation(
-                _utils.unpmap(params),
-                training_metrics=training_metrics
-            )
-            logging.info(evaluator_metrics)
-            progress_fn(0, evaluator_metrics)
-            evaluators_metrics[idx] = evaluator_metrics
-
-
     # Run initial eval
     if process_id == 0 and num_evals > 1:
         run_evaluations(training_state.agent_params, training_metrics={})
@@ -439,7 +255,8 @@ def train(
 
     # If there were no mistakes, the training_state should still be identical on all devices.
     pmap.assert_is_replicated(training_state)
-    teacher_student_params = _utils.unpmap(training_state.agent_params)
+    final_params = _utils.unpmap(training_state.agent_params)
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
-    return policy_factories, teacher_student_params, evaluators_metrics
+
+    return final_params

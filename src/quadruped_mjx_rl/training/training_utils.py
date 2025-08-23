@@ -37,26 +37,6 @@ def strip_weak_type(tree):
     return jax.tree_util.tree_map(f, tree)
 
 
-def validate_madrona_args(
-    madrona_backend: bool,
-    num_envs: int,
-    num_eval_envs: int,
-    action_repeat: int,
-    eval_env: Env | None = None,
-):
-    """Validates arguments for Madrona-MJX."""
-    if madrona_backend:
-        if eval_env:
-            raise ValueError("Madrona-MJX doesn't support multiple env instances")
-        if num_eval_envs != num_envs:
-            raise ValueError("Madrona-MJX requires a fixed batch size")
-        if action_repeat != 1:
-            raise ValueError(
-                "Implement action_repeat using PipelineEnv's _n_frames to avoid"
-                " unnecessary rendering!"
-            )
-
-
 def maybe_wrap_env(
     env: Env,
     wrap_env: bool,
