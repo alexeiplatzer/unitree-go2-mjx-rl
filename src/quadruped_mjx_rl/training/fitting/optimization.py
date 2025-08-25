@@ -104,12 +104,13 @@ class SimpleFitter(Fitter):
     def minibatch_step(self, carry, data, normalizer_params):
         optimizer_state, network_params, key = carry
         key, key_loss = jax.random.split(key)
-        (loss, metrics), params, optimizer_state = self.gradient_update_fn(
+        (loss, metrics), params, raw_optimizer_state = self.gradient_update_fn(
             network_params,
             normalizer_params,
             data,
             key_loss,
-            optimizer_state=optimizer_state,
+            optimizer_state=optimizer_state.optimizer_state,
         )
+        optimizer_state = OptimizerState(optimizer_state=raw_optimizer_state)
         return (optimizer_state, params, key), metrics
 
