@@ -42,7 +42,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         )
         student_loss_fn = functools.partial(
             compute_student_loss,
-            network,
+            network=network,
         )
         self.teacher_gradient_update_fn = gradients.gradient_update_fn(
             loss_fn=teacher_loss_fn,
@@ -86,7 +86,6 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             network_params,
             normalizer_params,
             data,
-            student_key,
             optimizer_state=optimizer_state.student_optimizer_state
         )
         optimizer_state = TeacherStudentOptimizerState(
@@ -98,15 +97,15 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
 
 
 def compute_student_loss(
-    networks: TeacherStudentNetworks,
     network_params: TeacherStudentNetworkParams,
     preprocessor_params: optimization.PreprocessorParams,
     data: Transition,
+    network: TeacherStudentNetworks,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = networks.teacher_encoder_network.apply
-    adapter_apply = networks.student_encoder_network.apply
+    encoder_apply = network.teacher_encoder_network.apply
+    adapter_apply = network.student_encoder_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)

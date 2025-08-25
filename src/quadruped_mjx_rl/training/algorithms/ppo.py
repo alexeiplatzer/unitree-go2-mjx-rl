@@ -10,11 +10,11 @@ from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transit
 
 
 def compute_ppo_loss(
-    network: ActorCriticNetworks,
     network_params: ActorCriticNetworkParams,
     preprocessor_params: PreprocessorParams,
     data: Transition,
     rng: PRNGKey,
+    network: ActorCriticNetworks,
     hyperparams: HyperparamsPPO,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes PPO loss.
