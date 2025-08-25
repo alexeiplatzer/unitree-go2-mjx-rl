@@ -2,13 +2,17 @@
 from dataclasses import dataclass, field
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerConfig
 
 
 @dataclass
 class OptimizerConfig:
     learning_rate: float = 0.0004
     max_grad_norm: float | None = None
+
+
+@dataclass
+class TeacherStudentOptimizerConfig(OptimizerConfig):
+    student_learning_rate: float = 0.0004
 
 
 @dataclass

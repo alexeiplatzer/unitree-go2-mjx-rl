@@ -13,11 +13,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.fitting import optimization
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
-
-
-@dataclass
-class TeacherStudentOptimizerConfig(optimization.OptimizerConfig):
-    student_learning_rate: float = 0.0004
+from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
 
 
 @flax_dataclass
