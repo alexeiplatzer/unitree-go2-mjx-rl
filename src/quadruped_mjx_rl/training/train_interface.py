@@ -21,7 +21,7 @@ from quadruped_mjx_rl.training.algorithms.ppo import (
 )
 from quadruped_mjx_rl.training.fitting import get_fitter
 from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
-from quadruped_mjx_rl.training.training import TrainingConfig
+from quadruped_mjx_rl.training.configs import TrainingConfig
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 
 
@@ -78,6 +78,30 @@ def train(
     action_repeat = training_config.action_repeat
 
     # Check arguments
+    # Basic positivity checks to fail fast on misconfigurations.
+    if num_envs <= 0:
+        raise ValueError(f"num_envs must be > 0, got {num_envs}.")
+    if num_eval_envs <= 0:
+        raise ValueError(f"num_eval_envs must be > 0, got {num_eval_envs}.")
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be > 0, got {batch_size}.")
+    if unroll_length <= 0:
+        raise ValueError(f"unroll_length must be > 0, got {unroll_length}.")
+    if num_minibatches <= 0:
+        raise ValueError(f"num_minibatches must be > 0, got {num_minibatches}.")
+    if num_updates_per_batch <= 0:
+        raise ValueError(f"num_updates_per_batch must be > 0, got {num_updates_per_batch}.")
+    if action_repeat < 1:
+        raise ValueError(f"action_repeat must be >= 1, got {action_repeat}.")
+    if training_config.num_timesteps < 0:
+        raise ValueError(f"num_timesteps must be >= 0, got {training_config.num_timesteps}.")
+    if training_config.num_evals < 0:
+        raise ValueError(f"num_evals must be >= 0, got {training_config.num_evals}.")
+    if training_config.num_resets_per_eval < 0:
+        raise ValueError(
+            f"num_resets_per_eval must be >= 0, got {training_config.num_resets_per_eval}."
+        )
+
     if batch_size * num_minibatches % num_envs != 0:
         raise ValueError(
             f"Batch size ({batch_size}) times number of minibatches ({num_minibatches}) "
