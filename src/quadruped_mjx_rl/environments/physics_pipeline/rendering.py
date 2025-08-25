@@ -1,11 +1,8 @@
-# Typing
+
 from collections.abc import Sequence
 
-# Math
-import numpy as np
-
-# Sim
 import mujoco
+import numpy as np
 from mujoco import mjx
 
 

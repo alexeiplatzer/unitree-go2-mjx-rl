@@ -6,25 +6,18 @@ from collections.abc import Callable
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics, types
-from quadruped_mjx_rl.environments import Env, PipelineModel, State
-from quadruped_mjx_rl.models.architectures import raw_actor_critic
-from quadruped_mjx_rl.models.networks import AgentParams, NetworkFactory
+from quadruped_mjx_rl.environments.physics_pipeline import Env, State
+from quadruped_mjx_rl.models.networks import AgentParams
 from quadruped_mjx_rl.training import (
     acting, logger as metric_logger, pmap,
     training_utils as _utils,
 )
-from quadruped_mjx_rl.training.algorithms.ppo import (
-    compute_ppo_loss,
-)
-from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState, SimpleFitter, get_fitter
-from quadruped_mjx_rl.training.training import TrainingConfig
+from quadruped_mjx_rl.training.configs import TrainingConfig
+from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState
 from quadruped_mjx_rl.types import PRNGKey
-from quadruped_mjx_rl.models.configs import ModelConfig
-from quadruped_mjx_rl.models.factories import get_networks_factory
 
 
 @flax_dataclass

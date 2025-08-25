@@ -1,16 +1,10 @@
 """Physics pipeline for fully articulated dynamics and collision."""
 
-# Supporting
-import functools
-
-# Math
 import jax
-from jax import numpy as jnp
-from quadruped_mjx_rl import math
-
-# Sim
 from mujoco import mjx
-from quadruped_mjx_rl.environments.physics_pipeline.base import Transform, Motion
+
+from quadruped_mjx_rl.environments.physics_pipeline.base import Motion, Transform
+
 
 # from quadruped_mjx_rl.environments.utils import (
 #     # Contact,

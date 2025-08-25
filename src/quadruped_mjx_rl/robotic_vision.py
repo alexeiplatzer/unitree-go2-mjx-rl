@@ -1,10 +1,10 @@
-from dataclasses import dataclass, field
 import functools
+from dataclasses import dataclass, field
 
 import numpy as np
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import PipelineModel
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineModel
 
 
 @dataclass

@@ -1,23 +1,13 @@
-# Typing
+
+import functools
 from collections.abc import Callable
 
-# Supporting
-import functools
-
-# Math
 import jax
 from jax import numpy as jnp
 
-# Sim
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    PipelineModel,
-    State,
-    Env,
-    Wrapper,
-    VmapWrapper,
-    DomainRandomizationVmapWrapper,
-    EpisodeWrapper,
-    AutoResetWrapper,
+    AutoResetWrapper, DomainRandomizationVmapWrapper, Env, EpisodeWrapper, PipelineModel, State,
+    VmapWrapper, Wrapper,
 )
 
 

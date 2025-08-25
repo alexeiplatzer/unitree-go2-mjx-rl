@@ -1,24 +1,15 @@
 """Utility functions used for training models."""
 
-# Typing
-from collections.abc import Callable, Mapping
-from quadruped_mjx_rl.types import PRNGKey, Params
 
-# Supporting
 import functools
+from collections.abc import Callable, Mapping
 
-# Math
 import jax
 import jax.numpy as jnp
-from flax import struct as flax_struct
 
-# Sim
-from quadruped_mjx_rl.environments import Env, PipelineModel
+from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
-
-# ML
-import optax
-from quadruped_mjx_rl.models.architectures import ActorCriticAgentParams
+from quadruped_mjx_rl.types import Params, PRNGKey
 
 PMAP_AXIS_NAME = "i"
 

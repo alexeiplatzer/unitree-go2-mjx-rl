@@ -1,18 +1,13 @@
 import functools
-from etils.epath import PathLike
 from collections.abc import Callable
 
-from quadruped_mjx_rl.robots import RobotConfig
+from etils.epath import PathLike
+
+from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    Env,
-    Wrapper,
-    State,
-    PipelineState,
-    PipelineModel,
     EnvModel,
     model_load,
 )
-from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
     QuadrupedBaseEnv,
@@ -22,13 +17,13 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     QuadrupedJoystickBaseEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
-    TeacherStudentEnvironmentConfig,
-    QuadrupedJoystickTeacherStudentEnv,
+    QuadrupedJoystickTeacherStudentEnv, TeacherStudentEnvironmentConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.simple_vision_playground import (
     QuadrupedVisionEnvConfig,
     QuadrupedVisionEnvironment,
 )
+from quadruped_mjx_rl.robots import RobotConfig
 
 QuadrupedEnvFactory = Callable[[], type(QuadrupedBaseEnv)]
 

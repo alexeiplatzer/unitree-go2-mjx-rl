@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 
 

@@ -1,12 +1,10 @@
 import random
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass
 
 import mujoco as mj
 import numpy as np
 
-from quadruped_mjx_rl.config_utils import Configuration
 from quadruped_mjx_rl.terrain_gen.noise_utils import edge_slope, perlin
 
 

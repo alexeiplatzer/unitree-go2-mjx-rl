@@ -1,6 +1,7 @@
 from datetime import datetime
-from IPython.display import display
+
 import matplotlib.pyplot as plt
+from IPython.display import display
 
 
 def make_progress_fn(num_timesteps, reward_max=40):

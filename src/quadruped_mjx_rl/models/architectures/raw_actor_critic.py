@@ -1,10 +1,10 @@
+import jax
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
-import jax
 
 from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import configs, distributions, modules, networks
-from quadruped_mjx_rl.models.networks import AgentNetworkParams, ComponentNetworkArchitecture
+from quadruped_mjx_rl.models.networks import ComponentNetworkArchitecture
 from quadruped_mjx_rl.types import PRNGKey
 
 

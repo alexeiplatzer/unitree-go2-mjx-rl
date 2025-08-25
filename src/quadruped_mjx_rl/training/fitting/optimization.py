@@ -1,23 +1,23 @@
-from dataclasses import dataclass, asdict
-from abc import ABC, abstractmethod
-from typing import Protocol, Generic
 import functools
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, Protocol
 
-from flax.struct import dataclass as flax_dataclass
-import optax
 import jax
+import optax
+from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.training.gradients import gradient_update_fn
-from quadruped_mjx_rl.types import Transition, PRNGKey, Metrics, PreprocessorParams
-from quadruped_mjx_rl.training.configs import HyperparamsPPO
-from quadruped_mjx_rl.running_statistics import RunningStatisticsState
-from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.models.networks import (
     AgentNetworkParams,
     AgentParams,
     ComponentNetworkArchitecture,
 )
+from quadruped_mjx_rl.running_statistics import RunningStatisticsState
+from quadruped_mjx_rl.training import training_utils
+from quadruped_mjx_rl.training.configs import HyperparamsPPO
+from quadruped_mjx_rl.training.gradients import gradient_update_fn
+from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
 
 
 @dataclass

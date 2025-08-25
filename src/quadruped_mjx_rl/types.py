@@ -1,9 +1,11 @@
 """Brax training types."""
 
-from typing import Any, NamedTuple, Tuple, TypeVar, Protocol
 from collections.abc import Mapping
-from quadruped_mjx_rl.running_statistics import NestedArray, RunningStatisticsState
+from typing import Any, NamedTuple, Protocol, Tuple, TypeVar
+
 from jax.numpy import ndarray
+
+from quadruped_mjx_rl.running_statistics import NestedArray, RunningStatisticsState
 
 Params = Any
 PRNGKey = ndarray

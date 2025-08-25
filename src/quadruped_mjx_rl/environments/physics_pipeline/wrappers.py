@@ -1,13 +1,11 @@
-# Typing
+
 from collections.abc import Callable
 
-# Math
 import jax
-from jax import numpy as jnp
 from flax import struct as flax_struct
-
-# Sim
+from jax import numpy as jnp
 from mujoco import mjx
+
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 
 

@@ -1,12 +1,10 @@
-import functools
 import random
 from dataclasses import dataclass
 
 import mujoco as mj
-import numpy as np
 
 from quadruped_mjx_rl.config_utils import Configuration
-from quadruped_mjx_rl.terrain_gen.obstacles import TerrainTileConfig, FlatTile, StripesTile
+from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig
 
 
 @dataclass

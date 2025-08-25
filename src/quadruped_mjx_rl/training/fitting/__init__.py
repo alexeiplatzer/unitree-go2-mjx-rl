@@ -1,11 +1,8 @@
+from quadruped_mjx_rl.models import ActorCriticConfig, ModelConfig, TeacherStudentConfig
 from quadruped_mjx_rl.training.fitting.optimization import (
-    OptimizerConfig,
-    OptimizerState,
-    Fitter,
-    SimpleFitter,
+    Fitter, OptimizerConfig, OptimizerState, SimpleFitter,
 )
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentFitter
-from quadruped_mjx_rl.models import ModelConfig, ActorCriticConfig, TeacherStudentConfig
 
 
 def get_fitter(model_config: ModelConfig) -> type[Fitter]:

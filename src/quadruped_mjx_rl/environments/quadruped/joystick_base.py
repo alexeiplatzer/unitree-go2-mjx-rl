@@ -1,34 +1,21 @@
 """Base environment for training quadruped joystick policies in MJX."""
 
-# Typing
+
 from dataclasses import dataclass, field
 
-# Supporting
-from etils.epath import PathLike
-
-# Math
 import jax
 import jax.numpy as jnp
+
 from quadruped_mjx_rl import math
-
-# Sim
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel,
-    EnvSpec,
-    PipelineModel,
-    PipelineState,
-    State,
-    Motion,
-    Transform,
+    EnvModel, EnvSpec, Motion, PipelineState, State, Transform,
 )
-
-# Definitions
-from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig as EnvCfg,
     QuadrupedBaseEnv,
     register_environment_config_class,
 )
+from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass

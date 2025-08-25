@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from quadruped_mjx_rl import running_statistics, types
-from quadruped_mjx_rl.environments import Env, PipelineModel
+from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.configs import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks import AgentParams
@@ -19,10 +19,10 @@ from quadruped_mjx_rl.training import (
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
 )
-from quadruped_mjx_rl.training.fitting import get_fitter
-from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
 from quadruped_mjx_rl.training.configs import TrainingConfig
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
+from quadruped_mjx_rl.training.fitting import get_fitter
+from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
 
 
 def validate_args_for_vision(
@@ -118,7 +118,9 @@ def train(
     process_id = jax.process_index()
     local_device_count = jax.local_device_count()
     local_devices_to_use = local_device_count
-    if max_devices_per_host:
+    if max_devices_per_host is not None:
+        if max_devices_per_host <= 0:
+            raise ValueError("max_devices_per_host must be > 0 when provided.")
         local_devices_to_use = min(local_devices_to_use, max_devices_per_host)
     logging.info(
         "Device count: %d, process count: %d (id %d), local device count: %d, "
@@ -212,8 +214,14 @@ def train(
 
     progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
 
+    # Ensure positive logging cadence; fallback to env_step_per_training_step if unset or invalid.
+    steps_between_logging = (
+        training_config.training_metrics_steps
+        if training_config.training_metrics_steps and training_config.training_metrics_steps > 0
+        else env_step_per_training_step
+    )
     metrics_aggregator = metric_logger.EpisodeMetricsLogger(
-        steps_between_logging=training_config.training_metrics_steps or env_step_per_training_step,
+        steps_between_logging=steps_between_logging,
         progress_fn=progress_fn,
     )
 

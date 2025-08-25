@@ -1,15 +1,12 @@
-from dataclasses import dataclass
-
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.types import Transition, Metrics, PreprocessorParams, PRNGKey
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticNetworkParams,
-    ActorCriticAgentParams,
     ActorCriticNetworks,
 )
 from quadruped_mjx_rl.training.configs import HyperparamsPPO
+from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
 
 
 def compute_ppo_loss(

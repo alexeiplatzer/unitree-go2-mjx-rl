@@ -1,26 +1,19 @@
 """Quadruped Joytick environment adapted for PPO training."""
 
-# Typing
+
 from dataclasses import dataclass
 
-# Supporting
-from etils.epath import PathLike
-
-# Math
 import jax
 import jax.numpy as jnp
 
-# Sim
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineState, EnvModel, EnvSpec
+from quadruped_mjx_rl.environments.physics_pipeline import EnvModel, EnvSpec, PipelineState
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
-
-# Definitions
-from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
+from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass

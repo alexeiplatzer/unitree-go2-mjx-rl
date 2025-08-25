@@ -1,14 +1,12 @@
 """Utility functions to compute running statistics."""
 
-# Typing
-from typing import Any
-from dataclasses import dataclass
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from typing import Any
 
-# Math
 import jax
-from jax import numpy as jnp
 from flax import struct as flax_struct
+from jax import numpy as jnp
 
 
 @dataclass(frozen=True)

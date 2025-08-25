@@ -1,35 +1,21 @@
-# Typing
-from dataclasses import dataclass, asdict
+
 from collections.abc import Sequence
+from dataclasses import asdict, dataclass
 
-# Supporting
-from etils.epath import PathLike
-
-# Math
 import jax
 import jax.numpy as jnp
-import numpy as np
-from quadruped_mjx_rl import math
-
-# Sim
-# import mujoco
-# from brax.base import System, State as PipelineState
-# from brax.envs.base import State, PipelineEnv
-# from brax.io.mjcf import load as load_system
 import mujoco
+import numpy as np
+
+from quadruped_mjx_rl import math
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
-    PipelineModel,
     PipelineState,
     State,
-    model_load,
 )
-from quadruped_mjx_rl.environments.base import PipelineEnv
-
-
-# Configs
-from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.robots import RobotConfig
 
 

@@ -1,24 +1,18 @@
 """Custom fitter for the teacher-student actor-critic architecture"""
-from dataclasses import dataclass, asdict
-from abc import ABC, abstractmethod
-from typing import Protocol
 import functools
+from dataclasses import dataclass
 
-from flax.struct import dataclass as flax_dataclass
-import optax
 import jax
+import optax
+from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.training.gradients import gradient_update_fn
-from quadruped_mjx_rl.types import Transition, Params, PRNGKey, Metrics
-from quadruped_mjx_rl.running_statistics import RunningStatisticsState
+from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
+    TeacherStudentAgentParams, TeacherStudentNetworkParams, TeacherStudentNetworks,
+)
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.fitting import optimization
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
-    TeacherStudentNetworks,
-    TeacherStudentNetworkParams,
-    TeacherStudentAgentParams,
-)
+from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 
 
 @dataclass

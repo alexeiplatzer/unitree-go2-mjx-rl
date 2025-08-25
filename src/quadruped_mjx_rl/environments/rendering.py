@@ -1,8 +1,8 @@
 """Utility functions to help visualize mujoco environments."""
 
-from etils.epath import PathLike, Path
 import mediapy as media
 import mujoco
+from etils.epath import Path, PathLike
 
 
 def render_scene(

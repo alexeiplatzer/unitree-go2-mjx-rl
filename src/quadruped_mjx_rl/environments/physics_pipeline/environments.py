@@ -1,24 +1,13 @@
-# Typing
+
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
-from quadruped_mjx_rl.types import Observation, ObservationSize
 
-# Supporting
-from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
-
-# Math
 import jax
-from flax.struct import dataclass as flax_dataclass
-import numpy as np
-
-# Sim
 import mujoco
+from flax.struct import dataclass as flax_dataclass
 from mujoco import mjx
+
 from quadruped_mjx_rl.environments.physics_pipeline.base import Base
-from quadruped_mjx_rl.environments.physics_pipeline.physics_pipeline import (
-    pipeline_init,
-    pipeline_n_steps,
-)
+from quadruped_mjx_rl.types import Observation, ObservationSize
 
 
 @flax_dataclass

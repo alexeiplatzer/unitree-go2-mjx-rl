@@ -1,19 +1,11 @@
 """Function to load MuJoCo mjcf format to Brax model."""
 
-# Supporting
-import itertools
 from xml.etree import ElementTree
-from etils.epath import PathLike, Path
 
-# Math
-import jax
-from jax import numpy as jnp
-from quadruped_mjx_rl import math
-import numpy as np
-
-# Sim
 import mujoco
+from etils.epath import Path, PathLike
 from mujoco import mjx
+
 
 # from quadruped_mjx_rl.environments.utils import (
 #     Actuator,

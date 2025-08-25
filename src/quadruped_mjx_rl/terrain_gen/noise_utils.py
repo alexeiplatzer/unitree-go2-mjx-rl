@@ -1,6 +1,4 @@
-import mujoco as mj
 import numpy as np
-import mediapy as media
 from scipy.signal import convolve2d
 
 

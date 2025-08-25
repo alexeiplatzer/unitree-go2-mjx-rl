@@ -1,18 +1,15 @@
 """A hand-controlled copy of the most important brax functionality"""
 
-# Typing
+import copy
+import functools
 from collections.abc import Sequence
 
-# Supporting
-import functools
-import copy
-
-# Math
 import jax
+from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 from jax import vmap
 from jax.tree_util import tree_map
-from flax.struct import dataclass as flax_dataclass
+
 from quadruped_mjx_rl import math
 
 # f: free, 1: 1-dof, 2: 2-dof, 3: 3-dof

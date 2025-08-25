@@ -1,6 +1,5 @@
-import mujoco as mj
-import numpy as np
 import mediapy as media
+import mujoco as mj
 
 
 def render_tile(tile_func, direction=None, cam_distance=6, cam_elevation=-30):
