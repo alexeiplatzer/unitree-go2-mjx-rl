@@ -15,15 +15,9 @@ from quadruped_mjx_rl.models.networks import (
 )
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
-from quadruped_mjx_rl.training.configs import HyperparamsPPO
+from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
 from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
-
-
-@dataclass
-class OptimizerConfig:
-    learning_rate: float = 0.0004
-    max_grad_norm: float | None = None
 
 
 @flax_dataclass
