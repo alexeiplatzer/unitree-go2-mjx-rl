@@ -22,6 +22,7 @@ from quadruped_mjx_rl.training.algorithms.ppo import (
 from quadruped_mjx_rl.training.fitting import get_fitter
 from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
 from quadruped_mjx_rl.training.training import TrainingConfig
+from quadruped_mjx_rl.training.evaluation import make_progress_fn
 
 
 def validate_args_for_vision(
@@ -34,9 +35,15 @@ def validate_args_for_vision(
     """Validates arguments for Madrona-MJX."""
     if vision:
         if eval_env:
-            raise ValueError("Madrona-MJX doesn't support multiple env instances")
+            raise ValueError(
+                "Evaluation env is not None. The Madrona-MJX vision backend doesn't support "
+                "multiple env instances, one env must be used for both training and evaluation."
+            )
         if num_eval_envs != num_envs:
-            raise ValueError("Madrona-MJX requires a fixed batch size")
+            raise ValueError(
+                "Number of eval envs != number of training envs. The Madrona-MJX vision backend"
+                " requires a fixed batch size, the number of environments must be consistent."
+            )
         if action_repeat != 1:
             raise ValueError(
                 "Implement action_repeat using PipelineEnv's _n_frames to avoid"
@@ -55,10 +62,8 @@ def train(
     randomization_fn: (
         Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
     ) = None,
-    # callbacks
-    progress_fn: Callable[[int, ...], None] = lambda *args: None,
-    policy_params_fn: Callable[..., None] = lambda *args: None,
     # checkpointing
+    policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params_fn: Callable | None = None,
 ) -> tuple[tuple, AgentParams, list[dict]]:
     # Unpack hyperparams
@@ -181,6 +186,8 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
+    progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
+
     metrics_aggregator = metric_logger.EpisodeMetricsLogger(
         steps_between_logging=training_config.training_metrics_steps or env_step_per_training_step,
         progress_fn=progress_fn,
@@ -280,5 +287,8 @@ def train(
         key_envs=key_envs,
         env_state=env_state,
     )
+
+    logging.info("Time to jit: %s", eval_times[1] - eval_times[0])
+    logging.info("Time to train: %s", eval_times[-1] - eval_times[1])
 
     return policy_factories, final_params, evaluators_metrics

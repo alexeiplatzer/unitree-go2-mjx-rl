@@ -1,30 +1,18 @@
-# Typing
+
+import functools
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-# Supporting
-import functools
-from etils.epath import PathLike
-
-# Math
 import jax
-from jax import numpy as jnp
+import mediapy as media
 import numpy as np
+from etils.epath import PathLike
+from jax import numpy as jnp
 
-# Sim
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.environments import PipelineEnv
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
-
-# IO
-import mediapy as media
-
-# ML
-from quadruped_mjx_rl.models import load_inference_fn
-from quadruped_mjx_rl.models import ModelConfig
 from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
-
-# Configs
-from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 
 
 @dataclass
