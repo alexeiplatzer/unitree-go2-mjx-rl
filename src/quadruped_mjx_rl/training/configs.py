@@ -27,14 +27,14 @@ class HyperparamsPPO:
 
 @dataclass
 class TrainingConfig(Configuration):
-    use_vision: bool = False,
-    augment_pixels: bool = False,
+    use_vision: bool = False
+    augment_pixels: bool = False
     num_envs: int = 8192
     num_eval_envs: int = 8192
     seed: int = 0
     num_timesteps: int = 100_000_000
-    log_training_metrics: bool = False,
-    training_metrics_steps: int | None = None,
+    log_training_metrics: bool = False
+    training_metrics_steps: int | None = None
     num_evals: int = 10
     deterministic_eval: bool = False
     num_resets_per_eval: int = 0
@@ -66,8 +66,8 @@ register_config_base_class(TrainingConfig)
 
 @dataclass
 class TrainingWithVisionConfig(TrainingConfig):
-    use_vision: bool = True,
-    augment_pixels: bool = False,
+    use_vision: bool = True
+    augment_pixels: bool = False
     num_envs: int = 256
     num_eval_envs: int = 256
     num_timesteps: int = 1_000_000
