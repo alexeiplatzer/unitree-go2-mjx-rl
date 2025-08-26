@@ -23,7 +23,7 @@ dependencies = [
     "ml_collections",
     "pyyaml",
     "dacite==1.9.2",
-    "jax==0.5.2",
+    "jax==0.6.0",
     "numpy",
     "flax==0.10.6",
     "matplotlib",
