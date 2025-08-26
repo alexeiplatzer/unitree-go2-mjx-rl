@@ -263,7 +263,7 @@ def train(
     evaluators_metrics = [{} for evaluator in evaluators]
 
     def run_evaluations(
-        params, training_metrics: types.Metrics,
+        current_step, params, training_metrics: types.Metrics,
     ):
         for idx in range(len(evaluators)):
             evaluator_metrics = evaluators[idx].run_evaluation(
@@ -271,7 +271,7 @@ def train(
                 training_metrics=training_metrics
             )
             logging.info(evaluator_metrics)
-            progress_fn(0, evaluator_metrics)
+            progress_fn(current_step, evaluator_metrics)
             evaluators_metrics[idx] = evaluator_metrics
 
     logging.info("Setup took %s", time.time() - xt)

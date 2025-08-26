@@ -214,7 +214,7 @@ def train(
     policy_params_fn(current_step, policy_factories, params)
     # Run initial eval
     if process_id == 0 and num_evals > 1:
-        run_evaluations(params, training_metrics={})
+        run_evaluations(current_step, params, training_metrics={})
 
     for it in range(num_evals_after_init):
         logging.info("starting iteration %s %s", it, time.time() - xt)
@@ -242,7 +242,7 @@ def train(
         policy_params_fn(current_step, policy_factories, params)
 
         if num_evals > 0:
-            run_evaluations(params, training_metrics)
+            run_evaluations(current_step, params, training_metrics)
 
     total_steps = current_step
     if not total_steps >= num_timesteps:
