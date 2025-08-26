@@ -270,7 +270,9 @@ def train(
                 params,
                 training_metrics=training_metrics
             )
-            logging.info(evaluator_metrics)
+            logging.info(f"eval/episode_reward: {evaluator_metrics["eval/episode_reward"]}")
+            logging.info(f"eval/episode_reward_std: {evaluator_metrics["eval/episode_std"]}")
+            logging.info(f"current_step: {current_step}")
             progress_fn(current_step, evaluator_metrics)
             evaluators_metrics[idx] = evaluator_metrics
 
