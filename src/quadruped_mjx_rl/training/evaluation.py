@@ -26,7 +26,7 @@ def make_progress_fn(num_timesteps, reward_max=40):
         ax.set_xlabel("# environment steps")
         ax.set_ylabel("reward per episode")
         ax.set_title(f"y={y_data[-1]:.3f}")
-        ax.errorbar(x_data, y_data, yerr=ydataerr, fmt="-o")
+        ax.errorbar(x_data, y_data, yerr=ydataerr)
 
         fig.canvas.draw()
         handle.update(fig)
