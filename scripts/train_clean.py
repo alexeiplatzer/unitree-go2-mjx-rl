@@ -8,9 +8,13 @@ from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to
 from quadruped_mjx_rl.environments import resolve_env_class, get_env_factory
 from quadruped_mjx_rl.training.train_interface import train
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
-
+import logging
 
 if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(level=logging.INFO, force=True)
+    logging.info("Logging configured.")
+
     # More legible printing from numpy.
     np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
@@ -26,7 +30,7 @@ if __name__ == "__main__":
         ),
     )
 
-    training_config = TrainingConfig(num_timesteps=1_00_000)
+    training_config = TrainingConfig(num_timesteps=1_00_000, num_envs=256, num_eval_envs=256)
 
     init_scene_path = paths.unitree_go2_init_scene
 

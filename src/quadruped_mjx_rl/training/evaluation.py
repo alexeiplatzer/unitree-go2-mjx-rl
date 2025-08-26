@@ -12,7 +12,7 @@ def make_progress_fn(num_timesteps, reward_max=40):
     max_y, min_y = reward_max, 0
 
     fig, ax = plt.subplots()
-    handle = display(fig, display_id=True)
+    #handle = display(fig, display_id=True)
 
     def progress(num_steps, metrics):
         times.append(datetime.now())
@@ -28,6 +28,7 @@ def make_progress_fn(num_timesteps, reward_max=40):
         ax.set_title(f"y={y_data[-1]:.3f}")
         ax.errorbar(x_data, y_data, yerr=ydataerr)
 
-        handle.update(fig)
+        fig.canvas.draw()
+        #handle.update(fig)
 
     return progress, times

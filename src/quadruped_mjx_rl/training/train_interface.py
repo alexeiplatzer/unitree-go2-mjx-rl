@@ -263,11 +263,11 @@ def train(
     evaluators_metrics = [{} for evaluator in evaluators]
 
     def run_evaluations(
-        params: AgentParams, training_metrics: types.Metrics,
+        params, training_metrics: types.Metrics,
     ):
         for idx in range(len(evaluators)):
             evaluator_metrics = evaluators[idx].run_evaluation(
-                _utils.unpmap(params),
+                params,
                 training_metrics=training_metrics
             )
             logging.info(evaluator_metrics)

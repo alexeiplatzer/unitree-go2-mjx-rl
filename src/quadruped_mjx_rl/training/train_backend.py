@@ -205,13 +205,17 @@ def train(
         }
         return training_state, env_state, metrics
 
-    # Run initial eval
-    if process_id == 0 and num_evals > 1:
-        run_evaluations(training_state.agent_params, training_metrics={})
-
     training_metrics = {}
     training_walltime = 0
     current_step = 0
+
+    # Run initial policy params fn
+    params = _utils.unpmap(training_state.agent_params)
+    policy_params_fn(current_step, policy_factories, params)
+    # Run initial eval
+    if process_id == 0 and num_evals > 1:
+        run_evaluations(params, training_metrics={})
+
     for it in range(num_evals_after_init):
         logging.info("starting iteration %s %s", it, time.time() - xt)
 
@@ -233,12 +237,12 @@ def train(
             continue
 
         # Process id == 0.
-        teacher_student_params = _utils.unpmap(training_state.agent_params)
+        params = _utils.unpmap(training_state.agent_params)
 
-        policy_params_fn(current_step, policy_factories, teacher_student_params)
+        policy_params_fn(current_step, policy_factories, params)
 
         if num_evals > 0:
-            run_evaluations(teacher_student_params, training_metrics)
+            run_evaluations(params, training_metrics)
 
     total_steps = current_step
     if not total_steps >= num_timesteps:
