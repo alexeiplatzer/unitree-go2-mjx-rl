@@ -1,6 +1,6 @@
 import random
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import mujoco as mj
 import numpy as np
@@ -40,7 +40,7 @@ def _set_body(
 
 @dataclass
 class TerrainTileConfig(ABC):
-    color: Color = Color(0.460, 0.362, 0.216, 1.0)  # (Brown)
+    color: Color = field(default_factory=lambda: Color(0.460, 0.362, 0.216, 1.0))  # (Brown)
     square_side: float = 2.0
     floor_thickness: float = 0.05
 
