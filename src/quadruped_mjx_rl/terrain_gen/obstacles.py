@@ -99,7 +99,7 @@ class StripesTile(TerrainTileConfig):
             body.add_geom(
                 pos=[x_center, 0, z_center],
                 size=[self.stripe_width / 2, self.square_side, height / 2],
-                rgba=self.color,
+                rgba=self.color.rgba,
             )
         
 
