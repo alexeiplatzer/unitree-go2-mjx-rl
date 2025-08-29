@@ -17,7 +17,8 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     QuadrupedJoystickBaseEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
-    QuadrupedJoystickTeacherStudentEnv, TeacherStudentEnvironmentConfig,
+    QuadrupedJoystickTeacherStudentEnv,
+    TeacherStudentEnvironmentConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.simple_vision_playground import (
     QuadrupedVisionEnvConfig,

@@ -1,4 +1,3 @@
-
 import functools
 from collections.abc import Callable
 
@@ -6,8 +5,14 @@ import jax
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    AutoResetWrapper, DomainRandomizationVmapWrapper, Env, EpisodeWrapper, PipelineModel, State,
-    VmapWrapper, Wrapper,
+    AutoResetWrapper,
+    DomainRandomizationVmapWrapper,
+    Env,
+    EpisodeWrapper,
+    PipelineModel,
+    State,
+    VmapWrapper,
+    Wrapper,
 )
 
 
@@ -66,35 +71,41 @@ def _identity_vision_randomization_fn(
             "light_cutoff": 0,
         }
     )
-    pipeline_model = pipeline_model.tree_replace(
-        {
-            "geom_rgba": jnp.repeat(
-                jnp.expand_dims(pipeline_model.geom_rgba, 0), num_worlds, axis=0
-            ),
-            "geom_matid": jnp.repeat(
-                jnp.expand_dims(jnp.repeat(-1, pipeline_model.geom_matid.shape[0], 0), 0),
-                num_worlds,
-                axis=0,
-            ),
-            "geom_size": jnp.repeat(
-                jnp.expand_dims(pipeline_model.geom_size, 0), num_worlds, axis=0
-            ),
-            "light_pos": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_pos, 0), num_worlds, axis=0
-            ),
-            "light_dir": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_dir, 0), num_worlds, axis=0
-            ),
-            "light_type": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_type, 0), num_worlds, axis=0
-            ),
-            "light_castshadow": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_castshadow, 0), num_worlds, axis=0
-            ),
-            "light_cutoff": jnp.repeat(
-                jnp.expand_dims(pipeline_model.light_cutoff, 0), num_worlds, axis=0
-            ),
-        }
+    pipeline_model = pipeline_model.replace(
+        model=pipeline_model.model.tree_replace(
+            {
+                "geom_rgba": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.geom_rgba, 0), num_worlds, axis=0
+                ),
+                "geom_matid": jnp.repeat(
+                    jnp.expand_dims(
+                        jnp.repeat(-1, pipeline_model.model.geom_matid.shape[0], 0), 0
+                    ),
+                    num_worlds,
+                    axis=0,
+                ),
+                "geom_size": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.geom_size, 0), num_worlds, axis=0
+                ),
+                "light_pos": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.light_pos, 0), num_worlds, axis=0
+                ),
+                "light_dir": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.light_dir, 0), num_worlds, axis=0
+                ),
+                "light_type": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.light_type, 0), num_worlds, axis=0
+                ),
+                "light_castshadow": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.light_castshadow, 0),
+                    num_worlds,
+                    axis=0,
+                ),
+                "light_cutoff": jnp.repeat(
+                    jnp.expand_dims(pipeline_model.model.light_cutoff, 0), num_worlds, axis=0
+                ),
+            }
+        )
     )
     return pipeline_model, in_axes
 
@@ -122,10 +133,12 @@ def _supplement_vision_randomization_fn(
         if getattr(in_axes, field) is None:
             in_axes = in_axes.tree_replace({field: 0})
             val = -2 if field == "geom_matid" else getattr(pipeline_model, field)
-            pipeline_model = pipeline_model.tree_replace(
-                {
-                    field: jnp.repeat(jnp.expand_dims(val, 0), num_worlds, axis=0),
-                }
+            pipeline_model = pipeline_model.replace(
+                model=pipeline_model.model.tree_replace(
+                    {
+                        field: jnp.repeat(jnp.expand_dims(val, 0), num_worlds, axis=0),
+                    }
+                )
             )
     return pipeline_model, in_axes
 
@@ -169,7 +182,7 @@ class MadronaWrapper(Wrapper):
         for field in required_fields:
             assert hasattr(self.env._in_axes, field), f"{field} not in in_axes"
             assert (
-                getattr(self.env._sys_v, field).shape[0] == num_worlds
+                getattr(self.env._sys_v.model, field).shape[0] == num_worlds
             ), f"{field} shape does not match num_worlds"
 
     def reset(self, rng: jax.Array) -> State:

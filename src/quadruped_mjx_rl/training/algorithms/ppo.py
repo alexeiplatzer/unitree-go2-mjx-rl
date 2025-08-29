@@ -72,9 +72,10 @@ def compute_ppo_loss(
     rho_s = jnp.exp(target_action_log_probs - behaviour_action_log_probs)
 
     surrogate_loss1 = rho_s * advantages
-    surrogate_loss2 = jnp.clip(
-        rho_s, 1 - hyperparams.clipping_epsilon, 1 + hyperparams.clipping_epsilon
-    ) * advantages
+    surrogate_loss2 = (
+        jnp.clip(rho_s, 1 - hyperparams.clipping_epsilon, 1 + hyperparams.clipping_epsilon)
+        * advantages
+    )
 
     policy_loss = -jnp.mean(jnp.minimum(surrogate_loss1, surrogate_loss2))
 
@@ -128,9 +129,7 @@ def compute_gae(
 
     truncation_mask = 1 - truncation
     # Append bootstrapped value to get [v1, ..., v_t+1]
-    values_t_plus_1 = jnp.concatenate(
-        [values[1:], jnp.expand_dims(bootstrap_value, 0)], axis=0
-    )
+    values_t_plus_1 = jnp.concatenate([values[1:], jnp.expand_dims(bootstrap_value, 0)], axis=0)
     deltas = rewards + discount * (1 - termination) * values_t_plus_1 - values
     deltas *= truncation_mask
 
@@ -155,6 +154,6 @@ def compute_gae(
 
     vs_t_plus_1 = jnp.concatenate([vs[1:], jnp.expand_dims(bootstrap_value, 0)], axis=0)
     advantages = (
-                     rewards + discount * (1 - termination) * vs_t_plus_1 - values
-                 ) * truncation_mask
+        rewards + discount * (1 - termination) * vs_t_plus_1 - values
+    ) * truncation_mask
     return jax.lax.stop_gradient(vs), jax.lax.stop_gradient(advantages)

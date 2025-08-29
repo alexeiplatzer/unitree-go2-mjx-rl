@@ -5,16 +5,22 @@ import functools
 from collections.abc import Sequence
 
 import jax
-from flax.struct import dataclass as flax_dataclass
+from flax.struct import dataclass as flax_dataclass, field as flax_field
 from jax import numpy as jnp
 from jax import vmap
 from jax.tree_util import tree_map
+from mujoco import MjModel, MjSpec
+from mujoco import mjx
 
 from quadruped_mjx_rl import math
 
 # f: free, 1: 1-dof, 2: 2-dof, 3: 3-dof
 Q_WIDTHS = {"f": 7, "1": 1, "2": 2, "3": 3}
 QD_WIDTHS = {"f": 6, "1": 1, "2": 2, "3": 3}
+
+# Abstract over mujoco types
+EnvModel = MjModel
+EnvSpec = MjSpec
 
 
 @flax_dataclass
@@ -223,6 +229,25 @@ class Motion(Base):
         return Motion(ang, vel)
 
 
+# Abstract over MJX types
+@flax_dataclass
+class PipelineState:
+    q: jax.Array
+    qd: jax.Array
+    x: Transform
+    xd: Motion
+    data: mjx.Data
+
+
+@flax_dataclass
+class PipelineModel:
+    model: mjx.Model
+
+
+def make_pipeline_model(env_model: EnvModel) -> PipelineModel:
+    return PipelineModel(model=mjx.put_model(env_model))
+
+
 # below are some operation dispatch derivations
 
 
@@ -259,19 +284,3 @@ def _(m: Motion, self: Transform) -> Motion:
     ang = math.rotate(m.ang, rot_t)
     vel = math.rotate(m.vel, rot_t) + jnp.cross(self.pos, ang)
     return Motion(ang, vel)
-
-
-# @_transform_do.register(Force)
-# def _(f: Force, self: Transform) -> Force:
-#     vel = math.rotate(f.vel, self.rot)
-#     ang = math.rotate(f.ang, self.rot) + jp.cross(self.pos, vel)
-#     return Force(ang, vel)
-#
-#
-# @_transform_do.register(Inertia)
-# def _(it: Inertia, self: Transform) -> Inertia:
-#     h = jp.cross(self.pos, -jp.eye(3))
-#     rot = math.quat_to_3x3(self.rot)
-#     i = rot @ it.i @ rot.T + h @ h.T * it.mass
-#     transform = Transform(pos=self.pos * it.mass, rot=self.rot)
-#     return Inertia(transform=transform, i=i, mass=it.mass)

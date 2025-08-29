@@ -18,7 +18,10 @@ import optax
 # Sim
 from quadruped_mjx_rl.environments import PipelineModel, Env, State
 from quadruped_mjx_rl.training import (
-    acting, gradients, logger as metric_logger, pmap,
+    acting,
+    gradients,
+    logger as metric_logger,
+    pmap,
     training_utils as _utils,
 )
 

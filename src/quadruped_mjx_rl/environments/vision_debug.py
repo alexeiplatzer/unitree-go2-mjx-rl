@@ -1,11 +1,10 @@
-
 import jax
 import jax.numpy as jnp
 import numpy as np
 from etils.epath import PathLike
 
 from quadruped_mjx_rl.environments.base import PipelineEnv
-from quadruped_mjx_rl.environments.physics_pipeline import (model_load, PipelineState, State)
+from quadruped_mjx_rl.environments.physics_pipeline import load_to_model, PipelineState, State
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 
 
@@ -15,17 +14,17 @@ class VisionDebugEnv(PipelineEnv):
         init_scene_path: PathLike,
         vision_config: VisionConfig,
     ):
-        env_model = model_load(init_scene_path)
+        env_model = load_to_model(init_scene_path)
         super().__init__(env_model)
 
-        self._init_q = self.pipeline_model.qpos0
-        self._nv = self.pipeline_model.nv
+        self._init_q = self.pipeline_model.model.qpos0
+        self._nv = self.pipeline_model.model.nv
 
         # Setup vision with the madrona mjx engine
         from madrona_mjx.renderer import BatchRenderer
 
         self.renderer = BatchRenderer(
-            m=self.sys,
+            m=self.pipeline_model.model,
             gpu_id=vision_config.gpu_id,
             num_worlds=vision_config.render_batch_size,
             batch_render_view_width=vision_config.render_width,
@@ -69,7 +68,9 @@ class VisionDebugEnv(PipelineEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
+        render_token, rgb, depth = self.renderer.init(
+            pipeline_state.data, self.pipeline_model.model
+        )
         state_info["render_token"] = render_token
 
         # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
@@ -84,7 +85,7 @@ class VisionDebugEnv(PipelineEnv):
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
+        _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state.data)
         # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
         # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}
         obs = {"pixels/rgb_tensor": rgb, "pixels/depth_tensor": depth}

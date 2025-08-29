@@ -1,4 +1,3 @@
-
 import functools
 import logging
 import time
@@ -12,7 +11,9 @@ from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.models.networks import AgentParams
 from quadruped_mjx_rl.training import (
-    acting, logger as metric_logger, pmap,
+    acting,
+    logger as metric_logger,
+    pmap,
     training_utils as _utils,
 )
 from quadruped_mjx_rl.training.configs import TrainingConfig
@@ -194,10 +195,10 @@ def train(
         epoch_training_time = time.time() - t
         training_walltime += epoch_training_time
         sps = (
-                  num_training_steps_per_epoch
-                  * env_step_per_training_step
-                  * max(training_config.num_resets_per_eval, 1)
-              ) / epoch_training_time
+            num_training_steps_per_epoch
+            * env_step_per_training_step
+            * max(training_config.num_resets_per_eval, 1)
+        ) / epoch_training_time
         metrics = {
             "training/sps": sps,
             "training/walltime": training_walltime,
@@ -231,7 +232,9 @@ def train(
             key_envs = jax.vmap(lambda x, s: jax.random.split(x[0], s), in_axes=(0, None))(
                 key_envs, key_envs.shape[1]
             )
-            env_state = reset_fn(key_envs) if training_config.num_resets_per_eval > 0 else env_state
+            env_state = (
+                reset_fn(key_envs) if training_config.num_resets_per_eval > 0 else env_state
+            )
 
         if process_id != 0:
             continue

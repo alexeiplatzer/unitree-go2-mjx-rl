@@ -1,6 +1,5 @@
 """Utility functions used for training models."""
 
-
 import functools
 from collections.abc import Callable, Mapping
 

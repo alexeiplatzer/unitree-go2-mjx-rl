@@ -1,4 +1,5 @@
 """Custom fitter for the teacher-student actor-critic architecture"""
+
 import functools
 from dataclasses import dataclass
 
@@ -8,7 +9,9 @@ from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
-    TeacherStudentAgentParams, TeacherStudentNetworkParams, TeacherStudentNetworks,
+    TeacherStudentAgentParams,
+    TeacherStudentNetworkParams,
+    TeacherStudentNetworks,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.fitting import optimization
@@ -71,22 +74,22 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     ):
         optimizer_state, network_params, key = carry
         key, teacher_key, student_key = jax.random.split(key, 3)
-        (
-            (teacher_loss, teacher_metrics), params, teacher_optimizer_state
-        ) = self.teacher_gradient_update_fn(
-            network_params,
-            normalizer_params,
-            data,
-            teacher_key,
-            optimizer_state=optimizer_state.optimizer_state,
+        ((teacher_loss, teacher_metrics), params, teacher_optimizer_state) = (
+            self.teacher_gradient_update_fn(
+                network_params,
+                normalizer_params,
+                data,
+                teacher_key,
+                optimizer_state=optimizer_state.optimizer_state,
+            )
         )
-        (
-            (student_loss, student_metrics), params, student_optimizer_state
-        ) = self.student_gradient_update_fn(
-            network_params,
-            normalizer_params,
-            data,
-            optimizer_state=optimizer_state.student_optimizer_state
+        ((student_loss, student_metrics), params, student_optimizer_state) = (
+            self.student_gradient_update_fn(
+                network_params,
+                normalizer_params,
+                data,
+                optimizer_state=optimizer_state.student_optimizer_state,
+            )
         )
         optimizer_state = TeacherStudentOptimizerState(
             optimizer_state=teacher_optimizer_state,
@@ -118,4 +121,3 @@ def compute_student_loss(
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
 
     return total_loss, {"student_total_loss": total_loss}
-

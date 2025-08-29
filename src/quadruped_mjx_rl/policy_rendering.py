@@ -1,4 +1,3 @@
-
 import functools
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field

@@ -1,4 +1,3 @@
-
 from collections.abc import Mapping
 
 import jax
@@ -8,12 +7,16 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import distributions
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
-    ActorCriticNetworkParams, ActorCriticNetworks,
+    ActorCriticNetworkParams,
+    ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
 from quadruped_mjx_rl.models.modules import ActivationFn, CNN, HeadMLP, MLP
 from quadruped_mjx_rl.models.networks import (
-    AgentParams, ComponentNetworkArchitecture, FeedForwardNetwork, make_network,
+    AgentParams,
+    ComponentNetworkArchitecture,
+    FeedForwardNetwork,
+    make_network,
 )
 
 
@@ -35,9 +38,7 @@ class TeacherStudentAgentParams(AgentParams[TeacherStudentNetworkParams]):
         restore_value: bool = False,
     ):
         value_params = (
-            restore_params.network_params.value
-            if restore_value
-            else self.network_params.value
+            restore_params.network_params.value if restore_value else self.network_params.value
         )
         return self.replace(
             network_params=TeacherStudentNetworkParams(
@@ -74,9 +75,7 @@ class TeacherStudentNetworks(
         policy_network = self.policy_network
         parametric_action_distribution = self.parametric_action_distribution
 
-        def make_teacher_policy(
-            params: TeacherStudentAgentParams, deterministic: bool = False
-        ):
+        def make_teacher_policy(params: TeacherStudentAgentParams, deterministic: bool = False):
             return policy_factory(
                 normalizer_params=params.preprocessor_params,
                 policy_params=params.network_params.policy,
@@ -87,9 +86,7 @@ class TeacherStudentNetworks(
                 deterministic=deterministic,
             )
 
-        def make_student_policy(
-            params: TeacherStudentAgentParams, deterministic: bool = False
-        ):
+        def make_student_policy(params: TeacherStudentAgentParams, deterministic: bool = False):
             return policy_factory(
                 normalizer_params=params.preprocessor_params,
                 policy_params=params.network_params.policy,

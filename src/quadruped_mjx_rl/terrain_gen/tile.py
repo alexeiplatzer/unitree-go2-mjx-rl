@@ -69,9 +69,6 @@ def get_randomized_terrain(
         tiles=[random.choices(obstacles, weights=weights, k=n_columns) for _ in range(n_rows)]
     )
 
-
-
-
     # for i in range(0, 8):
     #     stripe_w = 0.05 * (i + 1)
     #     harder_level = [(functools.partial(obstacles.stripes, stripe_w=stripe_w), 1)]
@@ -81,4 +78,3 @@ def get_randomized_terrain(
     #         distribution=harder_level,
     #         name=f"obstacle_{i}",
     #     )
-

@@ -1,4 +1,3 @@
-
 import functools
 
 from etils.epath import PathLike
@@ -6,11 +5,15 @@ from etils.epath import PathLike
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.models import io
 from quadruped_mjx_rl.models.architectures import (
-    guided_actor_critic as guided_networks, raw_actor_critic as raw_networks,
+    guided_actor_critic as guided_networks,
+    raw_actor_critic as raw_networks,
     TeacherStudentAgentParams,
 )
 from quadruped_mjx_rl.models.configs import (
-    ActorCriticConfig, ModelConfig, TeacherStudentConfig, TeacherStudentVisionConfig,
+    ActorCriticConfig,
+    ModelConfig,
+    TeacherStudentConfig,
+    TeacherStudentVisionConfig,
 )
 from quadruped_mjx_rl.models.networks import (
     NetworkFactory,
@@ -69,7 +72,9 @@ def load_inference_fn(
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        teacher_policy_factory, student_policy_factory = teacher_student_networks.policy_metafactory()
+        teacher_policy_factory, student_policy_factory = (
+            teacher_student_networks.policy_metafactory()
+        )
         teacher_inference_fn = teacher_policy_factory(params, deterministic=True)
         student_inference_fn = student_policy_factory(params, deterministic=True)
         return {
@@ -82,7 +87,7 @@ def load_inference_fn(
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
         )
-        policy_factory, = ppo_nets.policy_metafactory()
+        (policy_factory,) = ppo_nets.policy_metafactory()
         return policy_factory(params, deterministic=True)
     else:
         raise NotImplementedError

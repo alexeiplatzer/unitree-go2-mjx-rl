@@ -1,6 +1,5 @@
 """Quadruped Joytick environment adapted for PPO training."""
 
-
 from dataclasses import dataclass
 
 import jax

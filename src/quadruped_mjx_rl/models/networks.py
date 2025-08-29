@@ -12,8 +12,14 @@ from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.types import (
-    identity_observation_preprocessor, Observation, ObservationSize, Params,
-    PreprocessObservationFn, PreprocessorParams, PRNGKey, Policy
+    identity_observation_preprocessor,
+    Observation,
+    ObservationSize,
+    Params,
+    PreprocessObservationFn,
+    PreprocessorParams,
+    PRNGKey,
+    Policy,
 )
 
 

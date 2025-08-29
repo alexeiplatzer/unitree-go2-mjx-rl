@@ -24,9 +24,7 @@ class ActorCriticAgentParams(networks.AgentParams[ActorCriticNetworkParams]):
         restore_value: bool = False,
     ):
         value_params = (
-            restore_params.network_params.value
-            if restore_value
-            else self.network_params.value
+            restore_params.network_params.value if restore_value else self.network_params.value
         )
         return self.replace(
             network_params=ActorCriticNetworkParams(
@@ -64,20 +62,14 @@ class ActorCriticNetworks(ComponentNetworkArchitecture[ActorCriticNetworkParams]
             ) -> tuple[types.Action, types.Extra]:
                 normalizer_params = params.preprocessor_params
                 policy_params = params.network_params.policy
-                logits = policy_network.apply(
-                    normalizer_params, policy_params, observations
-                )
+                logits = policy_network.apply(normalizer_params, policy_params, observations)
                 if deterministic:
-                    return self.parametric_action_distribution.mode(
-                        logits
-                    ), {}
+                    return self.parametric_action_distribution.mode(logits), {}
                 raw_actions = parametric_action_distribution.sample_no_postprocessing(
                     logits, key_sample
                 )
                 log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-                postprocessed_actions = parametric_action_distribution.postprocess(
-                    raw_actions
-                )
+                postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
                 return postprocessed_actions, {
                     "log_prob": log_prob,
                     "raw_action": raw_actions,

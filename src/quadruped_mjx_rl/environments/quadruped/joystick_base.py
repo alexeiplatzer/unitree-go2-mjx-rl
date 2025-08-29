@@ -1,6 +1,5 @@
 """Base environment for training quadruped joystick policies in MJX."""
 
-
 from dataclasses import dataclass, field
 
 import jax
@@ -8,7 +7,12 @@ import jax.numpy as jnp
 
 from quadruped_mjx_rl import math
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel, EnvSpec, Motion, PipelineState, State, Transform,
+    EnvModel,
+    EnvSpec,
+    Motion,
+    PipelineState,
+    State,
+    Transform,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig as EnvCfg,

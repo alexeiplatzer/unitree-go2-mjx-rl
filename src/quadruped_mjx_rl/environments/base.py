@@ -5,8 +5,17 @@ import jax
 import numpy as np
 
 from quadruped_mjx_rl.environments.physics_pipeline import (
-    Env, EnvModel, EnvSpec, make_pipeline_model, pipeline_init, pipeline_step, PipelineModel,
-    PipelineState, render_array, spec_to_model, State,
+    Env,
+    EnvModel,
+    EnvSpec,
+    pipeline_init,
+    pipeline_step,
+    PipelineModel,
+    PipelineState,
+    render_array,
+    spec_to_model,
+    make_pipeline_model,
+    State,
 )
 from quadruped_mjx_rl.types import ObservationSize
 
@@ -78,7 +87,7 @@ class PipelineEnv(Env):
     @property
     def dt(self) -> jax.Array:
         """The timestep used for each env step."""
-        return self._pipeline_model.opt.timestep * self._n_frames
+        return self._pipeline_model.model.opt.timestep * self._n_frames
 
     @property
     def observation_size(self) -> ObservationSize:
@@ -91,7 +100,7 @@ class PipelineEnv(Env):
 
     @property
     def action_size(self) -> int:
-        return self._pipeline_model.nu
+        return self._pipeline_model.model.nu
 
     @property
     def env_model(self) -> EnvModel:
@@ -101,15 +110,6 @@ class PipelineEnv(Env):
     def pipeline_model(self) -> PipelineModel:
         return self._pipeline_model
 
-    # for brax wrappers compatibility
-    @property
-    def sys(self) -> PipelineModel:
-        return self._pipeline_model
-
-    @sys.setter
-    def sys(self, value):
-        self._pipeline_model = value
-
     def render(
         self,
         trajectory: list[PipelineState],
@@ -118,7 +118,5 @@ class PipelineEnv(Env):
         camera: str | None = None,
     ) -> Sequence[np.ndarray]:
         """Renders a trajectory using the MuJoCo renderer."""
+        trajectory = [pipeline_state.data for pipeline_state in trajectory]
         return render_array(self._env_model, trajectory, height, width, camera)
-
-    def backend(self) -> str:
-        return "mjx"

@@ -113,4 +113,3 @@ class SimpleFitter(Fitter):
         )
         optimizer_state = OptimizerState(optimizer_state=raw_optimizer_state)
         return (optimizer_state, params, key), metrics
-

@@ -1,6 +1,9 @@
 from quadruped_mjx_rl.models import ActorCriticConfig, ModelConfig, TeacherStudentConfig
 from quadruped_mjx_rl.training.fitting.optimization import (
-    Fitter, OptimizerConfig, OptimizerState, SimpleFitter,
+    Fitter,
+    OptimizerConfig,
+    OptimizerState,
+    SimpleFitter,
 )
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentFitter
 

@@ -1,4 +1,3 @@
-
 import functools
 import logging
 import time
@@ -14,7 +13,9 @@ from quadruped_mjx_rl.models.configs import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks import AgentParams
 from quadruped_mjx_rl.training import (
-    acting, logger as metric_logger, training_utils as _utils,
+    acting,
+    logger as metric_logger,
+    training_utils as _utils,
 )
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
@@ -258,20 +259,24 @@ def train(
             episode_length=training_config.episode_length,
             action_repeat=action_repeat,
             key=policy_eval_key,
-        ) for policy_factory, policy_eval_key in zip(policy_factories, eval_keys)
+        )
+        for policy_factory, policy_eval_key in zip(policy_factories, eval_keys)
     ]
     evaluators_metrics = [{} for evaluator in evaluators]
 
     def run_evaluations(
-        current_step, params, training_metrics: types.Metrics,
+        current_step,
+        params,
+        training_metrics: types.Metrics,
     ):
         for idx in range(len(evaluators)):
             evaluator_metrics = evaluators[idx].run_evaluation(
-                params,
-                training_metrics=training_metrics
+                params, training_metrics=training_metrics
             )
             logging.info("eval/episode_reward: %s" % evaluator_metrics["eval/episode_reward"])
-            logging.info("eval/episode_reward_std: %s" % evaluator_metrics["eval/episode_reward_std"])
+            logging.info(
+                "eval/episode_reward_std: %s" % evaluator_metrics["eval/episode_reward_std"]
+            )
             logging.info("current_step: %s" % current_step)
             progress_fn(current_step, evaluator_metrics)
             evaluators_metrics[idx] = evaluator_metrics

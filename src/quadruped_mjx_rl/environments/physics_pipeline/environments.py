@@ -1,12 +1,14 @@
-
 from abc import ABC, abstractmethod
 
 import jax
-import mujoco
 from flax.struct import dataclass as flax_dataclass
-from mujoco import mjx
 
-from quadruped_mjx_rl.environments.physics_pipeline.base import Base
+from quadruped_mjx_rl.environments.physics_pipeline.base import (
+    Base,
+    PipelineState,
+    PipelineModel,
+    EnvModel,
+)
 from quadruped_mjx_rl.types import Observation, ObservationSize
 
 
@@ -14,7 +16,7 @@ from quadruped_mjx_rl.types import Observation, ObservationSize
 class State(Base):
     """Environment state for training and inference."""
 
-    pipeline_state: mjx.Data
+    pipeline_state: PipelineState
     obs: Observation
     reward: jax.Array
     done: jax.Array
@@ -45,12 +47,12 @@ class Env(ABC):
 
     @property
     @abstractmethod
-    def env_model(self) -> mujoco.MjModel:
+    def env_model(self) -> EnvModel:
         """Mujoco model of the environment."""
 
     @property
     @abstractmethod
-    def pipeline_model(self) -> mjx.Model:
+    def pipeline_model(self) -> PipelineModel:
         """Mjx model of the environment."""
 
     @property
@@ -79,11 +81,11 @@ class Wrapper(Env):
         return self.env.action_size
 
     @property
-    def env_model(self) -> mujoco.MjModel:
+    def env_model(self) -> EnvModel:
         return self.env.env_model
 
     @property
-    def pipeline_model(self) -> mjx.Model:
+    def pipeline_model(self) -> PipelineModel:
         return self.env.pipeline_model
 
     @property

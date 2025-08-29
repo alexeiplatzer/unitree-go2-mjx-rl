@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass, field
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class

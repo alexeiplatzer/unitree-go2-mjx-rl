@@ -52,8 +52,8 @@ class TerrainTileConfig(ABC):
         name: str = "terrain_tile",
     ):
         pass
-        
-        
+
+
 class FlatTile(TerrainTileConfig):
     def create_tile(
         self,
@@ -66,13 +66,13 @@ class FlatTile(TerrainTileConfig):
             size=[self.square_side, self.square_side, self.floor_thickness],
             rgba=self.color.rgba,
         )
-        
-        
+
+
 class StripesTile(TerrainTileConfig):
     stripe_width: float = 0.1
     stripe_amplitude: float = 0.05
     base_thickness: float = 0.05
-    
+
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,
@@ -101,14 +101,14 @@ class StripesTile(TerrainTileConfig):
                 size=[self.stripe_width / 2, self.square_side, height / 2],
                 rgba=self.color.rgba,
             )
-        
+
 
 class StairsTile(TerrainTileConfig):
     step_vertical_size: float = 0.076
     step_horizontal_size: float = 0.12
     num_stairs: int = 4
     direction: int = 1
-    
+
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,
@@ -119,7 +119,7 @@ class StairsTile(TerrainTileConfig):
         V_STEP = self.step_vertical_size * 2
 
         body = _set_body(spec, grid_loc, name)
-        
+
         # Offset
         x_beginning, y_end = [-self.square_side + self.step_horizontal_size] * 2
         x_end, y_beginning = [self.square_side - self.step_horizontal_size] * 2
@@ -203,11 +203,11 @@ class DebrisWithSimpleGeoms(TerrainTileConfig):
             body = spec.worldbody.add_body(pos=pos, name=f"g{i}_{name}", mass=1)
             body.add_geom(type=g_type, size=size, rgba=self.debris_color.rgba)
             body.add_freejoint()
-        
+
 
 class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
     scale: float = 0.1
-    
+
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,
@@ -215,11 +215,11 @@ class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
         name: str = "mesh_debris",
     ):
         step = self.floor_thickness * 8
-        
+
         body = _set_body(spec, grid_loc, name)
-        
+
         spec.default.mesh.scale = np.array([self.scale] * 3, dtype=np.float64)
-        
+
         x_beginning = -self.square_side + self.floor_thickness
         y_beginning = self.square_side - self.floor_thickness
 
@@ -249,15 +249,15 @@ class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
                 body = spec.worldbody.add_body(pos=pos, name=f"d{i}_{j}_{name}", mass=1)
                 body.add_geom(
                     type=mj.mjtGeom.mjGEOM_MESH,
-                    meshname=f"d{i}_{j}_{name}", 
+                    meshname=f"d{i}_{j}_{name}",
                     rgba=self.debris_color.rgba,
                 )
                 body.add_freejoint()
-                
-                
+
+
 class BoxyTerrain(TerrainTileConfig):
     cube_length: float = 0.05
-    
+
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,
@@ -286,7 +286,6 @@ class BoxyTerrain(TerrainTileConfig):
 
 
 class BoxExtrusions(BoxyTerrain):
-
 
     def create_tile(
         self,
@@ -364,7 +363,10 @@ class HeightField(TerrainTileConfig):
         hfield = spec.add_hfield(
             name=name,
             size=[
-                self.square_side, self.square_side, self.field_height, self.field_height / 10
+                self.square_side,
+                self.square_side,
+                self.field_height,
+                self.field_height / 10,
             ],
             nrow=noise.shape[0],
             ncol=noise.shape[1],

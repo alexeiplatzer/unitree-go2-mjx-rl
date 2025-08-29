@@ -1,11 +1,14 @@
-
 from collections.abc import Callable
 
 import jax
 from flax import struct as flax_struct
 from jax import numpy as jnp
-from mujoco import mjx
 
+from quadruped_mjx_rl.environments.physics_pipeline.base import (
+    EnvModel,
+    PipelineModel,
+    PipelineState,
+)
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 
 
@@ -171,12 +174,12 @@ class DomainRandomizationVmapWrapper(Wrapper):
     def __init__(
         self,
         env: Env,
-        randomization_fn: Callable[[mjx.Model], tuple[mjx.Model, mjx.Model]],
+        randomization_fn: Callable[[PipelineModel], tuple[PipelineModel, PipelineModel]],
     ):
         super().__init__(env)
         self._sys_v, self._in_axes = randomization_fn(self.pipeline_model)
 
-    def _env_fn(self, pipeline_model: mjx.Model) -> Env:
+    def _env_fn(self, pipeline_model: PipelineModel) -> Env:
         env = self.env
         env.unwrapped._pipeline_model = pipeline_model
         return env
