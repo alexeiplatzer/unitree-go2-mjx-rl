@@ -1,4 +1,4 @@
-GLOBAL_PHYSICS_PIPELINE = "brax"  # or brax
+GLOBAL_PHYSICS_PIPELINE = "local"  # or brax
 
 from mujoco import MjModel as EnvModel, MjSpec as EnvSpec
 from quadruped_mjx_rl.environments.physics_pipeline.rendering import render_array
