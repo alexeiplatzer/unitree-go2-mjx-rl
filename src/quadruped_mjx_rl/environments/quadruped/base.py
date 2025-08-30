@@ -169,12 +169,12 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._foot_radius = robot_config.foot_radius
 
         # numbers of DOFs for velocity and position
-        self._nv = self._pipeline_model.nv
-        self._nq = self._pipeline_model.nq
+        self._nv = self._pipeline_model.model.nv
+        self._nq = self._pipeline_model.model.nq
 
     @staticmethod
     def customize_model(
-        model: EnvModel | EnvSpec, environment_config: EnvironmentConfig
+        model: EnvModel, environment_config: EnvironmentConfig
     ) -> EnvModel:
         model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
         model.actuator_biasprm[:, 1] = -environment_config.sim.override.Kp

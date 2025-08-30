@@ -6,7 +6,7 @@ from etils.epath import PathLike
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
-    model_load,
+    load_to_model,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
@@ -30,7 +30,7 @@ QuadrupedEnvFactory = Callable[[], type(QuadrupedBaseEnv)]
 
 
 def get_base_model(init_scene_path: PathLike, env_config: EnvironmentConfig) -> EnvModel:
-    base_model = model_load(init_scene_path)
+    base_model = load_to_model(init_scene_path)
     return resolve_env_class(env_config).customize_model(base_model, env_config)
 
 

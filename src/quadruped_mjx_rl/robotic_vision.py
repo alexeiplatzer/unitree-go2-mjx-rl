@@ -33,7 +33,7 @@ def get_renderer(pipeline_model: PipelineModel, vision_config: VisionConfig):
     from madrona_mjx.renderer import BatchRenderer
 
     return BatchRenderer(
-        m=pipeline_model,
+        m=pipeline_model.model,
         gpu_id=vision_config.gpu_id,
         num_worlds=vision_config.render_batch_size,
         batch_render_view_width=vision_config.render_width,

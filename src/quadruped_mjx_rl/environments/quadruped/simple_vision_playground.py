@@ -124,7 +124,9 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             )
             state_info["brightness"] = brightness
 
-            render_token, rgb, depth = self.renderer.init(pipeline_state, self.sys)
+            render_token, rgb, depth = self.renderer.init(
+                pipeline_state, self._pipeline_model.model
+            )
             state_info["render_token"] = render_token
 
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
@@ -146,7 +148,9 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             ),
         }
         if self._use_vision:
-            _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state)
+            _, rgb, depth = self.renderer.render(
+                state_info["render_token"], pipeline_state.data
+            )
             rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
             rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
             obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}

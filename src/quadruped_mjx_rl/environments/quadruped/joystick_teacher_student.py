@@ -77,7 +77,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
     def _get_privileged_obs(self) -> jax.Array:
         return jnp.concatenate(
             [
-                self.sys.geom_friction.reshape(-1),
+                self._pipeline_model.model.geom_friction.reshape(-1),
                 # self.sys.dof_frictionloss,
                 # self.sys.dof_damping,
                 # self.sys.jnt_stiffness,

@@ -30,7 +30,7 @@ if __name__ == "__main__":
         ),
     )
 
-    training_config = TrainingConfig(num_timesteps=1_00_000, num_envs=256, num_eval_envs=256)
+    training_config = TrainingConfig(num_timesteps=1_000_000, num_envs=256, num_eval_envs=256)
 
     init_scene_path = paths.unitree_go2_init_scene
 
@@ -51,4 +51,5 @@ if __name__ == "__main__":
         training_env=env_factory(),
         evaluation_env=env_factory(),
         randomization_fn=domain_randomize,
+        run_in_cell=False,
     )

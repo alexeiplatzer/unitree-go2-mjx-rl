@@ -59,7 +59,7 @@ def _identity_vision_randomization_fn(
 ) -> tuple[PipelineModel, PipelineModel]:
     """Tile the necessary fields for the Madrona memory buffer copy."""
     in_axes = jax.tree_util.tree_map(lambda x: None, pipeline_model)
-    in_axes = in_axes.tree_replace(
+    in_axes = in_axes.replace(model=in_axes.model.tree_replace(
         {
             "geom_rgba": 0,
             "geom_matid": 0,
@@ -70,7 +70,7 @@ def _identity_vision_randomization_fn(
             "light_castshadow": 0,
             "light_cutoff": 0,
         }
-    )
+    ))
     pipeline_model = pipeline_model.replace(
         model=pipeline_model.model.tree_replace(
             {
@@ -131,8 +131,8 @@ def _supplement_vision_randomization_fn(
 
     for field in required_fields:
         if getattr(in_axes, field) is None:
-            in_axes = in_axes.tree_replace({field: 0})
-            val = -2 if field == "geom_matid" else getattr(pipeline_model, field)
+            in_axes = in_axes.replace(model=in_axes.model.tree_replace({field: 0}))
+            val = -2 if field == "geom_matid" else getattr(pipeline_model.model, field)
             pipeline_model = pipeline_model.replace(
                 model=pipeline_model.model.tree_replace(
                     {
@@ -180,7 +180,7 @@ class MadronaWrapper(Wrapper):
             "light_cutoff",
         ]
         for field in required_fields:
-            assert hasattr(self.env._in_axes, field), f"{field} not in in_axes"
+            assert hasattr(self.env._in_axes.model, field), f"{field} not in in_axes"
             assert (
                 getattr(self.env._sys_v.model, field).shape[0] == num_worlds
             ), f"{field} shape does not match num_worlds"

@@ -260,7 +260,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         joint_vel = pipeline_state.qd[6:]
 
         # foot contact data based on z-position
-        foot_pos = pipeline_state.site_xpos[self._feet_site_id]
+        foot_pos = pipeline_state.data.site_xpos[self._feet_site_id]
         foot_contact_z = foot_pos[:, 2] - self._foot_radius
         contact = foot_contact_z < 1e-3  # a mm or less off the floor
         contact_filt_mm = contact | state_info["last_contact"]
@@ -274,7 +274,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
             "lin_vel_z": self._reward_lin_vel_z(xd),
             "ang_vel_xy": self._reward_ang_vel_xy(xd),
             "orientation": self._reward_orientation(x),
-            "torques": self._reward_torques(pipeline_state.qfrc_actuator),
+            "torques": self._reward_torques(pipeline_state.data.qfrc_actuator),
             "action_rate": self._reward_action_rate(action, state_info["last_act"]),
             "stand_still": self._reward_stand_still(state_info["command"], joint_angles),
             "feet_air_time": self._reward_feet_air_time(
@@ -352,8 +352,8 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self, pipeline_state: PipelineState, contact_filt: jax.Array
     ) -> jax.Array:
         # get velocities at feet which are offset from lower legs
-        pos = pipeline_state.site_xpos[self._feet_site_id]  # feet position
-        feet_offset = pos - pipeline_state.xpos[self._lower_leg_body_id]
+        pos = pipeline_state.data.site_xpos[self._feet_site_id]  # feet position
+        feet_offset = pos - pipeline_state.data.xpos[self._lower_leg_body_id]
         offset = Transform.create(pos=feet_offset)
         foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
         foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel

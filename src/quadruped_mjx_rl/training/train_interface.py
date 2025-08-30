@@ -66,6 +66,7 @@ def train(
     # checkpointing
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params_fn: Callable | None = None,
+    run_in_cell: bool = True,
 ) -> tuple[tuple, AgentParams, list[dict]]:
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -189,7 +190,9 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
-    progress_fn, eval_times = make_progress_fn(num_timesteps=training_config.num_timesteps)
+    progress_fn, eval_times = make_progress_fn(
+        num_timesteps=training_config.num_timesteps, run_in_cell=run_in_cell
+    )
 
     # Ensure positive logging cadence; fallback to env_step_per_training_step if unset or invalid.
     steps_between_logging = (
