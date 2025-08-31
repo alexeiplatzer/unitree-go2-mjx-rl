@@ -125,7 +125,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
             state_info["brightness"] = brightness
 
             render_token, rgb, depth = self.renderer.init(
-                pipeline_state, self._pipeline_model.model
+                pipeline_state.data, self._pipeline_model.model
             )
             state_info["render_token"] = render_token
 
