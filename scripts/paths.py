@@ -7,6 +7,7 @@ CONFIGS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "configs"
 RESOURCES_DIRECTORY = PROJECT_ROOT_DIRECTORY / "resources"
 UNITREE_GO2_RESOURCES = RESOURCES_DIRECTORY / "unitree_go2"
 unitree_go2_init_scene = UNITREE_GO2_RESOURCES / "scene_mjx.xml"
+unitree_go2_empty_scene = UNITREE_GO2_RESOURCES / "scene_mjx_empty_arena.xml"
 BARKOUR_RESOURCES = RESOURCES_DIRECTORY / "google_barkour_vb"
 barkour_init_scene = BARKOUR_RESOURCES / "scene_mjx.xml"
 

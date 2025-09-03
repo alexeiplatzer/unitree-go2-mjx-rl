@@ -112,7 +112,7 @@ def policy_factory(
     def policy(
         observations: types.Observation, key_sample: types.PRNGKey
     ) -> tuple[types.Action, types.Extra]:
-        latent_vector = encoder_networks.teacher_encoder_network.apply(
+        latent_vector = encoder_networks.apply(
             normalizer_params, encoder_params, observations
         )
         logits = policy_network.apply(
@@ -169,7 +169,7 @@ def make_teacher_student_networks(
             f"Common observation key {common_obs_key} must be in environment observations."
         )
 
-    observation_size = dict(observation_size) | {latent_obs_key: model_config.latent_size}
+    observation_size = dict(observation_size) | {latent_obs_key: (model_config.latent_size,)}
 
     parametric_action_distribution = distributions.NormalTanhDistribution(
         event_size=action_size
