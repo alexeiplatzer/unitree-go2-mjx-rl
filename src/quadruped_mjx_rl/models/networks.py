@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Generic, TypeVar, Protocol
+import logging
 
 import jax
 import jax.numpy as jnp
@@ -166,6 +167,8 @@ def make_network(
         if squeeze_output:
             return jnp.squeeze(out, axis=-1)
         return out
+
+    logging.info(f"observation size: {obs_size}")
 
     dummy_obs = jax.tree_util.tree_map(
         lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
