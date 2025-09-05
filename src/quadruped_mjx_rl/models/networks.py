@@ -11,6 +11,7 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
     identity_observation_preprocessor,
     Observation,
@@ -20,6 +21,8 @@ from quadruped_mjx_rl.types import (
     PreprocessorParams,
     PRNGKey,
     Policy,
+    Action,
+    Extra,
 )
 
 
@@ -53,8 +56,40 @@ class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
         pass
 
     @abstractmethod
+    def policy_apply(self, params: AgentNetworkParams, observation: Observation) -> jax.Array:
+        """Gets the logits for applying the network's policy with the provided params to the
+        provided observations"""
+        pass
+
+    @abstractmethod
     def policy_metafactory(self) -> tuple[PolicyFactory[AgentNetworkParams], ...]:
         pass
+
+
+def policy_factory(
+    policy_apply,
+    parametric_action_distribution: ParametricDistribution,
+    params: AgentParams,
+    deterministic: bool = False,
+):
+    def policy(
+        observation: Observation,
+        sample_key: PRNGKey,
+    ) -> tuple[Action, Extra]:
+        policy_logits = policy_apply(params, observation)
+        if deterministic:
+            return parametric_action_distribution.mode(policy_logits), {}
+        raw_actions = parametric_action_distribution.sample_no_postprocessing(
+            policy_logits, sample_key
+        )
+        log_prob = parametric_action_distribution.log_prob(policy_logits, raw_actions)
+        postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
+        return postprocessed_actions, {
+            "log_prob": log_prob,
+            "raw_action": raw_actions,
+        }
+
+    return policy
 
 
 class NetworkFactory(Protocol[AgentNetworkParams]):
@@ -117,7 +152,9 @@ def make_network(
         else:
             return [obs]
 
-    def apply(processor_params: PreprocessorParams, params: Params, obs: Observation):
+    def apply(
+        processor_params: PreprocessorParams, params: Params, obs: Observation
+    ) -> jax.Array:
         obs = preprocess_by_key(
             preprocess_obs_fn=preprocess_observations_fn,
             processor_params=processor_params,

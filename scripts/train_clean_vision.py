@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )
 
     training_config = TrainingWithVisionConfig(
-        num_timesteps=1_000_000, batch_size=64, num_envs=256, num_eval_envs=256
+        num_timesteps=1_000_000, batch_size=16, num_envs=32, num_eval_envs=32
     )
 
     init_scene_path = paths.unitree_go2_empty_scene
@@ -60,9 +60,9 @@ if __name__ == "__main__":
     init_qpos[2] += z_offset
 
     vision_config = VisionConfig(
-        render_batch_size=256,
-        render_width=128,
-        render_height=128,
+        render_batch_size=32,
+        render_width=32,
+        render_height=32,
         enabled_geom_groups=[0, 1, 2]
     )
 

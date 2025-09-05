@@ -12,6 +12,8 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentNetworks,
+    ActorCriticNetworks,
+    FeedForwardNetwork,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.fitting import optimization

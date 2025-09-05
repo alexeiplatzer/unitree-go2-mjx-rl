@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticNetworkParams,
     ActorCriticNetworks,
+    ActorCriticAgentParams,
 )
 from quadruped_mjx_rl.training.configs import HyperparamsPPO
 from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
@@ -37,23 +38,25 @@ def compute_ppo_loss(
     Returns:
       A tuple (loss, metrics)
     """
-    parametric_action_distribution = network.parametric_action_distribution
-    policy_apply = network.policy_network.apply
-    value_apply = network.value_network.apply
+    agent_params = ActorCriticAgentParams(
+        network_params=network_params, preprocessor_params=preprocessor_params
+    )
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    policy_logits = policy_apply(preprocessor_params, network_params.policy, data.observation)
+    policy_logits = network.policy_apply(
+        agent_params, data.observation
+    )
 
-    baseline = value_apply(preprocessor_params, network_params.value, data.observation)
+    baseline = network.value_apply(agent_params, data.observation)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    bootstrap_value = value_apply(preprocessor_params, network_params.value, terminal_obs)
+    bootstrap_value = network.value_apply(agent_params, terminal_obs)
 
     rewards = data.reward * hyperparams.reward_scaling
     truncation = data.extras["state_extras"]["truncation"]
     termination = (1 - data.discount) * (1 - truncation)
 
-    target_action_log_probs = parametric_action_distribution.log_prob(
+    target_action_log_probs = network.parametric_action_distribution.log_prob(
         policy_logits, data.extras["policy_extras"]["raw_action"]
     )
     behaviour_action_log_probs = data.extras["policy_extras"]["log_prob"]
@@ -84,7 +87,7 @@ def compute_ppo_loss(
     v_loss = jnp.mean(v_error * v_error) * 0.5 * 0.5
 
     # Entropy reward
-    entropy = jnp.mean(parametric_action_distribution.entropy(policy_logits, rng))
+    entropy = jnp.mean(network.parametric_action_distribution.entropy(policy_logits, rng))
     entropy_loss = hyperparams.entropy_cost * -entropy
 
     total_loss = policy_loss + v_loss + entropy_loss

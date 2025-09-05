@@ -17,6 +17,7 @@ from quadruped_mjx_rl.models.networks import (
     ComponentNetworkArchitecture,
     FeedForwardNetwork,
     make_network,
+    policy_factory,
 )
 
 
@@ -67,71 +68,61 @@ class TeacherStudentNetworks(
             student_encoder=self.student_encoder_network.init(student_key),
         )
 
+    def teacher_policy_apply(
+        self, params: TeacherStudentAgentParams, observation: types.Observation
+    ) -> jax.Array:
+        latent_vector = self.teacher_encoder_network.apply(
+            params.preprocessor_params, params.network_params.teacher_encoder, observation
+        )
+        return self.policy_network.apply(
+            params.preprocessor_params, params.network_params.policy, observation, latent_vector
+        )
+
+    def student_policy_apply(
+        self, params: TeacherStudentAgentParams, observation: types.Observation
+    ):
+        latent_vector = self.student_encoder_network.apply(
+            params.preprocessor_params, params.network_params.student_encoder, observation
+        )
+        return self.policy_network.apply(
+            params.preprocessor_params, params.network_params.policy, observation, latent_vector
+        )
+
+    def value_apply(
+        self, params: TeacherStudentAgentParams, observation: types.Observation
+    ) -> jax.Array:
+        latent_vector = self.teacher_encoder_network.apply(
+            params.preprocessor_params, params.network_params.teacher_encoder, observation
+        )
+        return self.value_network.apply(
+            params.preprocessor_params, params.network_params.value, observation, latent_vector
+        )
+
+    def policy_apply(
+        self, params: TeacherStudentAgentParams, observation: types.Observation
+    ):
+        return self.teacher_policy_apply(params, observation)
+
     def policy_metafactory(self):
         """Creates params and inference function for the Teacher and Student agents."""
 
-        teacher_encoder_network = self.teacher_encoder_network
-        student_encoder_network = self.student_encoder_network
-        policy_network = self.policy_network
-        parametric_action_distribution = self.parametric_action_distribution
-
         def make_teacher_policy(params: TeacherStudentAgentParams, deterministic: bool = False):
             return policy_factory(
-                normalizer_params=params.preprocessor_params,
-                policy_params=params.network_params.policy,
-                encoder_params=params.network_params.teacher_encoder,
-                policy_network=policy_network,
-                action_distribution=parametric_action_distribution,
-                encoder_networks=teacher_encoder_network,
+                policy_apply=self.teacher_policy_apply,
+                parametric_action_distribution=self.parametric_action_distribution,
+                params=params,
                 deterministic=deterministic,
             )
 
         def make_student_policy(params: TeacherStudentAgentParams, deterministic: bool = False):
             return policy_factory(
-                normalizer_params=params.preprocessor_params,
-                policy_params=params.network_params.policy,
-                encoder_params=params.network_params.student_encoder,
-                policy_network=policy_network,
-                action_distribution=parametric_action_distribution,
-                encoder_networks=student_encoder_network,
+                policy_apply=self.student_policy_apply,
+                parametric_action_distribution=self.parametric_action_distribution,
+                params=params,
                 deterministic=deterministic,
             )
 
         return make_teacher_policy, make_student_policy
-
-
-def policy_factory(
-    normalizer_params,
-    policy_params,
-    encoder_params,
-    policy_network,
-    action_distribution,
-    encoder_networks,
-    deterministic: bool = False,
-):
-    def policy(
-        observations: types.Observation, key_sample: types.PRNGKey
-    ) -> tuple[types.Action, types.Extra]:
-        latent_vector = encoder_networks.apply(
-            normalizer_params, encoder_params, observations
-        )
-        logits = policy_network.apply(
-            normalizer_params,
-            policy_params,
-            observations,
-            latent_vector,
-        )
-        if deterministic:
-            return action_distribution.mode(logits), {}
-        raw_actions = action_distribution.sample_no_postprocessing(logits, key_sample)
-        log_prob = action_distribution.log_prob(logits, raw_actions)
-        postprocessed_actions = action_distribution.postprocess(raw_actions)
-        return postprocessed_actions, {
-            "log_prob": log_prob,
-            "raw_action": raw_actions,
-        }
-
-    return policy
 
 
 def make_teacher_student_networks(

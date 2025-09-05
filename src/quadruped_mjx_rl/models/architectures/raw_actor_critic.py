@@ -5,7 +5,7 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import configs, distributions, modules, networks
 from quadruped_mjx_rl.models.networks import ComponentNetworkArchitecture
-from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.types import Observation, PRNGKey
 
 
 @flax_dataclass
@@ -48,34 +48,32 @@ class ActorCriticNetworks(ComponentNetworkArchitecture[ActorCriticNetworkParams]
             value=self.value_network.init(value_key),
         )
 
+    def policy_apply(
+        self, params: ActorCriticAgentParams, observation: Observation
+    ) -> jax.Array:
+        return self.policy_network.apply(
+            params.preprocessor_params, params.network_params.policy, observation
+        )
+
+    def value_apply(
+        self, params: ActorCriticAgentParams, observation: Observation
+    ) -> jax.Array:
+        return self.value_network.apply(
+            params.preprocessor_params, params.network_params.value, observation
+        )
+
     def policy_metafactory(self):
         """Creates params and inference function for the PPO agent."""
 
         def make_policy(
             params: ActorCriticAgentParams, deterministic: bool = False
         ) -> types.Policy:
-            policy_network = self.policy_network
-            parametric_action_distribution = self.parametric_action_distribution
-
-            def policy(
-                observations: types.Observation, key_sample: types.PRNGKey
-            ) -> tuple[types.Action, types.Extra]:
-                normalizer_params = params.preprocessor_params
-                policy_params = params.network_params.policy
-                logits = policy_network.apply(normalizer_params, policy_params, observations)
-                if deterministic:
-                    return self.parametric_action_distribution.mode(logits), {}
-                raw_actions = parametric_action_distribution.sample_no_postprocessing(
-                    logits, key_sample
-                )
-                log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-                postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-                return postprocessed_actions, {
-                    "log_prob": log_prob,
-                    "raw_action": raw_actions,
-                }
-
-            return policy
+            return networks.policy_factory(
+                policy_apply=self.policy_apply,
+                parametric_action_distribution=self.parametric_action_distribution,
+                params=params,
+                deterministic=deterministic,
+            )
 
         return (make_policy,)
 
