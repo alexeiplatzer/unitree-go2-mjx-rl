@@ -16,7 +16,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     ActorCriticNetworks,
     FeedForwardNetwork,
 )
-from quadruped_mjx_rl.models.networks import AgentNetworkParams
+from quadruped_mjx_rl.models.networks import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
@@ -38,6 +38,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         main_loss_fn: optimization.LossFn[TeacherStudentNetworkParams],
         algorithm_hyperparams: optimization.HyperparamsPPO,
     ):
+        self.network = network
         self.teacher_optimizer = optimization.make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
         )
@@ -107,25 +108,42 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def make_evaluation_fn(
         self,
         rng: PRNGKey,
-        evaluator_factory: Callable[[PRNGKey], Evaluator],
-        progress_fn_factory: Callable[[...], Callable[[int, Metrics], None]],
-    ) -> EvalFn[TeacherStudentNetworkParams]:
+        evaluator_factory: Callable[[PRNGKey, PolicyFactory], Evaluator],
+        progress_fn_factory: Callable[..., Callable[[int, Metrics], None]],
+        deterministic_eval: bool = True,
+    ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
+        teacher_policy_factory, student_policy_factory = self.network.policy_metafactory()
         teacher_eval_key, student_eval_key = jax.random.split(rng, 2)
-        teacher_progress_fn = functools.partial(progress_fn_factory, None)
-        student_progress_fn = functools.partial(progress_fn_factory, "student")
-        teacher_eval_fn = super().make_evaluation_fn(
-            teacher_eval_key, evaluator_factory, teacher_progress_fn
+        teacher_progress_fn = functools.partial(
+            progress_fn_factory, title="Teacher policy evaluation results"
         )
-        student_eval_fn = super().make_evaluation_fn(
-            student_eval_key, evaluator_factory, student_progress_fn
+        student_progress_fn = functools.partial(
+            progress_fn_factory, title="Student policy evaluation results", color="green"
+        )
+        encoder_convergence_progress_fn, conv_times = progress_fn_factory(
+            title="Student encoder convergence",
+            data_key="student_total_loss",
+            data_err_key=None,
+            label_key="student_total_loss",
+            color="red",
+        )
+        teacher_eval_fn, teacher_times = super().make_evaluation_fn(
+            teacher_eval_key,
+            lambda k, _: evaluator_factory(k, teacher_policy_factory),
+            teacher_progress_fn,
+        )
+        student_eval_fn, student_times = super().make_evaluation_fn(
+            student_eval_key,
+            lambda k, _: evaluator_factory(k, student_policy_factory),
+            student_progress_fn
         )
 
         def evaluation_fn(current_step, params, training_metrics):
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
-            # TODO: add student adaptation loss
+            encoder_convergence_progress_fn(current_step, training_metrics)
 
-        return evaluation_fn
+        return evaluation_fn, teacher_times
 
 
 def compute_student_loss(

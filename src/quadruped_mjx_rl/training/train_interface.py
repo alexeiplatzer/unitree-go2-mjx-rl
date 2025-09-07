@@ -67,7 +67,7 @@ def train(
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params_fn: Callable | None = None,
     run_in_cell: bool = True,
-) -> tuple[tuple, AgentParams, list[dict]]:
+) -> AgentParams:
     # Unpack hyperparams
     num_envs = training_config.num_envs
     num_eval_envs = training_config.num_eval_envs
@@ -180,7 +180,6 @@ def train(
         action_size=env.action_size,
         preprocess_observations_fn=preprocess_fn,
     )
-    policy_factories = ppo_networks.policy_metafactory()
 
     make_fitter = get_fitter(model_config)
     fitter = make_fitter(
@@ -190,20 +189,16 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
-    progress_fn, eval_times = make_progress_fn(
-        num_timesteps=training_config.num_timesteps, run_in_cell=run_in_cell
-    )
-
     # Ensure positive logging cadence; fallback to env_step_per_training_step if unset or invalid.
     steps_between_logging = (
         training_config.training_metrics_steps
         if training_config.training_metrics_steps and training_config.training_metrics_steps > 0
         else env_step_per_training_step
     )
-    metrics_aggregator = metric_logger.EpisodeMetricsLogger(
-        steps_between_logging=steps_between_logging,
-        progress_fn=progress_fn,
-    )
+    # metrics_aggregator = metric_logger.EpisodeMetricsLogger(
+    #     steps_between_logging=steps_between_logging,
+    #     progress_fn=progress_fn,
+    # )
 
     # Initialize model params and training state.
     network_init_params = ppo_networks.initialize(global_key)
@@ -227,11 +222,7 @@ def train(
         )
 
     if num_timesteps == 0:
-        return (
-            policy_factories,
-            training_state.agent_params,
-            [{}],
-        )
+        return training_state.agent_params
 
     training_state = jax.device_put_replicated(
         training_state, jax.local_devices()[:local_devices_to_use]
@@ -253,36 +244,26 @@ def train(
             vision=training_config.use_vision,
         )
     )
-    eval_keys = jax.random.split(eval_key, len(policy_factories))
-    evaluators = [
-        acting.Evaluator(
-            eval_env,
-            functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
-            num_eval_envs=num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=action_repeat,
-            key=policy_eval_key,
-        )
-        for policy_factory, policy_eval_key in zip(policy_factories, eval_keys)
-    ]
-    evaluators_metrics = [{} for evaluator in evaluators]
 
-    def run_evaluations(
-        current_step,
-        params,
-        training_metrics: types.Metrics,
-    ):
-        for idx in range(len(evaluators)):
-            evaluator_metrics = evaluators[idx].run_evaluation(
-                params, training_metrics=training_metrics
-            )
-            logging.info("eval/episode_reward: %s" % evaluator_metrics["eval/episode_reward"])
-            logging.info(
-                "eval/episode_reward_std: %s" % evaluator_metrics["eval/episode_reward_std"]
-            )
-            logging.info("current_step: %s" % current_step)
-            progress_fn(current_step, evaluator_metrics)
-            evaluators_metrics[idx] = evaluator_metrics
+    evaluator_factory = lambda k, policy_factory: acting.Evaluator(
+        eval_env,
+        functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
+        num_eval_envs=num_eval_envs,
+        episode_length=training_config.episode_length,
+        action_repeat=action_repeat,
+        key=k,
+    )
+    progress_fn_factory = functools.partial(
+        make_progress_fn,
+        num_timesteps=training_config.num_timesteps,
+        run_in_cell=run_in_cell,
+    )
+    run_evaluations, eval_times = fitter.make_evaluation_fn(
+        rng=eval_key,
+        evaluator_factory=evaluator_factory,
+        progress_fn_factory=progress_fn_factory,
+        deterministic_eval=training_config.deterministic_eval,
+    )
 
     logging.info("Setup took %s", time.time() - xt)
 
@@ -290,8 +271,7 @@ def train(
         training_config=training_config,
         env=env,
         fitter=fitter,
-        policy_factories=policy_factories,
-        metrics_aggregator=metrics_aggregator,
+        acting_policy_factory=ppo_networks.policy_metafactory()[0],
         policy_params_fn=policy_params_fn,
         run_evaluations=run_evaluations,
         env_step_per_training_step=env_step_per_training_step,
@@ -309,4 +289,4 @@ def train(
     logging.info("Time to jit: %s", eval_times[1] - eval_times[0])
     logging.info("Time to train: %s", eval_times[-1] - eval_times[1])
 
-    return policy_factories, final_params, evaluators_metrics
+    return final_params

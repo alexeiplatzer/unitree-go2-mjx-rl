@@ -14,6 +14,7 @@ from quadruped_mjx_rl.models.networks import (
     AgentNetworkParams,
     AgentParams,
     ComponentNetworkArchitecture,
+    PolicyFactory,
 )
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
@@ -91,9 +92,10 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
     def make_evaluation_fn(
         self,
         rng: PRNGKey,
-        evaluator_factory: Callable[[PRNGKey], Evaluator],
-        progress_fn_factory: Callable[[...], Callable[[int, Metrics], None]],
-    ) -> EvalFn[AgentNetworkParams]:
+        evaluator_factory: Callable[[PRNGKey, PolicyFactory], Evaluator],
+        progress_fn_factory: Callable[[], tuple[Callable[[int, Metrics], None], list[float]]],
+        deterministic_eval: bool = True,
+    ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
         pass
 
 
@@ -105,6 +107,7 @@ class SimpleFitter(Fitter):
         main_loss_fn,
         algorithm_hyperparams,
     ):
+        self.network = network
         self.optimizer = make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
         )
@@ -136,9 +139,15 @@ class SimpleFitter(Fitter):
         optimizer_state = OptimizerState(optimizer_state=raw_optimizer_state)
         return (optimizer_state, params, key), metrics
 
-    def make_evaluation_fn(self, rng, evaluator_factory, progress_fn_factory):
-        simple_evaluator = evaluator_factory(rng)
-        progress_fn = progress_fn_factory(None)
+    def make_evaluation_fn(
+        self, rng, evaluator_factory, progress_fn_factory, deterministic_eval=True
+    ):
+        policy_factories = self.network.policy_metafactory()
+        main_policy_factory = functools.partial(
+            policy_factories[0], deterministic=deterministic_eval
+        )
+        simple_evaluator = evaluator_factory(rng, main_policy_factory)
+        progress_fn, times = progress_fn_factory()
 
         def evaluation_fn(current_step, params, training_metrics):
             evaluator_metrics = simple_evaluator.run_evaluation(
@@ -151,4 +160,4 @@ class SimpleFitter(Fitter):
             logging.info("current_step: %s" % current_step)
             progress_fn(current_step, evaluator_metrics)
 
-        return evaluation_fn
+        return evaluation_fn, times

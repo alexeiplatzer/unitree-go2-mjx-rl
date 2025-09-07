@@ -34,8 +34,8 @@ def train(
     training_config: TrainingConfig,
     env: Env,
     fitter: Fitter,
-    policy_factories,
-    metrics_aggregator: metric_logger.EpisodeMetricsLogger,
+    acting_policy_factory,
+    # metrics_aggregator: metric_logger.EpisodeMetricsLogger,
     # callbacks
     policy_params_fn: Callable[..., None],
     run_evaluations,
@@ -103,7 +103,7 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        acting_policy = policy_factories[0](training_state.agent_params)
+        acting_policy = acting_policy_factory(training_state.agent_params, deterministic=True)
         # policies = (policies,) if not isinstance(policies, tuple) else policies
 
         def roll(carry, unused_t):
@@ -130,12 +130,12 @@ def train(
         data = jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data)
         assert data.discount.shape[1:] == (unroll_length,)
 
-        if training_config.log_training_metrics:  # log unroll metrics
-            jax.debug.callback(
-                metrics_aggregator.update_episode_metrics,
-                data.extras["state_extras"]["episode_metrics"],
-                data.extras["state_extras"]["episode_done"],
-            )
+        # if training_config.log_training_metrics:  # log unroll metrics
+        #     jax.debug.callback(
+        #         metrics_aggregator.update_episode_metrics,
+        #         data.extras["state_extras"]["episode_metrics"],
+        #         data.extras["state_extras"]["episode_done"],
+        #     )
 
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(
@@ -212,7 +212,7 @@ def train(
 
     # Run initial policy params fn
     params = _utils.unpmap(training_state.agent_params)
-    policy_params_fn(current_step, policy_factories, params)
+    # policy_params_fn(current_step, policy_factories, params)
     # Run initial eval
     if process_id == 0 and num_evals > 1:
         run_evaluations(current_step, params, training_metrics={})
@@ -242,7 +242,7 @@ def train(
         # Process id == 0.
         params = _utils.unpmap(training_state.agent_params)
 
-        policy_params_fn(current_step, policy_factories, params)
+        #policy_params_fn(current_step, policy_factories, params)
 
         if num_evals > 0:
             run_evaluations(current_step, params, training_metrics)
