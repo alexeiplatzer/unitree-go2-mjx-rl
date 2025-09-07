@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import mujoco as mj
 
-from quadruped_mjx_rl.config_utils import Configuration
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig
 
 
@@ -55,6 +55,9 @@ class TerrainConfig(Configuration):
         y = row * 2 * square_side
         z_offset = self.tiles[row][col].floor_thickness
         return x, y, z_offset
+
+
+register_config_base_class(TerrainConfig)
 
 
 def get_randomized_terrain(

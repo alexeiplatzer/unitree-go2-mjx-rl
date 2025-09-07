@@ -45,11 +45,11 @@ class JoystickSimpleEnvConfig(EnvCfg):
             # min max [m/s]
             lin_vel_x_min: float = 0.0
             lin_vel_x_max: float = 1.0
-            lin_vel_y_min: float = -0.2
-            lin_vel_y_max: float = 0.2
+            lin_vel_y_min: float = 0.0
+            lin_vel_y_max: float = 0.0
             # min max [rad/s]
-            ang_vel_yaw_min: float = -0.4
-            ang_vel_yaw_max: float = 0.4
+            ang_vel_yaw_min: float = 0.0
+            ang_vel_yaw_max: float = 0.0
 
         ranges: RangesConfig = field(default_factory=RangesConfig)
 
