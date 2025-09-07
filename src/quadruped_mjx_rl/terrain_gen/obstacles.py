@@ -54,6 +54,7 @@ class TerrainTileConfig(ABC):
         pass
 
 
+@dataclass
 class FlatTile(TerrainTileConfig):
     def create_tile(
         self,
@@ -68,6 +69,7 @@ class FlatTile(TerrainTileConfig):
         )
 
 
+@dataclass
 class StripesTile(TerrainTileConfig):
     stripe_width: float = 0.1
     stripe_amplitude: float = 0.05
@@ -103,6 +105,7 @@ class StripesTile(TerrainTileConfig):
             )
 
 
+@dataclass
 class StairsTile(TerrainTileConfig):
     step_vertical_size: float = 0.076
     step_horizontal_size: float = 0.12
@@ -163,6 +166,7 @@ class StairsTile(TerrainTileConfig):
         body.add_geom(pos=pos, size=size, rgba=self.color.rgba)
 
 
+@dataclass
 class DebrisWithSimpleGeoms(TerrainTileConfig):
     debris_color: Color = Color(0.6, 0.12, 0.15, 1.0)  # (Red)
 
@@ -205,6 +209,7 @@ class DebrisWithSimpleGeoms(TerrainTileConfig):
             body.add_freejoint()
 
 
+@dataclass
 class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
     scale: float = 0.1
 
@@ -255,6 +260,7 @@ class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
                 body.add_freejoint()
 
 
+@dataclass
 class BoxyTerrain(TerrainTileConfig):
     cube_length: float = 0.05
 
@@ -285,6 +291,7 @@ class BoxyTerrain(TerrainTileConfig):
                 )
 
 
+@dataclass
 class BoxExtrusions(BoxyTerrain):
 
     def create_tile(
@@ -337,6 +344,7 @@ class BoxExtrusions(BoxyTerrain):
                         tile.pos[2] = operation * self.cube_length
 
 
+@dataclass
 class HeightField(TerrainTileConfig):
     field_height: float = 0.1
 
