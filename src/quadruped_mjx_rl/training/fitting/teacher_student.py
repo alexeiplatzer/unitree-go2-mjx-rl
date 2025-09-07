@@ -2,6 +2,7 @@
 
 import functools
 from dataclasses import dataclass
+from typing import Callable
 
 import jax
 import optax
@@ -15,8 +16,11 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
     ActorCriticNetworks,
     FeedForwardNetwork,
 )
+from quadruped_mjx_rl.models.networks import AgentNetworkParams
 from quadruped_mjx_rl.training import gradients, training_utils
+from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
+from quadruped_mjx_rl.training.fitting.optimization import EvalFn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
 
@@ -99,6 +103,29 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         )
         metrics = teacher_metrics | student_metrics
         return (optimizer_state, params, key), metrics
+
+    def make_evaluation_fn(
+        self,
+        rng: PRNGKey,
+        evaluator_factory: Callable[[PRNGKey], Evaluator],
+        progress_fn_factory: Callable[[...], Callable[[int, Metrics], None]],
+    ) -> EvalFn[TeacherStudentNetworkParams]:
+        teacher_eval_key, student_eval_key = jax.random.split(rng, 2)
+        teacher_progress_fn = functools.partial(progress_fn_factory, None)
+        student_progress_fn = functools.partial(progress_fn_factory, "student")
+        teacher_eval_fn = super().make_evaluation_fn(
+            teacher_eval_key, evaluator_factory, teacher_progress_fn
+        )
+        student_eval_fn = super().make_evaluation_fn(
+            student_eval_key, evaluator_factory, student_progress_fn
+        )
+
+        def evaluation_fn(current_step, params, training_metrics):
+            teacher_eval_fn(current_step, params, training_metrics)
+            student_eval_fn(current_step, params, training_metrics)
+            # TODO: add student adaptation loss
+
+        return evaluation_fn
 
 
 def compute_student_loss(

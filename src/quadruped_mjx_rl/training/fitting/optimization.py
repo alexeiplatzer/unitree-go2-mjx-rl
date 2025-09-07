@@ -2,6 +2,8 @@ import functools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Generic, Protocol
+from collections.abc import Callable
+import logging
 
 import jax
 import optax
@@ -17,6 +19,7 @@ from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
+from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
 
 
@@ -50,6 +53,16 @@ class LossFn(Protocol[AgentNetworkParams]):
         pass
 
 
+class EvalFn(Protocol[AgentNetworkParams]):
+    def __call__(
+        self,
+        current_step: int,
+        params: AgentParams[AgentNetworkParams],
+        training_metrics: Metrics,
+    ) -> None:
+        pass
+
+
 class Fitter(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
     def __init__(
@@ -72,6 +85,15 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         data: Transition,
         normalizer_params: RunningStatisticsState,
     ) -> tuple[tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey], dict[str, ...]]:
+        pass
+
+    @abstractmethod
+    def make_evaluation_fn(
+        self,
+        rng: PRNGKey,
+        evaluator_factory: Callable[[PRNGKey], Evaluator],
+        progress_fn_factory: Callable[[...], Callable[[int, Metrics], None]],
+    ) -> EvalFn[AgentNetworkParams]:
         pass
 
 
@@ -113,3 +135,20 @@ class SimpleFitter(Fitter):
         )
         optimizer_state = OptimizerState(optimizer_state=raw_optimizer_state)
         return (optimizer_state, params, key), metrics
+
+    def make_evaluation_fn(self, rng, evaluator_factory, progress_fn_factory):
+        simple_evaluator = evaluator_factory(rng)
+        progress_fn = progress_fn_factory(None)
+
+        def evaluation_fn(current_step, params, training_metrics):
+            evaluator_metrics = simple_evaluator.run_evaluation(
+                params, training_metrics=training_metrics
+            )
+            logging.info("eval/episode_reward: %s" % evaluator_metrics["eval/episode_reward"])
+            logging.info(
+                "eval/episode_reward_std: %s" % evaluator_metrics["eval/episode_reward_std"]
+            )
+            logging.info("current_step: %s" % current_step)
+            progress_fn(current_step, evaluator_metrics)
+
+        return evaluation_fn
