@@ -31,16 +31,16 @@ if __name__ == "__main__":
         modules=TeacherStudentVisionConfig.ModulesConfig(
             policy=[128, 128, 128, 128],
             value=[256, 256, 256, 256],
-            encoder_convolutional=[8, 16, 32],
+            encoder_convolutional=[4, 8, 32],
             encoder_dense=[256, 256],
-            adapter_convolutional=[8, 16, 32],
+            adapter_convolutional=[4, 8, 32],
             adapter_dense=[256, 256],
         ),
         latent_size=256,
     )
 
     training_config = TrainingWithVisionConfig(
-        num_timesteps=1_000_000, batch_size=16, num_envs=32, num_eval_envs=32
+        num_timesteps=1_000_000, batch_size=4, num_envs=8, num_eval_envs=8
     )
 
     init_scene_path = paths.unitree_go2_empty_scene
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     init_qpos[2] += z_offset
 
     vision_config = VisionConfig(
-        render_batch_size=32,
+        render_batch_size=8,
         render_width=32,
         render_height=32,
         enabled_geom_groups=[0, 1, 2]

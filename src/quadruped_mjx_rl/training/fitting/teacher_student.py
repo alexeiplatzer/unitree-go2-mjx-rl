@@ -3,6 +3,7 @@
 import functools
 from dataclasses import dataclass
 from typing import Callable
+import logging
 
 import jax
 import optax
@@ -122,7 +123,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         )
         encoder_convergence_progress_fn, conv_times = progress_fn_factory(
             title="Student encoder convergence",
-            data_key="student_total_loss",
+            data_key="training/student_total_loss",
             data_err_key=None,
             label_key="student_total_loss",
             color="red",
@@ -143,7 +144,8 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         def evaluation_fn(current_step, params, training_metrics):
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
-            encoder_convergence_progress_fn(current_step, training_metrics)
+            if training_metrics:
+                encoder_convergence_progress_fn(current_step, training_metrics)
 
         return evaluation_fn, teacher_times
 

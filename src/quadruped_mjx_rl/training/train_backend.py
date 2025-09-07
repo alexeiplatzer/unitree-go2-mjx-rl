@@ -103,7 +103,7 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        acting_policy = acting_policy_factory(training_state.agent_params, deterministic=True)
+        acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
         # policies = (policies,) if not isinstance(policies, tuple) else policies
 
         def roll(carry, unused_t):
