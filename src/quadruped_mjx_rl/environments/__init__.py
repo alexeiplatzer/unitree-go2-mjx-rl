@@ -20,7 +20,7 @@ from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
     QuadrupedJoystickTeacherStudentEnv,
     TeacherStudentEnvironmentConfig,
 )
-from quadruped_mjx_rl.environments.quadruped.simple_vision_playground import (
+from quadruped_mjx_rl.environments.quadruped.vision_teacher_student import (
     QuadrupedVisionEnvConfig,
     QuadrupedVisionEnvironment,
 )

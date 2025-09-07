@@ -3,13 +3,14 @@
 ## By Section
 
 ### Package
-- [ ] make the vision environment use a simplified setup
+- [X] make the vision environment use a simplified setup
 - [ ] improve the non-vision teacher student env and test it
 - [ ] add column or box like obstacles, so that navigation provides a greater advantage.
 - [ ] add pure tracking and forward moving cumulative reward to metrics, no normalizations.
 - [ ] add student supervised convergence to progress tracking
 - [ ] refactor evaluation to happen on the side of the fitter with callbacks.
 - [ ] add more robust checkpointing to the training
+- [ ] make a continuous version of the stripes tiles (zig-zag)
 
 ### Notebooks
 - [ ] update the yaml config files and default config values
@@ -21,7 +22,7 @@
 
 ### Documentation
 - [ ] update the historical todo changelog
-- [ ] organize the todo section
+- [X] organize the todo section
 - [ ] update the notion workspace
 - [ ] update the readme
 - [ ] add docstrings everywhere

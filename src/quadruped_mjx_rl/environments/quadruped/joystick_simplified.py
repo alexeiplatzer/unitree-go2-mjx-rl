@@ -1,4 +1,5 @@
-"""Simplified environment for training quadruped joystick policies in MJX."""
+"""Simplified environment for training quadruped joystick policies in MJX.
+It doesn't kick the robot and doesn't add noise to observations."""
 
 from dataclasses import dataclass, field
 
@@ -44,11 +45,11 @@ class JoystickSimpleEnvConfig(EnvCfg):
             # min max [m/s]
             lin_vel_x_min: float = 0.0
             lin_vel_x_max: float = 1.0
-            lin_vel_y_min: float = 0.0
-            lin_vel_y_max: float = 0.0
+            lin_vel_y_min: float = -0.2
+            lin_vel_y_max: float = 0.2
             # min max [rad/s]
-            ang_vel_yaw_min: float = 0.0
-            ang_vel_yaw_max: float = 0.0
+            ang_vel_yaw_min: float = -0.4
+            ang_vel_yaw_max: float = 0.4
 
         ranges: RangesConfig = field(default_factory=RangesConfig)
 
@@ -109,13 +110,13 @@ class JoystickSimpleEnvConfig(EnvCfg):
 
     @classmethod
     def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
-        return QuadrupedJoystickBaseEnv
+        return QuadrupedJoystickSimplifiedEnv
 
 
 register_environment_config_class(JoystickSimpleEnvConfig)
 
 
-class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
+class QuadrupedJoystickSimplifiedEnv(QuadrupedBaseEnv):
     """base environment for training the go2 quadruped joystick policy in MJX."""
 
     def __init__(
@@ -171,7 +172,6 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def step(self, state: State, action: jax.Array) -> State:
         rng, command_key = jax.random.split(state.info["rng"], 2)
 
-        # give the robot a random kick for robustness
         state.info["rng"] = rng
 
         state = super().step(state, action)
@@ -206,11 +206,10 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         state_info["last_vel"] = jnp.zeros(12)
         state_info["last_contact"] = jnp.zeros(shape=4, dtype=jnp.bool)
         state_info["feet_air_time"] = jnp.zeros(4)
-        state_info["kick"] = jnp.array([0.0, 0.0])
 
-        state_obs = QuadrupedJoystickBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        state_obs = QuadrupedJoystickSimplifiedEnv._get_state_obs(self, pipeline_state, state_info)
         obs_history = jnp.zeros(state_obs.size * 15)  # keep track of the last 15 steps
-        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(self, obs_history, state_obs)
+        obs_history = QuadrupedJoystickSimplifiedEnv._update_obs_history(self, obs_history, state_obs)
         return obs_history
 
     def _get_obs(
@@ -221,8 +220,8 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     ) -> jax.Array | dict[str, jax.Array]:
         assert isinstance(previous_obs, jax.Array)
         obs_history = previous_obs
-        state_obs = QuadrupedJoystickBaseEnv._get_state_obs(self, pipeline_state, state_info)
-        obs_history = QuadrupedJoystickBaseEnv._update_obs_history(self, obs_history, state_obs)
+        state_obs = QuadrupedJoystickSimplifiedEnv._get_state_obs(self, pipeline_state, state_info)
+        obs_history = QuadrupedJoystickSimplifiedEnv._update_obs_history(self, obs_history, state_obs)
         return obs_history
 
     def _update_obs_history(self, obs_history: jax.Array, current_obs: jax.Array) -> jax.Array:
@@ -232,10 +231,10 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def _get_state_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> jax.Array:
-        obs_list = QuadrupedJoystickBaseEnv._get_raw_obs_list(self, pipeline_state, state_info)
+        obs_list = QuadrupedJoystickSimplifiedEnv._get_raw_obs_list(self, pipeline_state, state_info)
         obs = jnp.concatenate(obs_list)
 
-        # clip, noise
+        # clip
         obs = jnp.clip(obs, -100.0, 100.0)
         return obs
 

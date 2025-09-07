@@ -14,9 +14,9 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
-from quadruped_mjx_rl.environments.quadruped.joystick_base import (
-    JoystickBaseEnvConfig,
-    QuadrupedJoystickBaseEnv,
+from quadruped_mjx_rl.environments.quadruped.joystick_simplified import (
+    JoystickSimpleEnvConfig,
+    QuadrupedJoystickSimplifiedEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
@@ -28,11 +28,11 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
+class QuadrupedVisionEnvConfig(JoystickSimpleEnvConfig):
     use_vision: bool = True
 
     @dataclass
-    class ObservationNoiseConfig(JoystickBaseEnvConfig.ObservationNoiseConfig):
+    class ObservationNoiseConfig(JoystickSimpleEnvConfig.ObservationNoiseConfig):
         brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
 
     observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
@@ -49,7 +49,7 @@ class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
 register_environment_config_class(QuadrupedVisionEnvConfig)
 
 
-class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
+class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
 
     def __init__(
         self,
@@ -77,7 +77,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
     def customize_model(
         env_model: EnvSpec | EnvModel, environment_config: QuadrupedVisionEnvConfig
     ):
-        env_model = QuadrupedJoystickBaseEnv.customize_model(env_model, environment_config)
+        env_model = QuadrupedJoystickSimplifiedEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [5.0, 5.0]
         return env_model
@@ -110,7 +110,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickBaseEnv._init_obs(self, pipeline_state, state_info),
+            "state": QuadrupedJoystickSimplifiedEnv._init_obs(self, pipeline_state, state_info),
         }
         if self._use_vision:
             rng = state_info["rng"]
@@ -143,7 +143,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickBaseEnv._get_obs(
+            "state": QuadrupedJoystickSimplifiedEnv._get_obs(
                 self, pipeline_state, state_info, last_obs["state"]
             ),
         }
