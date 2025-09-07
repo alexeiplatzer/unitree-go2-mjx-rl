@@ -20,7 +20,7 @@ from quadruped_mjx_rl.models.networks import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
-from quadruped_mjx_rl.training.fitting.optimization import EvalFn
+from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
 
@@ -127,12 +127,14 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             label_key="student_total_loss",
             color="red",
         )
-        teacher_eval_fn, teacher_times = super().make_evaluation_fn(
+        teacher_eval_fn, teacher_times = SimpleFitter.make_evaluation_fn(
+            self,
             teacher_eval_key,
             lambda k, _: evaluator_factory(k, teacher_policy_factory),
             teacher_progress_fn,
         )
-        student_eval_fn, student_times = super().make_evaluation_fn(
+        student_eval_fn, student_times = SimpleFitter.make_evaluation_fn(
+            self,
             student_eval_key,
             lambda k, _: evaluator_factory(k, student_policy_factory),
             student_progress_fn
