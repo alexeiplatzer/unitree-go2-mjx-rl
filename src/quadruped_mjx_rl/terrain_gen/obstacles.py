@@ -168,7 +168,7 @@ class StairsTile(TerrainTileConfig):
 
 @dataclass
 class DebrisWithSimpleGeoms(TerrainTileConfig):
-    debris_color: Color = Color(0.6, 0.12, 0.15, 1.0)  # (Red)
+    debris_color: Color = field(default_factory=lambda: Color(0.6, 0.12, 0.15, 1.0))  # (Red)
 
     def create_tile(
         self,
