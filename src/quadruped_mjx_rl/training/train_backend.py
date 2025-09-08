@@ -212,7 +212,7 @@ def train(
 
     # Run initial policy params fn
     params = _utils.unpmap(training_state.agent_params)
-    # policy_params_fn(current_step, policy_factories, params)
+    policy_params_fn(current_step, params)
     # Run initial eval
     if process_id == 0 and num_evals > 1:
         run_evaluations(current_step, params, training_metrics={})
@@ -242,7 +242,7 @@ def train(
         # Process id == 0.
         params = _utils.unpmap(training_state.agent_params)
 
-        #policy_params_fn(current_step, policy_factories, params)
+        policy_params_fn(current_step, params)
 
         if num_evals > 0:
             run_evaluations(current_step, params, training_metrics)

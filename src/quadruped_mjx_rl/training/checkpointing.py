@@ -2,7 +2,7 @@ from orbax import checkpoint as ocp
 from flax.training import orbax_utils
 
 
-def policy_params_fn(current_step, make_policy, parameters, checkpoints_save_path):
+def policy_params_fn(current_step, parameters, checkpoints_save_path):
     # save checkpoints
     orbax_checkpointer = ocp.PyTreeCheckpointer()
     save_args = orbax_utils.save_args_from_target(parameters)
