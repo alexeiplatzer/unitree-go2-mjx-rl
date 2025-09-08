@@ -157,7 +157,7 @@ def train(
 
         new_training_state = TrainingState(
             optimizer_state=opt_state,
-            agent_params=AgentParams(
+            agent_params=type(training_state.agent_params)(
                 network_params=ts_params,
                 preprocessor_params=normalizer_params,
             ),
