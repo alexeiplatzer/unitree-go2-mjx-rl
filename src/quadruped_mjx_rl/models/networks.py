@@ -41,6 +41,13 @@ class AgentParams(Generic[AgentNetworkParams]):
     preprocessor_params: PreprocessorParams
     network_params: AgentNetworkParams
 
+    def restore_params(
+        self,
+        restore_params: "AgentParams[AgentNetworkParams]",
+        restore_value: bool = False,
+    ) -> "AgentParams[AgentNetworkParams]":
+        pass
+
 
 class PolicyFactory(Protocol[AgentNetworkParams]):
     def __call__(

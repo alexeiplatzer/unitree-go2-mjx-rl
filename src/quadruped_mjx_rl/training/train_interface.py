@@ -65,7 +65,7 @@ def train(
     ) = None,
     # checkpointing
     policy_params_fn: Callable[..., None] = lambda *args: None,
-    restore_params_fn: Callable | None = None,
+    restore_params: AgentParams | None = None,
     run_in_cell: bool = True,
 ) -> AgentParams:
     # Unpack hyperparams
@@ -215,10 +215,12 @@ def train(
         env_steps=jnp.array(0, dtype=jnp.int32),
     )
 
-    if restore_params_fn is not None:
+    if restore_params is not None:
         logging.info("Restoring TrainingState from `restore_params`.")
         training_state = training_state.replace(
-            agent_params=restore_params_fn(training_state.agent_params)
+            agent_params=training_state.agent_params.restore_params(
+                restore_params, restore_value=True
+            )
         )
 
     if num_timesteps == 0:
