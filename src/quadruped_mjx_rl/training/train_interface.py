@@ -208,7 +208,7 @@ def train(
     )
     training_state = TrainingState(
         optimizer_state=fitter.optimizer_init(network_init_params),
-        agent_params=AgentParams(
+        agent_params=ppo_networks.agent_params_class()(
             network_params=network_init_params,
             preprocessor_params=running_statistics.init_state(_utils.remove_pixels(obs_shape)),
         ),
@@ -222,6 +222,7 @@ def train(
                 restore_params, restore_value=True
             )
         )
+    logging.info(f"Agent params type: {type(training_state.agent_params)}")
 
     if num_timesteps == 0:
         return training_state.agent_params

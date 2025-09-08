@@ -41,6 +41,9 @@ class ActorCriticNetworks(ComponentNetworkArchitecture[ActorCriticNetworkParams]
     value_network: networks.FeedForwardNetwork
     parametric_action_distribution: distributions.ParametricDistribution
 
+    def agent_params_class(self):
+        return ActorCriticAgentParams
+
     def initialize(self, rng: PRNGKey) -> ActorCriticNetworkParams:
         policy_key, value_key = jax.random.split(rng)
         return ActorCriticNetworkParams(

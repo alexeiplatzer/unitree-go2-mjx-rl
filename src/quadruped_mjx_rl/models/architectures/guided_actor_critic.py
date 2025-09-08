@@ -59,6 +59,9 @@ class TeacherStudentNetworks(
     teacher_encoder_network: FeedForwardNetwork
     student_encoder_network: FeedForwardNetwork
 
+    def agent_params_class(self):
+        return TeacherStudentAgentParams
+
     def initialize(self, rng: types.PRNGKey) -> TeacherStudentNetworkParams:
         policy_key, value_key, teacher_key, student_key = jax.random.split(rng, 4)
         return TeacherStudentNetworkParams(

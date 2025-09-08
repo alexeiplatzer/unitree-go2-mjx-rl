@@ -60,6 +60,10 @@ class PolicyFactory(Protocol[AgentNetworkParams]):
 
 class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
+    def agent_params_class(self):
+        pass
+
+    @abstractmethod
     def initialize(self, rng: PRNGKey) -> AgentNetworkParams:
         pass
 
