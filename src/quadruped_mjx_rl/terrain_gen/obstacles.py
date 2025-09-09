@@ -106,6 +106,44 @@ class StripesTile(TerrainTileConfig):
             )
 
 
+
+
+@dataclass
+class Cylinders(TerrainTileConfig):
+    """Tile populated with simple vertical cylinders.
+
+    Cylinders are placed at the coordinates listed in ``coords`` with the
+    given ``radius`` and ``height``.  By default two cylinders are positioned
+    close to the centre line leaving a narrow passage for the robot to walk
+    through.
+    """
+
+    height: float = 0.5
+    radius: float = 0.2
+    locations: list[list[float]] = field(default_factory=lambda: [[0.6, 0.2], [1.4, -0.2]])
+    cylinder_color: Color = field(default_factory=lambda: Color(1.0, 0.5, 0.0, 1.0))
+
+    def create_tile(
+        self,
+        spec: mj.MjSpec | None = None,
+        grid_loc: list[float] | None = None,
+        name: str = "cylinders",
+    ):
+        body = _set_body(spec, grid_loc, name)
+        body.add_geom(
+            size=[self.square_side, self.square_side, self.floor_thickness],
+            rgba=self.color.rgba,
+        )
+
+        for x, y in self.locations:
+            body.add_geom(
+                type=mj.mjtGeom.mjGEOM_CYLINDER,
+                pos=[x, y, self.floor_thickness + self.height / 2],
+                size=[self.radius, self.height / 2, 0],
+                rgba=self.cylinder_color.rgba,
+            )
+
+
 @dataclass
 class StairsTile(TerrainTileConfig):
     step_vertical_size: float = 0.076
