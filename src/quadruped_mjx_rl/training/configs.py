@@ -72,7 +72,7 @@ class TrainingWithVisionConfig(TrainingConfig):
     num_timesteps: int = 1_000_000
     batch_size: int = 256
     num_updates_per_batch: int = 8
-    optimizer: OptimizerConfig = field(
+    optimizer: TeacherStudentOptimizerConfig = field(
         default_factory=lambda: TeacherStudentOptimizerConfig(
             max_grad_norm=1.0,
             student_learning_rate=0.001,

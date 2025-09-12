@@ -21,6 +21,7 @@ QD_WIDTHS = {"f": 6, "1": 1, "2": 2, "3": 3}
 # Abstract over mujoco types
 EnvModel = MjModel
 EnvSpec = MjSpec
+MjxModel = mjx.Model
 
 
 @flax_dataclass
@@ -241,7 +242,7 @@ class PipelineState:
 
 @flax_dataclass
 class PipelineModel:
-    model: mjx.Model
+    model: MjxModel
 
 
 def make_pipeline_model(env_model: EnvModel) -> PipelineModel:

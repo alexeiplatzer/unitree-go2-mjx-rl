@@ -35,9 +35,9 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         self,
         environment_config: TeacherStudentEnvironmentConfig,
         robot_config: RobotConfig,
-        env_spec: EnvSpec | EnvModel,
+        env_model: EnvSpec | EnvModel,
     ):
-        super().__init__(environment_config, robot_config, env_spec)
+        super().__init__(environment_config, robot_config, env_model)
 
     def _init_obs(
         self,

@@ -130,7 +130,7 @@ def _supplement_vision_randomization_fn(
     ]
 
     for field in required_fields:
-        if getattr(in_axes, field) is None:
+        if getattr(in_axes.model, field) is None:
             in_axes = in_axes.replace(model=in_axes.model.tree_replace({field: 0}))
             val = -2 if field == "geom_matid" else getattr(pipeline_model.model, field)
             pipeline_model = pipeline_model.replace(

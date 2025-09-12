@@ -55,12 +55,12 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
         self,
         environment_config: QuadrupedVisionEnvConfig,
         robot_config: RobotConfig,
-        env_spec: EnvSpec | EnvModel,
+        env_model: EnvSpec | EnvModel,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
         renderer_maker: Callable[[PipelineModel], ...] | None = None,
     ):
-        super().__init__(environment_config, robot_config, env_spec)
+        super().__init__(environment_config, robot_config, env_model)
         self._init_q = self._init_q if init_qpos is None else init_qpos
 
         self._use_vision = environment_config.use_vision
@@ -75,11 +75,11 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
 
     @staticmethod
     def customize_model(
-        env_model: EnvSpec | EnvModel, environment_config: QuadrupedVisionEnvConfig
+        env_model: EnvModel, environment_config: QuadrupedVisionEnvConfig
     ):
         env_model = QuadrupedJoystickSimplifiedEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
-        env_model.geom_size[floor_id, :2] = [5.0, 5.0]
+        env_model.geom_size[floor_id, :2] = [25.0, 25.0]
         return env_model
 
     def reset(self, rng: jax.Array, start_qpos: jax.Array | None = None) -> State:

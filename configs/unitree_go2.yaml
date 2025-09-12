@@ -22,6 +22,7 @@ robot:
     rear_right: RR_calf
   lower_leg_name: calf
   main_body_name: base
+  robot_class: default
   robot_name: unitree_go2
   scene_file: scene_mjx.xml
   upper_leg_name: thigh

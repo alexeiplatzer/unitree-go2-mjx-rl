@@ -3,6 +3,7 @@ from quadruped_mjx_rl.environments.physics_pipeline.base import (
     Transform,
     EnvSpec,
     EnvModel,
+    MjxModel,
     PipelineState,
     PipelineModel,
     make_pipeline_model,

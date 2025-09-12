@@ -123,10 +123,10 @@ class QuadrupedJoystickSimplifiedEnv(QuadrupedBaseEnv):
         self,
         environment_config: JoystickSimpleEnvConfig,
         robot_config: RobotConfig,
-        env_spec: EnvModel | EnvSpec,
+        env_model: EnvModel | EnvSpec,
         init_qpos: jax.Array | None = None,
     ):
-        super().__init__(environment_config, robot_config, env_spec)
+        super().__init__(environment_config, robot_config, env_model)
         self._init_q = self._init_q if init_qpos is None else jnp.array(init_qpos)
         self._resampling_time = environment_config.command.resampling_time
         self._command_ranges = environment_config.command.ranges

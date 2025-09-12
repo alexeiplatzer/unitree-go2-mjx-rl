@@ -22,7 +22,7 @@ robot:
     rear_right: lower_leg_hind_right
   lower_leg_name: lower_leg
   main_body_name: torso
-  robot_class: Quadruped
+  robot_class: default
   robot_name: google_barkour_vb
   scene_file: scene_mjx.xml
   upper_leg_name: upper_leg

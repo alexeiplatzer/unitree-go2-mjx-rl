@@ -1,6 +1,6 @@
 from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import robots, environments, models, policy_rendering
-from quadruped_mjx_rl.training import training
+from quadruped_mjx_rl import robots, environments, models, policy_rendering, robotic_vision
+from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
 
 import paths
 
@@ -27,24 +27,37 @@ if __name__ == "__main__":
     guided_ppo_env_config = environments.TeacherStudentEnvironmentConfig()
     guided_ppo_model_config = models.TeacherStudentConfig()
 
-    ppo_training_config = training.TrainingConfig()
+    ppo_training_config = TrainingConfig()
 
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "raw_ppo.yaml",
+        paths.CONFIGS_DIRECTORY / "raw_ppo_example.yaml",
         raw_ppo_env_config,
         raw_ppo_model_config,
         ppo_training_config,
     )
 
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "guided_ppo.yaml",
+        paths.CONFIGS_DIRECTORY / "guided_ppo_example.yaml",
         guided_ppo_env_config,
         guided_ppo_model_config,
         ppo_training_config,
     )
 
+    vision_ppo_env_config = environments.QuadrupedVisionEnvConfig()
+    vision_ppo_model_config = models.TeacherStudentVisionConfig()
+    vision_ppo_training_config = TrainingWithVisionConfig()
+    vision_config = robotic_vision.VisionConfig()
+
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "vision_ppo_example.yaml",
+        vision_ppo_env_config,
+        vision_ppo_model_config,
+        vision_ppo_training_config,
+        vision_config,
+    )
+
     # --- Example rendering config ---
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "render_basic.yaml",
+        paths.CONFIGS_DIRECTORY / "render_basic_example.yaml",
         policy_rendering.RenderConfig(),
     )

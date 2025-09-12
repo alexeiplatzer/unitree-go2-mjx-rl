@@ -131,9 +131,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self,
         environment_config: JoystickBaseEnvConfig,
         robot_config: RobotConfig,
-        env_spec: EnvModel | EnvSpec,
+        env_model: EnvModel | EnvSpec,
     ):
-        super().__init__(environment_config, robot_config, env_spec)
+        super().__init__(environment_config, robot_config, env_model)
 
         self._kick_interval = environment_config.domain_rand.kick_interval
         self._kick_vel = environment_config.domain_rand.kick_vel

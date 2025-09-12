@@ -106,14 +106,12 @@ class StripesTile(TerrainTileConfig):
             )
 
 
-
-
 @dataclass
 class Cylinders(TerrainTileConfig):
     """Tile populated with simple vertical cylinders.
 
     Cylinders are placed at the coordinates listed in ``coords`` with the
-    given ``radius`` and ``height``.  By default two cylinders are positioned
+    given ``radius`` and ``height``. By default, two cylinders are positioned
     close to the centre line leaving a narrow passage for the robot to walk
     through.
     """
@@ -135,12 +133,13 @@ class Cylinders(TerrainTileConfig):
             rgba=self.color.rgba,
         )
 
-        for x, y in self.locations:
+        for idx, (x, y) in enumerate(self.locations):
             body.add_geom(
                 type=mj.mjtGeom.mjGEOM_CYLINDER,
                 pos=[x, y, self.floor_thickness + self.height / 2],
                 size=[self.radius, self.height / 2, 0],
                 rgba=self.cylinder_color.rgba,
+                name=f"cylinder_{idx}"
             )
 
 

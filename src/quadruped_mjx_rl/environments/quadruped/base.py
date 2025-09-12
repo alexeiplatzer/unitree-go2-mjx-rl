@@ -105,10 +105,10 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         environment_config: EnvironmentConfig,
         robot_config: RobotConfig,
-        env_spec: EnvSpec | EnvModel,
+        env_model: EnvSpec | EnvModel,
     ):
         super().__init__(
-            env_spec=env_spec,
+            env_spec=env_model,
             sim_dt=environment_config.sim.sim_dt,
             ctrl_dt=environment_config.sim.ctrl_dt,
         )

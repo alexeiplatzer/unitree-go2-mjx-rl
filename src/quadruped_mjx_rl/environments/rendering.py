@@ -51,7 +51,7 @@ def large_overview_camera(lookat=None) -> mujoco.MjvCamera:
     camera = mujoco.MjvCamera()
     mujoco.mjv_defaultCamera(camera)
     if lookat is None:
-        lookat = [-2, 0, -2]
+        lookat = [0, 0, 0]
     camera.lookat = lookat
     camera.distance = 18
     camera.elevation = -30

@@ -13,7 +13,7 @@ environment:
   domain_rand:
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: JoystickBase
+  environment_class: TeacherStudent
   observation_noise:
     general_noise: 0.05
   rewards:
@@ -38,8 +38,15 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 model:
-  model_class: ActorCritic
+  latent_size: 16
+  model_class: TeacherStudent
   modules:
+    adapter:
+    - 256
+    - 256
+    encoder:
+    - 256
+    - 256
     policy:
     - 256
     - 256
@@ -48,17 +55,31 @@ model:
     - 256
 training:
   action_repeat: 1
+  augment_pixels: false
   batch_size: 256
-  discounting: 0.97
-  entropy_cost: 0.01
+  deterministic_eval: false
   episode_length: 1000
-  learning_rate: 0.0004
+  log_training_metrics: false
   normalize_observations: true
   num_envs: 8192
+  num_eval_envs: 8192
   num_evals: 10
   num_minibatches: 32
+  num_resets_per_eval: 0
   num_timesteps: 100000000
   num_updates_per_batch: 4
-  reward_scaling: 1
+  optimizer:
+    learning_rate: 0.0004
+    max_grad_norm: null
+  rl_hyperparams:
+    clipping_epsilon: 0.3
+    discounting: 0.97
+    entropy_cost: 0.01
+    gae_lambda: 0.95
+    normalize_advantage: true
+    reward_scaling: 1
+  seed: 0
   training_class: PPO
+  training_metrics_steps: null
   unroll_length: 20
+  use_vision: false

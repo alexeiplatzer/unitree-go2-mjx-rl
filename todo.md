@@ -34,11 +34,12 @@
 - [ ] format everything nicely
 - [X] add references to papers in the overview section
 
-### Experiments guide
-
-- [ ] find the optimization saturation with the simplest setup
-- [ ] check if more complicated setups offer improvement
-- [ ] check if complicated setups still beat at lower training steps
+## Current
+- [X] add very simple obstacle terrain gen
+- [X] add option to customize model by env itself by default
+- [X] adapt model customization in the vision env
+- [X] save configs for the dirty vision test
+- [ ] check out why the student metrics are not shown
 
 ## By Priority
 
