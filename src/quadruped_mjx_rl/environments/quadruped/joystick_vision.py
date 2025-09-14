@@ -71,50 +71,30 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         if self._use_vision:
             if vision_config is None:
                 raise ValueError("use_vision set to true, VisionConfig not provided.")
-            # if renderer is None:
-            #     raise ValueError("use_vision set to false, renderer not provided.")
-
-            self._num_vision_envs = vision_config.render_batch_size
             self.renderer = renderer_maker(self.pipeline_model)
 
     @staticmethod
     def customize_model(
         env_model: EnvModel, environment_config: QuadrupedVisionEnvConfig
     ):
-        env_model = QuadrupedJoystickSimplifiedEnv.customize_model(env_model, environment_config)
+        env_model = QuadrupedJoystickBaseEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [25.0, 25.0]
         return env_model
 
-    def reset(self, rng: jax.Array, start_qpos: jax.Array | None = None) -> State:
-        init_q = self._init_q if start_qpos is None else start_qpos
-        pipeline_state = self.pipeline_init(
-            init_q + jax.random.uniform(rng, shape=self._init_q.shape, minval=0.0, maxval=0.0),
-            jnp.zeros(self._nv),
+    def reset(self, rng: jax.Array) -> State:
+        rng, key = jax.random.split(rng, 2)
+        self._init_q = self._init_q + jax.random.uniform(
+            key, shape=self._init_q.shape, minval=0.0, maxval=0.0
         )
-
-        state_info = {
-            "rng": rng,
-            "step": 0,
-            "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(self.action_size),
-        }
-
-        obs = self._init_obs(pipeline_state, state_info)
-
-        reward, done = jnp.zeros(2)
-
-        metrics = {f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()}
-        metrics["total_dist"] = jnp.zeros(())
-
-        state = State(pipeline_state, obs, reward, done, metrics, state_info)
+        state = super().reset(rng)
         return state
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickSimplifiedEnv._init_obs(self, pipeline_state, state_info),
+            "state": QuadrupedJoystickBaseEnv._init_obs(self, pipeline_state, state_info),
         }
         if self._use_vision:
             rng = state_info["rng"]
@@ -147,7 +127,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickSimplifiedEnv._get_obs(
+            "state": QuadrupedJoystickBaseEnv._get_obs(
                 self, pipeline_state, state_info, last_obs["state"]
             ),
         }
