@@ -5,6 +5,7 @@ from quadruped_mjx_rl.config_utils import Configuration, register_config_base_cl
 
 @dataclass
 class RobotConfig(Configuration):
+    """Names and values, specific to a robot."""
     robot_name: str
     scene_file: str
     initial_keyframe: str

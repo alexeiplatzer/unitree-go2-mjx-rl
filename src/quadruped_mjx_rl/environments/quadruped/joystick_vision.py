@@ -14,9 +14,9 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
-from quadruped_mjx_rl.environments.quadruped.joystick_simplified import (
-    JoystickSimpleEnvConfig,
-    QuadrupedJoystickSimplifiedEnv,
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
+    JoystickBaseEnvConfig,
+    QuadrupedJoystickBaseEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
@@ -28,14 +28,18 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(JoystickSimpleEnvConfig):
+class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
     use_vision: bool = True
 
     @dataclass
-    class ObservationNoiseConfig(JoystickSimpleEnvConfig.ObservationNoiseConfig):
-        brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
+    class ObservationConfig(JoystickBaseEnvConfig.ObservationConfig):
+        brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
-    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
+    observation_noise: ObservationConfig = field(default_factory=ObservationConfig)
+
+    domain_rand: JoystickBaseEnvConfig.DomainRandConfig = field(
+        default_factory=lambda: JoystickBaseEnvConfig.DomainRandConfig(apply_kicks=False)
+    )
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -49,7 +53,7 @@ class QuadrupedVisionEnvConfig(JoystickSimpleEnvConfig):
 register_environment_config_class(QuadrupedVisionEnvConfig)
 
 
-class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
+class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
 
     def __init__(
         self,
@@ -119,8 +123,8 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
             brightness = jax.random.uniform(
                 rng_brightness,
                 (1,),
-                minval=self._obs_noise_config.brightness[0],
-                maxval=self._obs_noise_config.brightness[1],
+                minval=self._obs_config.brightness[0],
+                maxval=self._obs_config.brightness[1],
             )
             state_info["brightness"] = brightness
 
