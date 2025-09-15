@@ -87,7 +87,6 @@ class EnvironmentConfig(Configuration):
             torques: float = -0.0002  # L2 regularization of joint torques, |tau|^2.
             action_rate: float = -0.01  # Penalize changes in actions; encourage smooth actions.
             feet_air_time: float = 0.2  # Encourage long swing steps (not high clearances).
-            stand_still: float = -0.5  # Encourage no motion at zero command (L2 penalty).
             termination: float = -1.0  # Early termination penalty.
             foot_slip: float = -0.1  # Penalize foot slipping on the ground.
 
@@ -378,7 +377,6 @@ class QuadrupedBaseEnv(PipelineEnv):
         done: jax.Array,
     ) -> dict[str, jax.Array]:
         x, xd = pipeline_state.x, pipeline_state.xd
-        joint_angles = pipeline_state.q[7:]
         joint_vel = pipeline_state.qd[6:]
 
         # foot contact data based on z-position
@@ -396,9 +394,8 @@ class QuadrupedBaseEnv(PipelineEnv):
             "orientation": self._reward_orientation(x),
             "torques": self._reward_torques(pipeline_state.data.qfrc_actuator),
             "action_rate": self._reward_action_rate(action, state_info["last_act"]),
-            "stand_still": self._reward_stand_still(state_info["command"], joint_angles),
             "feet_air_time": self._reward_feet_air_time(
-                state_info["feet_air_time"], first_contact, state_info["command"]
+                state_info["feet_air_time"], first_contact
             ),
             "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
             "termination": self._reward_termination(done, state_info["step"]),
@@ -434,22 +431,11 @@ class QuadrupedBaseEnv(PipelineEnv):
         return jnp.sum(jnp.square(act - last_act))
 
     def _reward_feet_air_time(
-        self, air_time: jax.Array, first_contact: jax.Array, commands: jax.Array
+        self, air_time: jax.Array, first_contact: jax.Array
     ) -> jax.Array:
         # Reward air time.
         rew_air_time = jnp.sum((air_time - 0.1) * first_contact)
-        rew_air_time *= math.normalize(commands[:2])[1] > 0.05  # no reward for zero command
         return rew_air_time
-
-    def _reward_stand_still(
-        self,
-        commands: jax.Array,
-        joint_angles: jax.Array,
-    ) -> jax.Array:
-        # Penalize motion at zero commands
-        return jnp.sum(jnp.abs(joint_angles - self._default_pose)) * (
-            math.normalize(commands[:2])[1] < 0.1
-        )
 
     def _reward_foot_slip(
         self, pipeline_state: PipelineState, contact_filt: jax.Array

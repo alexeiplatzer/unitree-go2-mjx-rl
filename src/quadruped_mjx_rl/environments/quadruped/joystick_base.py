@@ -59,6 +59,9 @@ class JoystickBaseEnvConfig(EnvCfg):
             # Track the angular velocity along the z-axis (yaw rate).
             tracking_ang_vel: float = 0.8
 
+            # Encourage no motion at zero command (L2 penalty).
+            stand_still: float = -0.5
+
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
@@ -159,12 +162,18 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         rewards = QuadrupedBaseEnv._get_rewards(self, pipeline_state, state_info, action, done)
 
         x, xd = pipeline_state.x, pipeline_state.xd
+        joint_angles = pipeline_state.q[7:]
+
         rewards["tracking_lin_vel"] = self._reward_tracking_lin_vel(
             state_info["command"], x, xd
         )
         rewards["tracking_ang_vel"] = self._reward_tracking_ang_vel(
             state_info["command"], x, xd
         )
+        rewards["stand_still"] = self._reward_stand_still(state_info["command"], joint_angles)
+
+        # no reward for a zero command
+        rewards["geet_air_time"] *= math.normalize(state_info["command"][:2])[1] > 0.05
 
         return rewards
 
@@ -185,6 +194,16 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         ang_vel_error = jnp.square(commands[2] - base_ang_vel[2])
         return jnp.exp(-ang_vel_error / self._rewards_config.tracking_sigma)
+
+    def _reward_stand_still(
+        self,
+        commands: jax.Array,
+        joint_angles: jax.Array,
+    ) -> jax.Array:
+        # Penalize motion at zero commands
+        return jnp.sum(jnp.abs(joint_angles - self._default_pose)) * (
+            math.normalize(commands[:2])[1] < 0.1
+        )
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done & (step < self._resampling_time)

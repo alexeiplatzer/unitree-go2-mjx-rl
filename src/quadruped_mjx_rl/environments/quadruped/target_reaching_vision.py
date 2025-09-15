@@ -54,10 +54,12 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
 
         @dataclass
         class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
-            goal_progress: float = 1.5,
+            goal_progress: float = 1.5
             speed_towards_goal: float = 1.5
             obstacle_proximity: float = -1.0
             collision: float = -5.0
+
+        scales: ScalesConfig = field(default_factory=ScalesConfig)
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
 
@@ -93,23 +95,11 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
 
         self._obstacle_location_noise = environment_config.domain_rand.obstacle_location_noise
 
-        self._goal_qposadr = self._env_model.body("goal_sphere").jntadr[0]
-        self._goal_xy = jnp.array(self._init_q[self._goal_qposadr: self._goal_qposadr + 2])
+        self._goal_id = self._env_model.body("goal_sphere").id
 
-        self._obstacle_names = ["cylinder_1", "cylinder_2"]
-        self._obstacle_geoms = [
-            self._env_model.geom(obstacle_name).id for obstacle_name in self._obstacle_names
-        ]
-        self._obstacle_bodies = [
-            self._env_model.body(obstacle_name).id for obstacle_name in self._obstacle_names
-        ]
-        self._obstacle_qpos_addresses = [
-            self._env_model.body(obstacle_name).jntadr[0]
-            for obstacle_name in self._obstacle_names
-        ]
-        self._init_obstacle_pos = [
-            jnp.array(self._init_q[obstacle_qposadr: obstacle_qposadr + 3], dtype=jnp.float32)
-            for obstacle_qposadr in self._obstacle_qpos_addresses
+        obstacle_names = ["cylinder_0", "cylinder_1"]
+        self._obstacle_ids = [
+            self._env_model.body(obstacle_name).id for obstacle_name in obstacle_names
         ]
 
         self._use_vision = environment_config.use_vision
@@ -130,29 +120,29 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
     def reset(self, rng: jax.Array) -> State:
         rng, obstacles_key = jax.random.split(rng, 2)
 
-        for obstacle_qposadr in self._obstacle_qpos_addresses:
-            obstacles_key, obstacle_key_x, obstacle_key_y = jax.random.split(obstacles_key, 3)
-            obstacle_pos = (
-                self._init_q[obstacle_qposadr: obstacle_qposadr + 2]
-                + jax.random.uniform(
-                    obstacle_key_x,
-                    (2,),
-                    minval=-self._obstacle_location_noise,
-                    maxval=self._obstacle_location_noise,
-                )
-            )
-            self._init_q = self._init_q.at[obstacle_qposadr: obstacle_qposadr + 2].set(
-                obstacle_pos
-            )
-
         state = super().reset(rng)
 
-        state.info["goal_xy"] = self._goal_xy
-        state.info["last_pos_xy"] = state.pipeline_state.data.x.pos[0, :2]
+        state.info["goal_xy"] = state.pipeline_state.data.xpos[self._goal_id, :2]
+        state.info["last_pos_xy"] = state.pipeline_state.x.pos[0, :2]
+
+        # perturb obstacle locations
+        for obstacle_id in self._obstacle_ids:
+            obstacles_key, obstacle_key = jax.random.split(obstacles_key, 2)
+            obstacle_offset = jax.random.uniform(
+                obstacle_key,
+                (2,),
+                minval=-self._obstacle_location_noise,
+                maxval=self._obstacle_location_noise,
+            )
+            obstacle_pos = state.pipeline_state.x.pos[obstacle_id, :2]
+            xpos = state.pipeline_state.data.xpos.at[obstacle_id, :2].set(
+                obstacle_pos + obstacle_offset
+            )
+            state.tree_replace({"pipeline_state.data.xpos": xpos})
 
         state.info["obstacles_xy"] = jnp.stack([
-            state.pipeline_state.x.pos[obstacle_qposadr, :2]
-            for obstacle_qposadr in self._obstacle_qpos_addresses
+            state.pipeline_state.data.xpos[obstacle_id, :2]
+            for obstacle_id in self._obstacle_ids
         ])
 
         return state
@@ -228,7 +218,7 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         )
         rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goalwards_xy)
 
-        distances = jnp.linalg.norm(state_info["obstacle_xy"] - x.pos[0, :2], axis=-1)
+        distances = jnp.linalg.norm(state_info["obstacles_xy"] - x.pos[0, :2], axis=-1)
 
         rewards["obstacle_proximity"] = self._reward_obstacle_proximity(distances)
         rewards["collision"] = self._reward_collision(distances)
