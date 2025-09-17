@@ -138,7 +138,7 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
             xpos = state.pipeline_state.data.xpos.at[obstacle_id, :2].set(
                 obstacle_pos + obstacle_offset
             )
-            state.tree_replace({"pipeline_state.data.xpos": xpos})
+            state = state.tree_replace({"pipeline_state.data.xpos": xpos})
 
         state.info["obstacles_xy"] = jnp.stack([
             state.pipeline_state.data.xpos[obstacle_id, :2]
