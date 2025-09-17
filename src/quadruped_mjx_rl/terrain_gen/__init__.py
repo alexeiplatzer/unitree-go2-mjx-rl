@@ -6,7 +6,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import EnvModel, load_to_spe
 
 def make_simple_obstacle_terrain(empty_scene_path: Path) -> EnvModel:
     spec = load_to_spec(empty_scene_path)
-    add_lights(spec)
+    # add_lights(spec)
     add_cylinders(spec)
     add_goal_sphere(spec)
     return spec_to_model(spec)
