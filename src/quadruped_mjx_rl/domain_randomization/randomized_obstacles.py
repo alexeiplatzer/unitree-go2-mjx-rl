@@ -27,7 +27,7 @@ def terrain_randomize(
         body_pos = body_pos.at[cylinder_1_id, :2].set(
             body_pos[cylinder_1_id, :2] + offset_1
         )
-        body_pos = body_pos.at[cylinder_2_id].set(
+        body_pos = body_pos.at[cylinder_2_id, :2].set(
             body_pos[cylinder_2_id, :2] + offset_2
         )
         return body_pos
