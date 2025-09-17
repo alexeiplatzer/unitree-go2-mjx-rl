@@ -42,7 +42,7 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
     @dataclass
     class DomainRandConfig(EnvironmentConfig.DomainRandConfig):
         apply_kicks: bool = False
-        obstacle_location_noise: float = 0.5
+        obstacle_location_noise: float = 3.0
 
     domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
 
@@ -134,7 +134,7 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
                 minval=-self._obstacle_location_noise,
                 maxval=self._obstacle_location_noise,
             )
-            obstacle_pos = state.pipeline_state.x.pos[obstacle_id, :2]
+            obstacle_pos = state.pipeline_state.data.xpos[obstacle_id, :2]
             xpos = state.pipeline_state.data.xpos.at[obstacle_id, :2].set(
                 obstacle_pos + obstacle_offset
             )
