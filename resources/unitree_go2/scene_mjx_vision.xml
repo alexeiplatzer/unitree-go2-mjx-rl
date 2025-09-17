@@ -15,7 +15,7 @@
 
   <worldbody>
     <light pos="0 0 5" dir="0 0 -1" type="directional"/>
-    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+    <geom name="floor" size="0 0 0.05" type="plane" rgba="0.2 0.3 0.4 1"/>
   </worldbody>
 
   <keyframe>
