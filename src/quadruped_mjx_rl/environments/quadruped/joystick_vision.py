@@ -14,9 +14,9 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
-from quadruped_mjx_rl.environments.quadruped.joystick_simplified import (
-    JoystickSimpleEnvConfig,
-    QuadrupedJoystickSimplifiedEnv,
+from quadruped_mjx_rl.environments.quadruped.joystick_base import (
+    JoystickBaseEnvConfig,
+    QuadrupedJoystickBaseEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
@@ -28,14 +28,18 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class QuadrupedVisionEnvConfig(JoystickSimpleEnvConfig):
+class QuadrupedVisionEnvConfig(JoystickBaseEnvConfig):
     use_vision: bool = True
 
     @dataclass
-    class ObservationNoiseConfig(JoystickSimpleEnvConfig.ObservationNoiseConfig):
-        brightness: list[float] = field(default_factory=lambda: [1.0, 1.0])
+    class ObservationConfig(JoystickBaseEnvConfig.ObservationConfig):
+        brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
-    observation_noise: ObservationNoiseConfig = field(default_factory=ObservationNoiseConfig)
+    observation_noise: ObservationConfig = field(default_factory=ObservationConfig)
+
+    domain_rand: JoystickBaseEnvConfig.DomainRandConfig = field(
+        default_factory=lambda: JoystickBaseEnvConfig.DomainRandConfig(apply_kicks=False)
+    )
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -49,7 +53,7 @@ class QuadrupedVisionEnvConfig(JoystickSimpleEnvConfig):
 register_environment_config_class(QuadrupedVisionEnvConfig)
 
 
-class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
+class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
 
     def __init__(
         self,
@@ -67,50 +71,30 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
         if self._use_vision:
             if vision_config is None:
                 raise ValueError("use_vision set to true, VisionConfig not provided.")
-            # if renderer is None:
-            #     raise ValueError("use_vision set to false, renderer not provided.")
-
-            self._num_vision_envs = vision_config.render_batch_size
             self.renderer = renderer_maker(self.pipeline_model)
 
     @staticmethod
     def customize_model(
         env_model: EnvModel, environment_config: QuadrupedVisionEnvConfig
     ):
-        env_model = QuadrupedJoystickSimplifiedEnv.customize_model(env_model, environment_config)
+        env_model = QuadrupedJoystickBaseEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [25.0, 25.0]
         return env_model
 
-    def reset(self, rng: jax.Array, start_qpos: jax.Array | None = None) -> State:
-        init_q = self._init_q if start_qpos is None else start_qpos
-        pipeline_state = self.pipeline_init(
-            init_q + jax.random.uniform(rng, shape=self._init_q.shape, minval=0.0, maxval=0.0),
-            jnp.zeros(self._nv),
+    def reset(self, rng: jax.Array) -> State:
+        rng, key = jax.random.split(rng, 2)
+        self._init_q = self._init_q + jax.random.uniform(
+            key, shape=self._init_q.shape, minval=0.0, maxval=0.0
         )
-
-        state_info = {
-            "rng": rng,
-            "step": 0,
-            "rewards": {k: jnp.zeros(()) for k in self.reward_scales.keys()},
-            "last_act": jnp.zeros(self.action_size),
-        }
-
-        obs = self._init_obs(pipeline_state, state_info)
-
-        reward, done = jnp.zeros(2)
-
-        metrics = {f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()}
-        metrics["total_dist"] = jnp.zeros(())
-
-        state = State(pipeline_state, obs, reward, done, metrics, state_info)
+        state = super().reset(rng)
         return state
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickSimplifiedEnv._init_obs(self, pipeline_state, state_info),
+            "state": QuadrupedJoystickBaseEnv._init_obs(self, pipeline_state, state_info),
         }
         if self._use_vision:
             rng = state_info["rng"]
@@ -119,8 +103,8 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
             brightness = jax.random.uniform(
                 rng_brightness,
                 (1,),
-                minval=self._obs_noise_config.brightness[0],
-                maxval=self._obs_noise_config.brightness[1],
+                minval=self._obs_config.brightness[0],
+                maxval=self._obs_config.brightness[1],
             )
             state_info["brightness"] = brightness
 
@@ -143,7 +127,7 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickSimplifiedEnv):
         last_obs: jax.Array | dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = {
-            "state": QuadrupedJoystickSimplifiedEnv._get_obs(
+            "state": QuadrupedJoystickBaseEnv._get_obs(
                 self, pipeline_state, state_info, last_obs["state"]
             ),
         }

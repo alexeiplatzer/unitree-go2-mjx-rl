@@ -28,12 +28,11 @@ def add_cylinders(
         sizes = [sizes] * len(locations)
 
     for idx, loc in enumerate(locations):
-        spec.worldbody.add_geom(
+        body = spec.worldbody.add_body(pos=loc, name=f"cylinder_{idx}")
+        body.add_geom(
             type=mj.mjtGeom.mjGEOM_CYLINDER,
-            pos=loc,
             size=[sizes[idx], loc[2], 0],
             rgba=[1, 0.3, 0, 1],
-            name=f"cylinder_{idx}"
         )
 
 
@@ -47,10 +46,9 @@ def add_goal_sphere(
     if location is None:
         location = [10, 0, size]
 
-    spec.worldbody.add_geom(
+    body = spec.worldbody.add_body(pos=location, name="goal_sphere")
+    body.add_geom(
         type=mj.mjtGeom.mjGEOM_SPHERE,
-        pos=location,
         size=[size, 0, 0],
         rgba=[1, 0, 0, 1],
-        name="goal_sphere"
     )

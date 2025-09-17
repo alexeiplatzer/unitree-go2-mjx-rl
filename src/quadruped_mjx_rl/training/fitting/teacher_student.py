@@ -144,6 +144,11 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         def evaluation_fn(current_step, params, training_metrics):
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
+            logging.info(
+                "student absolute loss: %s", training_metrics.get(
+                    "training/student_total_loss", "not known yet"
+                )
+            )
             if training_metrics:
                 encoder_convergence_progress_fn(current_step, training_metrics)
 

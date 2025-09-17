@@ -77,7 +77,7 @@ training:
   num_envs: 128
   num_eval_envs: 128
   num_evals: 5
-  num_minibatches: 32
+  num_minibatches: 16
   num_resets_per_eval: 0
   num_timesteps: 1000000
   num_updates_per_batch: 8
@@ -107,8 +107,8 @@ vision:
   - 2
   gpu_id: 0
   render_batch_size: 128
-  render_height: 96
-  render_width: 96
+  render_height: 64
+  render_width: 64
   use_rasterizer: false
   vision_class: default
 
