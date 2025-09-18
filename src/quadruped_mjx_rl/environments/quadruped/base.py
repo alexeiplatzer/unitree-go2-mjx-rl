@@ -150,7 +150,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         initial_keyframe_name = robot_config.initial_keyframe
         initial_keyframe = self._env_model.keyframe(initial_keyframe_name)
         self._init_q = jnp.array(initial_keyframe.qpos)
-        self._default_pose = initial_keyframe.qpos[7:]
+        self._default_pose = initial_keyframe.qpos[7:19]
 
         # joint ranges
         self.joints_lower_limits = jnp.array(robot_config.joints_lower_limits * 4)
@@ -207,7 +207,9 @@ class QuadrupedBaseEnv(PipelineEnv):
         return model
 
     def reset(self, rng: jax.Array) -> State:
-        pipeline_state = self.pipeline_init(self._init_q, jnp.zeros(self._nv))
+        rng, init_qpos_rng = jax.random.split(rng, 2)
+        init_qpos = self._set_init_qpos(init_qpos_rng)
+        pipeline_state = self.pipeline_init(init_qpos, jnp.zeros(self._nv))
 
         state_info = {
             "rng": rng,
@@ -271,6 +273,9 @@ class QuadrupedBaseEnv(PipelineEnv):
         return state
 
     # ------------ utility computations ------------
+    def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+        return self._init_q
+
     def _physics_step(self, state: State, action: jax.Array) -> PipelineState:
         motor_targets = self._default_pose + action * self._action_scale
         motor_targets = jnp.clip(
@@ -346,7 +351,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         obs_list = [
             jnp.array([local_rpyrate[2]]) * 0.25,  # yaw rate
             math.rotate(jnp.array([0, 0, -1]), inv_torso_rot),  # projected gravity
-            pipeline_state.q[7:] - self._default_pose,  # motor angles
+            pipeline_state.q[7:19] - self._default_pose,  # motor angles
             state_info["last_act"],  # last action
         ]
         return obs_list
@@ -355,7 +360,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         # done if joint limits are reached or robot is falling
 
         up = jnp.array([0.0, 0.0, 1.0])
-        joint_angles = pipeline_state.q[7:]
+        joint_angles = pipeline_state.q[7:19]
 
         # flipped over
         done = jnp.dot(math.rotate(up, pipeline_state.x.rot[self._torso_idx - 1]), up) < 0
@@ -377,7 +382,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         done: jax.Array,
     ) -> dict[str, jax.Array]:
         x, xd = pipeline_state.x, pipeline_state.xd
-        joint_vel = pipeline_state.qd[6:]
+        joint_vel = pipeline_state.qd[6:18]
 
         # foot contact data based on z-position
         foot_pos = pipeline_state.data.site_xpos[self._feet_site_id]

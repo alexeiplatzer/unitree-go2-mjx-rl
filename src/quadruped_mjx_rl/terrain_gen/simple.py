@@ -1,4 +1,5 @@
 import mujoco as mj
+import numpy as np
 
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvSpec
@@ -34,6 +35,9 @@ def add_cylinders(
             size=[sizes[idx], loc[2], 0],
             rgba=[1, 0.3, 0, 1],
         )
+        body.add_freejoint()
+        for frame_key in spec.keys:
+            frame_key.qpos = np.concatenate([frame_key.qpos, body.pos, body.quat])
 
 
 def add_goal_sphere(

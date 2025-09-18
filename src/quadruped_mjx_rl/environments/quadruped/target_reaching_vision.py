@@ -101,6 +101,10 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         self._obstacle_ids = [
             self._env_model.body(obstacle_name).id for obstacle_name in obstacle_names
         ]
+        self._obstacles_qposadr = [
+            self._env_model.jnt_qposadr[self._env_model.body(obstacle_name).jntadr[0]]
+            for obstacle_name in obstacle_names
+        ]
 
         self._use_vision = environment_config.use_vision
         if self._use_vision:
@@ -118,27 +122,10 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         return env_model
 
     def reset(self, rng: jax.Array) -> State:
-        rng, obstacles_key = jax.random.split(rng, 2)
-
         state = super().reset(rng)
 
         state.info["goal_xy"] = state.pipeline_state.data.xpos[self._goal_id, :2]
         state.info["last_pos_xy"] = state.pipeline_state.x.pos[0, :2]
-
-        # perturb obstacle locations
-        for obstacle_id in self._obstacle_ids:
-            obstacles_key, obstacle_key = jax.random.split(obstacles_key, 2)
-            obstacle_offset = jax.random.uniform(
-                obstacle_key,
-                (2,),
-                minval=-self._obstacle_location_noise,
-                maxval=self._obstacle_location_noise,
-            )
-            obstacle_pos = state.pipeline_state.data.xpos[obstacle_id, :2]
-            xpos = state.pipeline_state.data.xpos.at[obstacle_id, :2].set(
-                obstacle_pos + obstacle_offset
-            )
-            state = state.tree_replace({"pipeline_state.data.xpos": xpos})
 
         state.info["obstacles_xy"] = jnp.stack([
             state.pipeline_state.data.xpos[obstacle_id, :2]
@@ -146,6 +133,23 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         ])
 
         return state
+
+    def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+        # perturb obstacle locations
+        init_q = self._init_q
+        for qadr in self._obstacles_qposadr:
+            rng, obstacle_key = jax.random.split(rng, 2)
+            obstacle_offset = jax.random.uniform(
+                obstacle_key,
+                (2,),
+                minval=-self._obstacle_location_noise,
+                maxval=self._obstacle_location_noise,
+            )
+            obstacle_pos = init_q[qadr: qadr + 2]
+            init_q = init_q.at[qadr: qadr + 2].set(
+                obstacle_pos + obstacle_offset
+            )
+        return init_q
 
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
