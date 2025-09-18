@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 import mujoco
 
+from quadruped_mjx_rl import math
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
@@ -51,6 +52,7 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
         goal_radius: float = 0.2
         obstacle_margin: float = 0.9
         collision_radius: float = 0.2
+        yaw_alignment_threshold: float = 1.35
 
         @dataclass
         class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
@@ -58,6 +60,7 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
             speed_towards_goal: float = 2.5
             obstacle_proximity: float = -1.0
             collision: float = -5.0
+            goal_yaw_alignment: float = 1.0
 
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
@@ -221,6 +224,7 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
             last_goalwards_xy, goalwards_xy
         )
         rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goalwards_xy)
+        rewards["goal_yaw_algiment"] = self._reward_goal_yaw_alignment(x, goalwards_xy)
 
         distances = jnp.linalg.norm(state_info["obstacles_xy"] - x.pos[0, :2], axis=-1)
 
@@ -238,6 +242,22 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
     def _reward_speed_towards_goal(self, xd: Motion, goalwards_xy: jax.Array) -> jax.Array:
         goalwards_direction_xy = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
         return jnp.dot(goalwards_direction_xy, xd.vel[0, :2])
+
+    def _reward_goal_yaw_alignment(
+        self, x: Transform, goalwards_xy: jax.Array
+    ) -> jax.Array:
+        forward = math.rotate(jnp.array([1.0, 0.0, 0.0]), x.rot[0])[:2]
+        forward_direction = forward / (jnp.linalg.norm(forward) + 1e-6)
+        goal_direction = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
+
+        cos_angle = jnp.clip(jnp.dot(forward_direction, goal_direction), -1.0, 1.0)
+        angle = jnp.arccos(cos_angle)
+
+        return jnp.where(
+            angle <= self._yaw_alignment_threshold,
+            1.0 - angle / self._yaw_alignment_threshold,
+            0.0,
+        )
 
     def _reward_obstacle_proximity(
         self, obstacle_distances: jax.Array
