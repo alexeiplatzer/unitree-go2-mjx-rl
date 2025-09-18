@@ -62,10 +62,10 @@ if __name__ == "__main__":
 
     env = env_factory()
 
-    import jax
-    from jax import numpy as jnp
-    state = env.reset(jax.random.PRNGKey(0))
-    state = env.step(state, jnp.zeros(env.action_size))
+    # import jax
+    # from jax import numpy as jnp
+    # state = env.reset(jax.random.PRNGKey(0))
+    # state = env.step(state, jnp.zeros(env.action_size))
 
     trained_params = train(
         training_config=training_config,
