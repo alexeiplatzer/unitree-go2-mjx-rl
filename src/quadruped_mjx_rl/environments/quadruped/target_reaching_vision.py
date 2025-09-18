@@ -224,7 +224,7 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
             last_goalwards_xy, goalwards_xy
         )
         rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goalwards_xy)
-        rewards["goal_yaw_algiment"] = self._reward_goal_yaw_alignment(x, goalwards_xy)
+        rewards["goal_yaw_aligment"] = self._reward_goal_yaw_alignment(x, goalwards_xy)
 
         distances = jnp.linalg.norm(state_info["obstacles_xy"] - x.pos[0, :2], axis=-1)
 
