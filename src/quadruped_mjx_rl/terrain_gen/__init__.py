@@ -10,3 +10,8 @@ def make_simple_obstacle_terrain(empty_scene_path: Path) -> EnvModel:
     add_cylinders(spec)
     add_goal_sphere(spec)
     return spec_to_model(spec)
+
+
+def make_empty_terrain(empty_scene_path: Path) -> EnvModel:
+    spec = load_to_spec(empty_scene_path)
+    return spec_to_model(spec)

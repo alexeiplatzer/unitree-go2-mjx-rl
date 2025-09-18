@@ -54,8 +54,8 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
 
         @dataclass
         class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
-            goal_progress: float = 1.5
-            speed_towards_goal: float = 1.5
+            goal_progress: float = 2.5
+            speed_towards_goal: float = 2.5
             obstacle_proximity: float = -1.0
             collision: float = -5.0
 

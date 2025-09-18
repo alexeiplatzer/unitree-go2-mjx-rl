@@ -67,6 +67,8 @@ class EnvironmentConfig(Configuration):
     @dataclass
     class RewardConfig:
         termination_body_height: float = 0.18
+        reward_clip_min: float = -100.0
+        reward_clip_max: float = 10_000.0
 
         # The coefficients for all reward terms used for training. All
         # physical quantities are in SI units, if not otherwise specified,
@@ -251,7 +253,11 @@ class QuadrupedBaseEnv(PipelineEnv):
         # reward
         rewards = self._get_rewards(pipeline_state, state.info, action, done)
         rewards = {k: v * self.reward_scales[k] for k, v in rewards.items()}
-        reward = jnp.clip(sum(rewards.values()) * self.dt, 0.0, 10_000.0)
+        reward = jnp.clip(
+            sum(rewards.values()) * self.dt,
+            self._rewards_config.reward_clip_min,
+            self._rewards_config.reward_clip_max,
+        )
 
         # state management
         state.info["step"] += 1

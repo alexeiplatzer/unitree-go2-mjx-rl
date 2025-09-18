@@ -39,37 +39,30 @@ environment:
     sim_dt: 0.004
   use_vision: true
 model:
-  latent_size: 256
+  latent_size: 64
   model_class: TeacherStudentVision
   modules:
     adapter_convolutional:
     - 4
     - 8
-    - 32
     adapter_dense:
-    - 256
-    - 256
+    - 128
     encoder_convolutional:
     - 4
     - 8
-    - 32
     encoder_dense:
-    - 256
+    - 128
     - 256
     policy:
-    - 128
-    - 128
     - 128
     - 128
     value:
     - 256
     - 256
-    - 256
-    - 256
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 16
+  batch_size: 8
   deterministic_eval: false
   episode_length: 1000
   log_training_metrics: false
@@ -77,10 +70,10 @@ training:
   num_envs: 8
   num_eval_envs: 8
   num_evals: 5
-  num_minibatches: 32
+  num_minibatches: 2
   num_resets_per_eval: 0
   num_timesteps: 1000000
-  num_updates_per_batch: 8
+  num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0
@@ -95,7 +88,7 @@ training:
   seed: 0
   training_class: PPO_Vision
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 10
   use_vision: true
 vision:
   enabled_cameras:

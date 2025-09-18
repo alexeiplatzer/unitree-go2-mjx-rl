@@ -14,7 +14,7 @@ from quadruped_mjx_rl.environments.rendering import (
     large_overview_camera, render_model, save_image,
 )
 from quadruped_mjx_rl.robotic_vision import get_renderer
-from quadruped_mjx_rl.terrain_gen import make_simple_obstacle_terrain
+from quadruped_mjx_rl.terrain_gen import make_simple_obstacle_terrain, make_empty_terrain
 from quadruped_mjx_rl.training.train_interface import train
 
 if __name__ == "__main__":
@@ -38,9 +38,9 @@ if __name__ == "__main__":
     vision_config = configs_dict["vision"]
 
     # Prepare the terrain
-    init_scene_path = paths.unitree_go2_empty_scene
+    init_scene_path = paths.UNITREE_GO2_RESOURCES / "scene_mjx_cylinders.xml"
 
-    env_model = make_simple_obstacle_terrain(init_scene_path)
+    env_model = make_empty_terrain(init_scene_path)
 
     # Render the situation
     image = render_model(
@@ -61,6 +61,11 @@ if __name__ == "__main__":
     )
 
     env = env_factory()
+
+    import jax
+    from jax import numpy as jnp
+    state = env.reset(jax.random.PRNGKey(0))
+    state = env.step(state, jnp.zeros(env.action_size))
 
     trained_params = train(
         training_config=training_config,
