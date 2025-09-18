@@ -254,8 +254,8 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         angle = jnp.arccos(cos_angle)
 
         return jnp.where(
-            angle <= self._yaw_alignment_threshold,
-            1.0 - angle / self._yaw_alignment_threshold,
+            angle <= self._rewards_config.yaw_alignment_threshold,
+            1.0 - angle / self._rewards_config.yaw_alignment_threshold,
             0.0,
         )
 
