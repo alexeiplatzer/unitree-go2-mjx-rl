@@ -90,6 +90,12 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         state = super().reset(rng)
         return state
 
+    def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+        # vectorize the init qpos across batch dimensions
+        return self._init_q + jax.random.uniform(
+            key=rng, shape=self._init_q.shape, minval=0.0, maxval=0.0
+        )
+
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:

@@ -162,7 +162,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         rewards = QuadrupedBaseEnv._get_rewards(self, pipeline_state, state_info, action, done)
 
         x, xd = pipeline_state.x, pipeline_state.xd
-        joint_angles = pipeline_state.q[7:]
+        joint_angles = pipeline_state.q[7:19]
 
         rewards["tracking_lin_vel"] = self._reward_tracking_lin_vel(
             state_info["command"], x, xd
