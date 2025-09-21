@@ -83,10 +83,6 @@ class QuadrupedVisionEnvironment(QuadrupedJoystickBaseEnv):
         return env_model
 
     def reset(self, rng: jax.Array) -> State:
-        rng, key = jax.random.split(rng, 2)
-        self._init_q = self._init_q + jax.random.uniform(
-            key, shape=self._init_q.shape, minval=0.0, maxval=0.0
-        )
         state = super().reset(rng)
         return state
 
