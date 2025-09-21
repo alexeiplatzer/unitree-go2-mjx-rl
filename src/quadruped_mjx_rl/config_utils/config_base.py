@@ -21,11 +21,15 @@ class Configuration(ABC):
         return {cls.config_class_key(): cls}
 
     @classmethod
+    def get_config_class_from_key(cls, key: str) -> type["Configuration"]:
+        return cls._get_config_class_dict()[key]
+
+    @classmethod
     def from_dict(cls, config_dict: dict) -> "Configuration":
         config_class_key = config_dict.pop(
             f"{cls.config_base_class_key()}_class", cls.config_class_key()
         )
-        config_class = cls._get_config_class_dict()[config_class_key]
+        config_class = cls.get_config_class_from_key(config_class_key)
         return from_dict(config_class, config_dict)
 
     def to_dict(self) -> dict:
