@@ -173,7 +173,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         rewards["stand_still"] = self._reward_stand_still(state_info["command"], joint_angles)
 
         # no reward for a zero command
-        rewards["geet_air_time"] *= math.normalize(state_info["command"][:2])[1] > 0.05
+        rewards["feet_air_time"] *= math.normalize(state_info["command"][:2])[1] > 0.05
 
         return rewards
 
