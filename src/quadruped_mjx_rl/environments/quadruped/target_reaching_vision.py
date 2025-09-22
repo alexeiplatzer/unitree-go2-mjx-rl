@@ -140,18 +140,18 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
     def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
         # perturb obstacle locations
         init_q = self._init_q
-        # for qadr in self._obstacles_qposadr:
-        #     rng, obstacle_key = jax.random.split(rng, 2)
-        #     obstacle_offset = jax.random.uniform(
-        #         obstacle_key,
-        #         (2,),
-        #         minval=-self._obstacle_location_noise,
-        #         maxval=self._obstacle_location_noise,
-        #     )
-        #     obstacle_pos = init_q[qadr: qadr + 2]
-        #     init_q = init_q.at[qadr: qadr + 2].set(
-        #         obstacle_pos + obstacle_offset
-        #     )
+        for qadr in self._obstacles_qposadr:
+            rng, obstacle_key = jax.random.split(rng, 2)
+            obstacle_offset = jax.random.uniform(
+                obstacle_key,
+                (2,),
+                minval=-self._obstacle_location_noise,
+                maxval=self._obstacle_location_noise,
+            )
+            obstacle_pos = init_q[qadr: qadr + 2]
+            init_q = init_q.at[qadr: qadr + 2].set(
+                obstacle_pos + obstacle_offset
+            )
         return init_q
 
     def _init_obs(
