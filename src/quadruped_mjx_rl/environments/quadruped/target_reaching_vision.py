@@ -144,12 +144,12 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
             rng, obstacle_key = jax.random.split(rng, 2)
             obstacle_offset = jax.random.uniform(
                 obstacle_key,
-                (2,),
+                (1,),
                 minval=-self._obstacle_location_noise,
                 maxval=self._obstacle_location_noise,
             )
-            obstacle_pos = init_q[qadr: qadr + 2]
-            init_q = init_q.at[qadr: qadr + 2].set(
+            obstacle_pos = init_q[qadr: qadr + 1]
+            init_q = init_q.at[qadr: qadr + 1].set(
                 obstacle_pos + obstacle_offset
             )
         return init_q
