@@ -82,7 +82,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     ):
         optimizer_state, network_params, key = carry
         key, teacher_key, student_key = jax.random.split(key, 3)
-        ((teacher_loss, teacher_metrics), params, teacher_optimizer_state) = (
+        ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
             self.teacher_gradient_update_fn(
                 network_params,
                 normalizer_params,
@@ -91,7 +91,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
                 optimizer_state=optimizer_state.optimizer_state,
             )
         )
-        ((student_loss, student_metrics), params, student_optimizer_state) = (
+        ((student_loss, student_metrics), network_params, student_optimizer_state) = (
             self.student_gradient_update_fn(
                 network_params,
                 normalizer_params,
@@ -104,7 +104,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             student_optimizer_state=student_optimizer_state,
         )
         metrics = teacher_metrics | student_metrics
-        return (optimizer_state, params, key), metrics
+        return (optimizer_state, network_params, key), metrics
 
     def make_evaluation_fn(
         self,
@@ -174,6 +174,7 @@ def compute_student_loss(
     student_latent_vector = adapter_apply(
         preprocessor_params, network_params.student_encoder, data.observation
     )
+    teacher_latent = jax.lax.stop_gradient(teacher_latent_vector)
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
 
     return total_loss, {"student_total_loss": total_loss}
