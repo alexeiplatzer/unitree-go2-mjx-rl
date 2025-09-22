@@ -148,8 +148,8 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
                 minval=-self._obstacle_location_noise,
                 maxval=self._obstacle_location_noise,
             )
-            obstacle_pos = init_q[qadr: qadr + 1]
-            init_q = init_q.at[qadr: qadr + 1].set(
+            obstacle_pos = init_q[qadr + 1: qadr + 2]
+            init_q = init_q.at[qadr + 1: qadr + 2].set(
                 obstacle_pos + obstacle_offset
             )
         return init_q
