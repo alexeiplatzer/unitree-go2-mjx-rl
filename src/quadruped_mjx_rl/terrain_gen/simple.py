@@ -1,3 +1,5 @@
+"""This module adds simple geometric bodies directly to the environment spec, bypassing the
+tiled terrain approach. """
 import mujoco as mj
 import numpy as np
 

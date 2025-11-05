@@ -1,3 +1,5 @@
+"""This module uses the obstacles module to tile the terrain with a square grid of tiles.
+It has several functions with example tilings."""
 import random
 from dataclasses import dataclass
 
@@ -9,6 +11,7 @@ from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig
 
 @dataclass
 class TerrainConfig(Configuration):
+    """Utility dataclass for generating a square grid of square terrain tiles."""
     tiles: list[list[TerrainTileConfig]]
 
     @classmethod
@@ -44,7 +47,7 @@ class TerrainConfig(Configuration):
                 self.tiles[i][j].create_tile(
                     spec=spec,
                     grid_loc=[j * 2 * square_side, i * 2 * square_side],
-                    name=f"obstacle_{i}_{j}",
+                    name=f"tile_{i}_{j}",
                 )
 
         return spec
@@ -60,11 +63,23 @@ class TerrainConfig(Configuration):
 register_config_base_class(TerrainConfig)
 
 
+def get_simple_tiled_terrain(
+    n_rows: int = 4,
+    n_columns: int = 4,
+):
+    """This terrain is just a square grid of featureless flat tiles."""
+    return TerrainConfig(
+        tiles=[[FlatTile() for _ in range(n_columns)] for _ in range(n_rows)]
+    )
+
+
 def get_randomized_terrain(
     n_rows: int = 4,
     n_columns: int = 4,
     obstacles_weights: list[tuple[TerrainTileConfig, int]] | None = None,
 ):
+    """This terrain is a square grid of randomly chosen terrain tile types according to the
+    probabilities specified in the weights."""
     if obstacles_weights is None:
         obstacles_weights = [(FlatTile, 1)]
     obstacles, weights = zip(*obstacles_weights)
@@ -72,12 +87,4 @@ def get_randomized_terrain(
         tiles=[random.choices(obstacles, weights=weights, k=n_columns) for _ in range(n_rows)]
     )
 
-    # for i in range(0, 8):
-    #     stripe_w = 0.05 * (i + 1)
-    #     harder_level = [(functools.partial(obstacles.stripes, stripe_w=stripe_w), 1)]
-    #     add_tile(
-    #         spec=spec,
-    #         grid_loc=[i * 2 * SQUARE_LENGTH, 0],
-    #         distribution=harder_level,
-    #         name=f"obstacle_{i}",
-    #     )
+

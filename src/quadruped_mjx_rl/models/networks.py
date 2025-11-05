@@ -33,6 +33,13 @@ class FeedForwardNetwork:
     apply: Callable
 
 
+@dataclass
+class RecurrentNetwork:
+    init: Callable
+    init_carry: Callable
+    apply: Callable
+
+
 AgentNetworkParams = TypeVar("AgentNetworkParams")
 
 
@@ -158,11 +165,15 @@ def make_network(
     apply_to_obs_keys: Sequence[str] = ("state",),
     squeeze_output: bool = False,
 ):
-    def to_inputs(obs: Observation) -> list[jax.Array]:
+    """
+    Creates a feedforward network that selects and preprocesses the specified observations.
+    """
+    def to_input_vector(obs: Observation) -> jax.Array:
+        """Selects the needed observations and concatenates them into a single input vector."""
         if isinstance(obs, Mapping):
-            return [obs[k] for k in apply_to_obs_keys]
+            return jnp.concatenate([obs[k] for k in apply_to_obs_keys], axis=-1)
         else:
-            return [obs]
+            return obs
 
     def apply(
         processor_params: PreprocessorParams, params: Params, obs: Observation
@@ -173,8 +184,8 @@ def make_network(
             obs=obs,
             preprocess_obs_keys=preprocess_obs_keys,
         )
-        inputs = to_inputs(obs)
-        out = module.apply(params, *inputs)
+        input_vector = to_input_vector(obs)
+        out = module.apply(params, input_vector)
         if squeeze_output:
             return jnp.squeeze(out, axis=-1)
         return out
@@ -186,7 +197,5 @@ def make_network(
         obs_size,
         is_leaf=lambda x: isinstance(x, tuple),
     )
-    # print(f"dummy_obs: {dummy_obs}")
-    dummy_inputs = to_inputs(dummy_obs)
-    # print(f"dummy_inputs: {dummy_inputs}")
-    return FeedForwardNetwork(init=lambda key: module.init(key, *dummy_inputs), apply=apply)
+    dummy_input = to_input_vector(dummy_obs)
+    return FeedForwardNetwork(init=lambda key: module.init(key, dummy_input), apply=apply)

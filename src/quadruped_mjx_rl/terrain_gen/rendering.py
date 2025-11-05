@@ -1,8 +1,11 @@
+"""This module helps visualize terrain generation intermediate results."""
 import mediapy as media
 import mujoco as mj
 
+from quadruped_mjx_rl.terrain_gen.obstacles import TerrainTileConfig
 
-def render_tile(tile_func, direction=None, cam_distance=6, cam_elevation=-30):
+
+def render_tile(tile_config: TerrainTileConfig, cam_distance=6, cam_elevation=-30):
     arena_xml = """
     <mujoco>
       <visual>
@@ -24,16 +27,8 @@ def render_tile(tile_func, direction=None, cam_distance=6, cam_elevation=-30):
     """
 
     spec = mj.MjSpec.from_string(arena_xml)
-    main = spec.default
-    main.geom.type = mj.mjtGeom.mjGEOM_BOX
-
     name = "base_tile"
-
-    spec.worldbody.add_body(pos=[-3, 0, 0], name=name)
-    if direction:
-        tile_func(spec, direction=direction)
-    else:
-        tile_func(spec)
+    tile_config.create_tile(spec, name=name, grid_loc=[0, 0])
 
     model = spec.compile()
     data = mj.MjData(model)

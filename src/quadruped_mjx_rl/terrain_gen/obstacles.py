@@ -1,3 +1,5 @@
+"""This module defines a terrain consisting of square tiles, each of which represents some rough
+terrain and or obstacles. It defines many different types of tiles for this purpose."""
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -11,6 +13,8 @@ from quadruped_mjx_rl.config_utils import Configuration, register_config_base_cl
 
 @dataclass
 class Color:
+    """A very simple dataclass for specifying RGBA color values. More humanly readable that a
+    list of four numbers."""
     r: float
     g: float
     b: float
@@ -18,12 +22,15 @@ class Color:
 
     @property
     def rgba(self):
+        """Returns the RGBA values as a list of four numbers as needed by mujoco."""
         return [self.r, self.g, self.b, self.a]
 
 
 def _set_body(
     spec: mj.MjSpec | None = None, grid_loc: list[float] | None = None, name: str = "body"
 ):
+    """Helper function to create the body for a generic tile at a given location with a given
+    name, its default geometry type will be a box."""
     if spec is None:
         spec = mj.MjSpec()
 
@@ -41,6 +48,7 @@ def _set_body(
 
 @dataclass
 class TerrainTileConfig(ABC):
+    """Abstract base class for a generic square tile type with common attributes and methods."""
     color: Color = field(default_factory=lambda: Color(0.460, 0.362, 0.216, 1.0))  # (Brown)
     square_side: float = 2.0
     floor_thickness: float = 0.05
@@ -52,11 +60,14 @@ class TerrainTileConfig(ABC):
         grid_loc: list[float] | None = None,
         name: str = "terrain_tile",
     ):
+        """Create this tile type at the given location with the given name in the given
+        environment specification."""
         pass
 
 
 @dataclass
 class FlatTile(TerrainTileConfig):
+    """Just a basic square tile with a flat surface."""
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,

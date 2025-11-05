@@ -37,26 +37,26 @@ class MLP(linen.Module):
         return hidden
 
 
-class HeadMLP(linen.Module):
-    """MLP module over pre-processed latent vectors."""
-
-    layer_sizes: Sequence[int]
-    activation: ActivationFn = linen.relu
-    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
-    activate_final: bool = False
-    bias: bool = True
-    layer_norm: bool = False
-
-    @linen.compact
-    def __call__(self, *input_vectors: jax.Array):
-        joint_input_vector = jnp.concatenate(input_vectors, axis=-1)
-        return MLP(
-            layer_sizes=self.layer_sizes,
-            activation=self.activation,
-            kernel_init=self.kernel_init,
-            activate_final=self.activate_final,
-            layer_norm=self.layer_norm,
-        )(joint_input_vector)
+# class HeadMLP(linen.Module):
+#     """MLP module over pre-processed latent vectors."""
+#
+#     layer_sizes: Sequence[int]
+#     activation: ActivationFn = linen.relu
+#     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+#     activate_final: bool = False
+#     bias: bool = True
+#     layer_norm: bool = False
+#
+#     @linen.compact
+#     def __call__(self, *input_vectors: jax.Array):
+#         joint_input_vector = jnp.concatenate(input_vectors, axis=-1)
+#         return MLP(
+#             layer_sizes=self.layer_sizes,
+#             activation=self.activation,
+#             kernel_init=self.kernel_init,
+#             activate_final=self.activate_final,
+#             layer_norm=self.layer_norm,
+#         )(joint_input_vector)
 
 
 class CNN(linen.Module):
@@ -93,3 +93,45 @@ class CNN(linen.Module):
             activate_final=self.activate_final,
             bias=self.use_bias,
         )(hidden)
+
+
+class ProprioceptiveLSTM(linen.recurrent.Module):
+    """LSTM module that fuses proprioceptive observations with latent inputs."""
+
+    hidden_size: int
+    output_size: int
+    activation: ActivationFn = jax.nn.tanh
+    gate_fn: ActivationFn = jax.nn.sigmoid
+    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+    recurrent_kernel_init: Initializer = jax.nn.initializers.orthogonal()
+    bias_init: Initializer = jax.nn.initializers.zeros
+
+    def setup(self):
+        self.lstm_cell = linen.LSTMCell(
+            features=self.output_size,
+            gate_fn=self.gate_fn,
+            activation_fn=self.activation,
+            kernel_init=self.kernel_init,
+            recurrent_kernel_init=self.recurrent_kernel_init,
+            bias_init=self.bias_init,
+        )
+
+    def initialize_carry(
+        self, rng: jax.Array, batch_dims: Sequence[int] | int
+    ) -> tuple[jax.Array, jax.Array]:
+        """Initializes the LSTM hidden and cell states."""
+
+        if isinstance(batch_dims, int):
+            batch_dims = (batch_dims,)
+
+        return self.lstm_cell.initialize_carry(rng, batch_dims, self.hidden_size)
+
+    def __call__(
+        self,
+        carry: tuple[jax.Array, jax.Array],
+        *input_vectors: jax.Array,
+    ) -> tuple[tuple[jax.Array, jax.Array], jax.Array]:
+        """Applies an LSTM step over proprioceptive and latent features."""
+        input_vector = jnp.concatenate(input_vectors, axis=-1)
+        new_carry, output = self.lstm_cell(carry, input_vector)
+        return new_carry, output

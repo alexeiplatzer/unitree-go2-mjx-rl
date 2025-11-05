@@ -24,7 +24,7 @@ from quadruped_mjx_rl.environments.quadruped.joystick_vision import (
     QuadrupedVisionEnvConfig,
     QuadrupedVisionEnvironment,
 )
-from quadruped_mjx_rl.environments.quadruped.target_reaching_vision import (
+from quadruped_mjx_rl.environments.quadruped.obstacle_avoiding import (
     QuadrupedVisionTargetEnvConfig,
     QuadrupedVisionTargetEnvironment,
 )
