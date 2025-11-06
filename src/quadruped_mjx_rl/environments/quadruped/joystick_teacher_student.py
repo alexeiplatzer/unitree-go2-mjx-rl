@@ -38,7 +38,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        state_obs = self._get_state_obs(pipeline_state, state_info)
+        state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         privileged_obs = jnp.concatenate(self._get_privileged_obs_list())
         obs = {
             "state": state_obs,
@@ -57,7 +57,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        state_obs = self._get_state_obs(pipeline_state, state_info)
+        state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         obs = {
             "state": state_obs,
             "privileged_state": previous_obs["privileged_state"],

@@ -123,6 +123,8 @@ register_environment_config_class(EnvironmentConfig)
 
 
 class QuadrupedBaseEnv(PipelineEnv):
+    """Base class for all quadruped locomotion environments. Defines common methods and
+    attributes needed for all quadruped environments."""
 
     def __init__(
         self,
@@ -280,9 +282,13 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     # ------------ utility computations ------------
     def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+        """Sets the initial position and orientation of all the movable bodies in the
+        environment in generalized coordinates."""
         return self._init_q
 
     def _physics_step(self, state: State, action: jax.Array) -> PipelineState:
+        """Performs all the physical steps in the simulation that happen between the steps of
+        the RL environment. Applies the action to the robot's actuators for the duration."""
         motor_targets = self._default_pose + action * self._action_scale
         motor_targets = jnp.clip(
             motor_targets, self.joints_lower_limits, self.joints_upper_limits
@@ -291,6 +297,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         return pipeline_state
 
     def _compute_kick(self, step_count: jnp.int32, kick_noise: jax.Array) -> jax.Array:
+        """Computes the vector representing the kick."""
         kick_interval = self._kick_interval
         kick_theta = jax.random.uniform(kick_noise, maxval=2 * jnp.pi)
         kick = jnp.array([jnp.cos(kick_theta), jnp.sin(kick_theta)])
@@ -298,6 +305,8 @@ class QuadrupedBaseEnv(PipelineEnv):
         return kick
 
     def _kick_robot(self, state: State, kick: jax.Array) -> State:
+        """Applies a random external kick to the robot's base. Helpful to make the robot's
+        balancing more robust."""
         qvel = state.pipeline_state.data.qvel
         qvel = qvel.at[:2].set(kick * self._kick_vel + qvel[:2])
         return state.tree_replace({"pipeline_state.data.qvel": qvel})
@@ -308,11 +317,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
-        if self._obs_config.history_length is not None:
-            obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
-            obs = self._update_obs_history(obs_history=obs_history, current_obs=obs)
-        return obs
+        return self._init_proprioceptive_obs(pipeline_state, state_info)
 
     def _get_obs(
         self,
@@ -320,20 +325,42 @@ class QuadrupedBaseEnv(PipelineEnv):
         state_info: dict[str, ...],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
-        obs = QuadrupedBaseEnv._get_state_obs(self, pipeline_state, state_info)
+        return self._get_proprioceptive_obs(pipeline_state, state_info, previous_obs)
+
+    def _init_proprioceptive_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, ...],
+    ) -> jax.Array | dict[str, jax.Array]:
+        obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
+        if self._obs_config.history_length is not None:
+            obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
+            obs = self._update_obs_history(obs_history=obs_history, current_obs=obs)
+        return obs
+
+    def _get_proprioceptive_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, ...],
+        previous_obs: jax.Array | dict[str, jax.Array],
+    ) -> jax.Array | dict[str, jax.Array]:
+        obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         if self._obs_config.history_length is not None:
             assert isinstance(previous_obs, jax.Array)
             obs = self._update_obs_history(obs_history=previous_obs, current_obs=obs)
         return obs
 
     def _update_obs_history(self, obs_history: jax.Array, current_obs: jax.Array) -> jax.Array:
+        """Updates the observation history vector."""
         # stack observations through time
         return jnp.roll(obs_history, current_obs.size).at[: current_obs.size].set(current_obs)
 
-    def _get_state_obs(
+    def _get_proprioceptive_obs_vector(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> jax.Array:
-        obs_list = QuadrupedBaseEnv._get_raw_obs_list(self, pipeline_state, state_info)
+        """Compounds all proprioceptive observations into a single vector. Clips and adds noise
+        to values if requested."""
+        obs_list = self._get_proprioceptive_obs_list(pipeline_state, state_info)
         obs = jnp.concatenate(obs_list)
 
         # clip, noise
@@ -347,9 +374,11 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         return obs
 
-    def _get_raw_obs_list(
+    def _get_proprioceptive_obs_list(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> list[jax.Array]:
+        """Computes a list of proprioceptive observations. Override this to extend or define
+        custom proprioceptive observations."""
 
         inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
         local_rpyrate = math.rotate(pipeline_state.xd.ang[0], inv_torso_rot)
@@ -363,6 +392,10 @@ class QuadrupedBaseEnv(PipelineEnv):
         return obs_list
 
     def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
+        """Checks if the current state is defined as a terminal state. This is when:
+        1) The robot flipped over
+        2) The robot falls too low
+        3) The joint limits are exceeded"""
         # done if joint limits are reached or robot is falling
 
         up = jnp.array([0.0, 0.0, 1.0])
@@ -387,6 +420,9 @@ class QuadrupedBaseEnv(PipelineEnv):
         action: jax.Array,
         done: jax.Array,
     ) -> dict[str, jax.Array]:
+        """Computes all the rewards for the current state of the environment and returns a dict
+        of them. Updates any relevant state information. Override this to define custom rewards
+        for your task."""
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_vel = pipeline_state.qd[6:18]
 
