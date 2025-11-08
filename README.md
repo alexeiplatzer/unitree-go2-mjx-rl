@@ -16,3 +16,9 @@ information from visual input.
 
 The package can be installed after cloning as an editable package with
 `pip install -e .`
+
+## Copyright and Attribution
+
+This work is based to a large extent on the [Brax](https://github.com/google/brax)
+ library and borrows heavily from it.  
+Copyright terms are therefore whatever the Apache License for Brax allows it to be.
