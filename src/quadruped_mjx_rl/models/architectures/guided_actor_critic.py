@@ -101,9 +101,7 @@ class TeacherStudentNetworks(
             params.preprocessor_params, params.network_params.value, observation, latent_vector
         )
 
-    def policy_apply(
-        self, params: TeacherStudentAgentParams, observation: types.Observation
-    ):
+    def policy_apply(self, params: TeacherStudentAgentParams, observation: types.Observation):
         return self.teacher_policy_apply(params, observation)
 
     def policy_metafactory(self):

@@ -246,7 +246,7 @@ def train(
 
         if num_evals > 0:
             logging.info(f"training_metrics: {training_metrics}")
-            #logging.info(f"nan in params: {jnp.any(jnp.isnan(params))}")
+            # logging.info(f"nan in params: {jnp.any(jnp.isnan(params))}")
             run_evaluations(current_step, params, training_metrics)
 
     total_steps = current_step

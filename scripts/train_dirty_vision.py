@@ -10,7 +10,9 @@ from quadruped_mjx_rl.environments import (
     get_env_factory,
 )
 from quadruped_mjx_rl.environments.rendering import (
-    large_overview_camera, render_model, show_image,
+    large_overview_camera,
+    render_model,
+    show_image,
 )
 from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.terrain_gen import make_simple_obstacle_terrain
@@ -42,8 +44,9 @@ if __name__ == "__main__":
 
     # Render the situation
     image = render_model(
-        env_model, initial_keyframe=robot_config.initial_keyframe,
-        camera=large_overview_camera()
+        env_model,
+        initial_keyframe=robot_config.initial_keyframe,
+        camera=large_overview_camera(),
     )
     show_image(image)
 

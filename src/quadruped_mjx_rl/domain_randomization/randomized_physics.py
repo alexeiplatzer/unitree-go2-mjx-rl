@@ -26,20 +26,24 @@ def domain_randomize(pipeline_model: PipelineModel, rng: jax.Array):
     friction, gain, bias = rand(rng)
 
     in_axes = jax.tree.map(lambda x: None, pipeline_model)
-    in_axes = in_axes.replace(model=in_axes.model.tree_replace(
-        {
-            "geom_friction": 0,
-            "actuator_gainprm": 0,
-            "actuator_biasprm": 0,
-        }
-    ))
+    in_axes = in_axes.replace(
+        model=in_axes.model.tree_replace(
+            {
+                "geom_friction": 0,
+                "actuator_gainprm": 0,
+                "actuator_biasprm": 0,
+            }
+        )
+    )
 
-    pipeline_model = pipeline_model.replace(model=pipeline_model.model.tree_replace(
-        {
-            "geom_friction": friction,
-            "actuator_gainprm": gain,
-            "actuator_biasprm": bias,
-        }
-    ))
+    pipeline_model = pipeline_model.replace(
+        model=pipeline_model.model.tree_replace(
+            {
+                "geom_friction": friction,
+                "actuator_gainprm": gain,
+                "actuator_biasprm": bias,
+            }
+        )
+    )
 
     return pipeline_model, in_axes

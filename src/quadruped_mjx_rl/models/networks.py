@@ -168,6 +168,7 @@ def make_network(
     """
     Creates a feedforward network that selects and preprocesses the specified observations.
     """
+
     def to_input_vector(obs: Observation) -> jax.Array:
         """Selects the needed observations and concatenates them into a single input vector."""
         if isinstance(obs, Mapping):

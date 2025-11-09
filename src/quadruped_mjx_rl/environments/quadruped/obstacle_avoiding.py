@@ -101,10 +101,12 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
     def reset(self, rng: jax.Array) -> State:
         state = super().reset(rng)
 
-        state.info["obstacles_xy"] = jnp.stack([
-            state.pipeline_state.data.xpos[obstacle_id, :2]
-            for obstacle_id in self._obstacle_ids
-        ])
+        state.info["obstacles_xy"] = jnp.stack(
+            [
+                state.pipeline_state.data.xpos[obstacle_id, :2]
+                for obstacle_id in self._obstacle_ids
+            ]
+        )
 
         return state
 
@@ -119,10 +121,8 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
                 minval=-self._obstacle_location_noise,
                 maxval=self._obstacle_location_noise,
             )
-            obstacle_pos = init_q[qadr + 1: qadr + 2]
-            init_q = init_q.at[qadr + 1: qadr + 2].set(
-                obstacle_pos + obstacle_offset
-            )
+            obstacle_pos = init_q[qadr + 1 : qadr + 2]
+            init_q = init_q.at[qadr + 1 : qadr + 2].set(obstacle_pos + obstacle_offset)
         return init_q
 
     def _get_rewards(
@@ -146,13 +146,8 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
         return rewards
 
     # ------------ reward functions ------------
-    def _reward_obstacle_proximity(
-        self, obstacle_distances: jax.Array
-    ) -> jax.Array:
+    def _reward_obstacle_proximity(self, obstacle_distances: jax.Array) -> jax.Array:
         return jnp.sum(jnp.maximum(self._obstacle_margin - obstacle_distances, 0.0))
 
-    def _reward_collision(
-        self, obstacle_distances: jax.Array
-    ) -> jax.Array:
+    def _reward_collision(self, obstacle_distances: jax.Array) -> jax.Array:
         return jnp.sum(obstacle_distances < self._collision_radius)
-

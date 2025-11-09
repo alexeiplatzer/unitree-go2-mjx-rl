@@ -8,18 +8,16 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 )
 
 
-def collect_tile_ids(
-    env_model: EnvModel, tile_body_prefix: str = "tile_"
-) -> jax.Array:
+def collect_tile_ids(env_model: EnvModel, tile_body_prefix: str = "tile_") -> jax.Array:
     """Collects the ids of geoms that belong to tile bodies.
 
-        Args:
-            env_model: Compiled environment model containing the tiled terrain.
-            tile_body_prefix: Prefix that identifies bodies representing tiles.
+    Args:
+        env_model: Compiled environment model containing the tiled terrain.
+        tile_body_prefix: Prefix that identifies bodies representing tiles.
 
-        Returns:
-            An array with the ids of all geoms that belong to bodies with the provided prefix.
-        """
+    Returns:
+        An array with the ids of all geoms that belong to bodies with the provided prefix.
+    """
 
     geom_ids: list[int] = []
     for body_id in range(env_model.nbody):
@@ -91,20 +89,24 @@ def randomize_tiles(
     rgba, friction, solref = rand(rng)
 
     in_axes = jax.tree.map(lambda x: None, pipeline_model)
-    in_axes = in_axes.replace(model=in_axes.model.tree_replace(
-        {
-            "geom_rgba": 0,
-            "geom_friction": 0,
-            "geom_solref": 0,
-        }
-    ))
+    in_axes = in_axes.replace(
+        model=in_axes.model.tree_replace(
+            {
+                "geom_rgba": 0,
+                "geom_friction": 0,
+                "geom_solref": 0,
+            }
+        )
+    )
 
-    pipeline_model = pipeline_model.replace(model=pipeline_model.model.tree_replace(
-        {
-            "geom_rgba": rgba,
-            "geom_friction": friction,
-            "geom_solref": solref,
-        }
-    ))
+    pipeline_model = pipeline_model.replace(
+        model=pipeline_model.model.tree_replace(
+            {
+                "geom_rgba": rgba,
+                "geom_friction": friction,
+                "geom_solref": solref,
+            }
+        )
+    )
 
     return pipeline_model, in_axes

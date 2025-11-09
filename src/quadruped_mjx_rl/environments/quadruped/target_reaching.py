@@ -64,6 +64,7 @@ register_environment_config_class(QuadrupedVisionTargetEnvConfig)
 class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
     """In this environment, the robot is tasked with reaching a target body using both visual
     and proprioceptive input."""
+
     def __init__(
         self,
         environment_config: QuadrupedVisionTargetEnvConfig,
@@ -109,9 +110,7 @@ class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
 
         state_info["last_pos_xy"] = x.pos[0, :2]
 
-        rewards["goal_progress"] = self._reward_goal_progress(
-            last_goalwards_xy, goalwards_xy
-        )
+        rewards["goal_progress"] = self._reward_goal_progress(last_goalwards_xy, goalwards_xy)
         rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goalwards_xy)
         rewards["goal_yaw_alignment"] = self._reward_goal_yaw_alignment(x, goalwards_xy)
 
@@ -127,9 +126,7 @@ class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
         goalwards_direction_xy = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
         return jnp.dot(goalwards_direction_xy, xd.vel[0, :2])
 
-    def _reward_goal_yaw_alignment(
-        self, x: Transform, goalwards_xy: jax.Array
-    ) -> jax.Array:
+    def _reward_goal_yaw_alignment(self, x: Transform, goalwards_xy: jax.Array) -> jax.Array:
         forward = math.rotate(jnp.array([1.0, 0.0, 0.0]), x.rot[0])[:2]
         forward_direction = forward / (jnp.linalg.norm(forward) + 1e-6)
         goal_direction = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
@@ -142,4 +139,3 @@ class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
             1.0 - angle / self._rewards_config.yaw_alignment_threshold,
             0.0,
         )
-

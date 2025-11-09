@@ -1,4 +1,5 @@
 """This module helps visualize terrain generation intermediate results."""
+
 import mediapy as media
 import mujoco as mj
 

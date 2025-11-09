@@ -44,9 +44,7 @@ def compute_ppo_loss(
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    policy_logits = network.policy_apply(
-        agent_params, data.observation
-    )
+    policy_logits = network.policy_apply(agent_params, data.observation)
 
     baseline = network.value_apply(agent_params, data.observation)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)

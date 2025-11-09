@@ -56,7 +56,7 @@ class QuadrupedVisionBaseEnvConfig(EnvCfg):
                     use_depth=True,
                     use_brightness_randomized_rgb=False,
                     use_actual_rgb=False,
-                )
+                ),
             ]
         )
 
@@ -96,9 +96,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
             self.renderer = renderer_maker(self.pipeline_model)
 
     @staticmethod
-    def customize_model(
-        env_model: EnvModel, environment_config: QuadrupedVisionBaseEnvConfig
-    ):
+    def customize_model(env_model: EnvModel, environment_config: QuadrupedVisionBaseEnvConfig):
         env_model = super().customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [25.0, 25.0]
@@ -113,9 +111,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
     def _init_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
-        obs = {
-            "proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)
-        }
+        obs = {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
         if self._use_vision:
             rng = state_info["rng"]
             rng_brightness, rng = jax.random.split(rng)
@@ -143,13 +139,9 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
         state_info: dict[str, ...],
         previous_obs: dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
-        obs = {
-            "proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)
-        }
+        obs = {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
         if self._use_vision:
-            _, rgb, depth = self.renderer.init(
-                pipeline_state.data, self._pipeline_model.model
-            )
+            _, rgb, depth = self.renderer.init(pipeline_state.data, self._pipeline_model.model)
             camera_obs = self._format_camera_observations(rgb, depth, state_info)
             obs |= camera_obs
         return obs

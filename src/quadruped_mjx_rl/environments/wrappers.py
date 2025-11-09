@@ -59,18 +59,20 @@ def _identity_vision_randomization_fn(
 ) -> tuple[PipelineModel, PipelineModel]:
     """Tile the necessary fields for the Madrona memory buffer copy."""
     in_axes = jax.tree_util.tree_map(lambda x: None, pipeline_model)
-    in_axes = in_axes.replace(model=in_axes.model.tree_replace(
-        {
-            "geom_rgba": 0,
-            "geom_matid": 0,
-            "geom_size": 0,
-            "light_pos": 0,
-            "light_dir": 0,
-            "light_type": 0,
-            "light_castshadow": 0,
-            "light_cutoff": 0,
-        }
-    ))
+    in_axes = in_axes.replace(
+        model=in_axes.model.tree_replace(
+            {
+                "geom_rgba": 0,
+                "geom_matid": 0,
+                "geom_size": 0,
+                "light_pos": 0,
+                "light_dir": 0,
+                "light_type": 0,
+                "light_castshadow": 0,
+                "light_cutoff": 0,
+            }
+        )
+    )
     pipeline_model = pipeline_model.replace(
         model=pipeline_model.model.tree_replace(
             {

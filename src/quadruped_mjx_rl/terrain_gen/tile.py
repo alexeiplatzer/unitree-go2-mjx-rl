@@ -1,5 +1,6 @@
 """This module uses the obstacles module to tile the terrain with a square grid of tiles.
 It has several functions with example tilings."""
+
 import random
 from dataclasses import dataclass
 
@@ -12,6 +13,7 @@ from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig
 @dataclass
 class TerrainConfig(Configuration):
     """Utility dataclass for generating a square grid of square terrain tiles."""
+
     tiles: list[list[TerrainTileConfig]]
 
     @classmethod
@@ -68,9 +70,7 @@ def get_simple_tiled_terrain(
     n_columns: int = 4,
 ):
     """This terrain is just a square grid of featureless flat tiles."""
-    return TerrainConfig(
-        tiles=[[FlatTile() for _ in range(n_columns)] for _ in range(n_rows)]
-    )
+    return TerrainConfig(tiles=[[FlatTile() for _ in range(n_columns)] for _ in range(n_rows)])
 
 
 def get_randomized_terrain(
@@ -86,5 +86,3 @@ def get_randomized_terrain(
     return TerrainConfig(
         tiles=[random.choices(obstacles, weights=weights, k=n_columns) for _ in range(n_rows)]
     )
-
-

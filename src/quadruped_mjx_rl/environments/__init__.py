@@ -8,25 +8,25 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     load_to_model,
 )
-from quadruped_mjx_rl.environments.quadruped.base import (
+from quadruped_mjx_rl.environments.quadruped import (
     EnvironmentConfig,
-    QuadrupedBaseEnv,
-)
-from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
+    QuadrupedBaseEnv,
+    QuadrupedColorGuidedEnv,
+    QuadrupedColorGuidedEnvConfig,
+    QuadrupedGaitTrackingEnv,
+    QuadrupedGaitTrackingEnvConfig,
     QuadrupedJoystickBaseEnv,
-)
-from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
     QuadrupedJoystickTeacherStudentEnv,
-    TeacherStudentEnvironmentConfig,
-)
-from quadruped_mjx_rl.environments.quadruped.joystick_vision import (
-    QuadrupedJoystickVisionEnvConfig,
     QuadrupedJoystickVisionEnv,
-)
-from quadruped_mjx_rl.environments.quadruped.obstacle_avoiding import (
-    QuadrupedVisionTargetEnvConfig,
+    QuadrupedJoystickVisionEnvConfig,
+    QuadrupedObstacleAvoidingEnv,
+    QuadrupedObstacleAvoidingEnvConfig,
+    QuadrupedVisionBaseEnv,
+    QuadrupedVisionBaseEnvConfig,
     QuadrupedVisionTargetEnv,
+    QuadrupedVisionTargetEnvConfig,
+    TeacherStudentEnvironmentConfig,
 )
 from quadruped_mjx_rl.robots import RobotConfig
 

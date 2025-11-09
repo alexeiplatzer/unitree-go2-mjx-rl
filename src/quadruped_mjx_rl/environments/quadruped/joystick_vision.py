@@ -29,7 +29,9 @@ from quadruped_mjx_rl.robots import RobotConfig
 @dataclass
 class QuadrupedJoystickVisionEnvConfig(QuadrupedVisionBaseEnvConfig, JoystickBaseEnvConfig):
     domain_rand: "QuadrupedJoystickVisionEnvConfig.DomainRandConfig" = field(
-        default_factory=lambda: QuadrupedJoystickVisionEnvConfig.DomainRandConfig(apply_kicks=False)
+        default_factory=lambda: QuadrupedJoystickVisionEnvConfig.DomainRandConfig(
+            apply_kicks=False
+        )
     )
 
     @classmethod

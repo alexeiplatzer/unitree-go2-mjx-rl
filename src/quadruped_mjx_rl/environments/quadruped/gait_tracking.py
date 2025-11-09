@@ -42,30 +42,17 @@ def make_kinematic_ref(sinusoid, step_k, scale=0.3, dt=1 / 50):
     wave = sinusoid(t, step_period, scale)
     # Commands for one step of an active front leg
     fleg_cmd_block = jnp.concatenate(
-        [jnp.zeros((step_k, 1)),
-            wave.reshape(step_k, 1),
-            -2 * wave.reshape(step_k, 1)],
-        axis=1
+        [jnp.zeros((step_k, 1)), wave.reshape(step_k, 1), -2 * wave.reshape(step_k, 1)], axis=1
     )
     # Our standing config reverses front and hind legs
     h_leg_cmd_bloc = -1 * fleg_cmd_block
 
     block1 = jnp.concatenate(
-        [
-            jnp.zeros((step_k, 3)),
-            fleg_cmd_block,
-            h_leg_cmd_bloc,
-            jnp.zeros((step_k, 3))],
-        axis=1
+        [jnp.zeros((step_k, 3)), fleg_cmd_block, h_leg_cmd_bloc, jnp.zeros((step_k, 3))], axis=1
     )
 
     block2 = jnp.concatenate(
-        [
-            fleg_cmd_block,
-            jnp.zeros((step_k, 3)),
-            jnp.zeros((step_k, 3)),
-            h_leg_cmd_bloc],
-        axis=1
+        [fleg_cmd_block, jnp.zeros((step_k, 3)), jnp.zeros((step_k, 3)), h_leg_cmd_bloc], axis=1
     )
     # In one step cycle, both pairs of active legs have inactive and active phases
     step_cycle = jnp.concatenate([block1, block2], axis=0)
@@ -76,7 +63,9 @@ def axis_angle_to_quaternion(v: jnp.ndarray, theta: jnp.float_):
     """
     axis angle representation: rotation of theta around v.
     """
-    return jnp.concatenate([jnp.cos(0.5*theta).reshape(1), jnp.sin(0.5*theta)*v.reshape(3)])
+    return jnp.concatenate(
+        [jnp.cos(0.5 * theta).reshape(1), jnp.sin(0.5 * theta) * v.reshape(3)]
+    )
 
 
 @dataclass
@@ -88,13 +77,13 @@ class QuadrupedGaitTrackingEnvConfig(EnvCfg):
 
         @dataclass
         class ScalesConfig:
-            tracking_lin_vel: float = 1.0,
-            orientation: float = -1.0,  # non-flat base
-            height: float = 0.5,
-            lin_vel_z: float = -1.0,  # prevents the suicide policy
-            torque: float = -0.01,
-            feet_pos: float = -1,  # Bad action hard-coding.
-            feet_height: float = -1,  # prevents it from just standing still
+            tracking_lin_vel: float = (1.0,)
+            orientation: float = (-1.0,)  # non-flat base
+            height: float = (0.5,)
+            lin_vel_z: float = (-1.0,)  # prevents the suicide policy
+            torque: float = (-0.01,)
+            feet_pos: float = (-1,)  # Bad action hard-coding.
+            feet_height: float = (-1,)  # prevents it from just standing still
             joint_velocity: float = -0.001
 
         scales: ScalesConfig = field(default_factory=ScalesConfig)
@@ -114,5 +103,3 @@ class QuadrupedGaitTrackingEnv(QuadrupedBaseEnv):
         baseline_inference_fn: Callable,
     ):
         super().__init__(environment_config, robot_config, env_model)
-
-

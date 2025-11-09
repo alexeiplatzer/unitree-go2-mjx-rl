@@ -1,5 +1,6 @@
-""" Utility functions for generating terrain with the help of some random noise, for example
+"""Utility functions for generating terrain with the help of some random noise, for example
 small lumps in the floor surface."""
+
 import numpy as np
 from scipy.signal import convolve2d
 

@@ -2,7 +2,10 @@ import numpy as np
 import functools
 import paths
 from quadruped_mjx_rl.robots import predefined_robot_configs
-from quadruped_mjx_rl.environments import JoystickBaseEnvConfig, QuadrupedJoystickVisionEnvConfig
+from quadruped_mjx_rl.environments import (
+    JoystickBaseEnvConfig,
+    QuadrupedJoystickVisionEnvConfig,
+)
 from quadruped_mjx_rl.models import TeacherStudentVisionConfig
 from quadruped_mjx_rl.training.configs import TrainingWithVisionConfig
 from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to_model
@@ -60,10 +63,7 @@ if __name__ == "__main__":
     init_qpos[2] += z_offset
 
     vision_config = VisionConfig(
-        render_batch_size=8,
-        render_width=32,
-        render_height=32,
-        enabled_geom_groups=[0, 1, 2]
+        render_batch_size=8, render_width=32, render_height=32, enabled_geom_groups=[0, 1, 2]
     )
 
     modifier_env_class = resolve_env_class(JoystickBaseEnvConfig())

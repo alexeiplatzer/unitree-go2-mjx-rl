@@ -1,5 +1,6 @@
 """This module defines a terrain consisting of square tiles, each of which represents some rough
 terrain and or obstacles. It defines many different types of tiles for this purpose."""
+
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from quadruped_mjx_rl.config_utils import Configuration, register_config_base_cl
 class Color:
     """A very simple dataclass for specifying RGBA color values. More humanly readable that a
     list of four numbers."""
+
     r: float
     g: float
     b: float
@@ -49,6 +51,7 @@ def _set_body(
 @dataclass
 class TerrainTileConfig(ABC):
     """Abstract base class for a generic square tile type with common attributes and methods."""
+
     color: Color = field(default_factory=lambda: Color(0.460, 0.362, 0.216, 1.0))  # (Brown)
     square_side: float = 2.0
     floor_thickness: float = 0.05
@@ -68,6 +71,7 @@ class TerrainTileConfig(ABC):
 @dataclass
 class FlatTile(TerrainTileConfig):
     """Just a basic square tile with a flat surface."""
+
     def create_tile(
         self,
         spec: mj.MjSpec | None = None,
@@ -150,7 +154,7 @@ class Cylinders(TerrainTileConfig):
                 pos=[x, y, self.floor_thickness + self.height / 2],
                 size=[self.radius, self.height / 2, 0],
                 rgba=self.cylinder_color.rgba,
-                name=f"cylinder_{idx}"
+                name=f"cylinder_{idx}",
             )
 
 

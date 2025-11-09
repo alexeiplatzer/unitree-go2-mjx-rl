@@ -82,6 +82,7 @@ class EnvironmentConfig(Configuration):
             positions are measured in meters, torques in Nm, and time in seconds,
             and forces in Newtons.
             """
+
             # Regularization terms:
             lin_vel_z: float = -2.0  # Penalize base velocity in the z direction (L2 penalty).
             ang_vel_xy: float = -0.05  # Penalize base roll and pitch rate (L2 penalty).
@@ -202,9 +203,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._nq = self._pipeline_model.model.nq
 
     @staticmethod
-    def customize_model(
-        model: EnvModel, environment_config: EnvironmentConfig
-    ) -> EnvModel:
+    def customize_model(model: EnvModel, environment_config: EnvironmentConfig) -> EnvModel:
         model.actuator_gainprm[:, 0] = environment_config.sim.override.Kp
         model.actuator_biasprm[:, 1] = -environment_config.sim.override.Kp
         model.dof_damping[6:] = environment_config.sim.override.Kd
@@ -477,9 +476,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         # Penalize changes in actions
         return jnp.sum(jnp.square(act - last_act))
 
-    def _reward_feet_air_time(
-        self, air_time: jax.Array, first_contact: jax.Array
-    ) -> jax.Array:
+    def _reward_feet_air_time(self, air_time: jax.Array, first_contact: jax.Array) -> jax.Array:
         # Reward air time.
         rew_air_time = jnp.sum((air_time - 0.1) * first_contact)
         return rew_air_time

@@ -61,20 +61,28 @@ class MockRenderer:
 
     def init(self, data, model):
 
-        return jnp.zeros(()), jnp.zeros(
-            (self.num_cams, self.height, self.width, 4),
-            dtype=jnp.float32,
-        ), jnp.zeros(
-            (self.num_cams, self.height, self.width, 1),
-            dtype=jnp.float32,
+        return (
+            jnp.zeros(()),
+            jnp.zeros(
+                (self.num_cams, self.height, self.width, 4),
+                dtype=jnp.float32,
+            ),
+            jnp.zeros(
+                (self.num_cams, self.height, self.width, 1),
+                dtype=jnp.float32,
+            ),
         )
 
     def render(self, token, data):
 
-        return jnp.zeros(()), jnp.zeros(
-            (self.num_cams, self.height, self.width, 4),
-            dtype=jnp.float32,
-        ), jnp.zeros(
-            (self.num_cams, self.height, self.width, 1),
-            dtype=jnp.float32,
+        return (
+            jnp.zeros(()),
+            jnp.zeros(
+                (self.num_cams, self.height, self.width, 4),
+                dtype=jnp.float32,
+            ),
+            jnp.zeros(
+                (self.num_cams, self.height, self.width, 1),
+                dtype=jnp.float32,
+            ),
         )

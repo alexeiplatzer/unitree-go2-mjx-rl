@@ -12,7 +12,6 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
-from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass
