@@ -3,27 +3,21 @@ from dataclasses import dataclass, field
 
 import jax
 import jax.numpy as jnp
-import mujoco
 
-from quadruped_mjx_rl import math
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
-    Motion,
-    Transform,
     PipelineModel,
     PipelineState,
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
-    EnvironmentConfig,
     QuadrupedBaseEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnvConfig,
-    QuadrupedVisionTargetEnvironment,
+    QuadrupedVisionTargetEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
@@ -62,13 +56,13 @@ class QuadrupedObstacleAvoidingEnvConfig(QuadrupedVisionTargetEnvConfig):
 
     @classmethod
     def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
-        return QuadrupedObstacleAvoidingEnvironment
+        return QuadrupedObstacleAvoidingEnv
 
 
 register_environment_config_class(QuadrupedObstacleAvoidingEnvConfig)
 
 
-class QuadrupedObstacleAvoidingEnvironment(QuadrupedVisionTargetEnvironment):
+class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
     """An expansion of the target-reaching environment to include obstacles, collision with
     which is punished."""
 
@@ -138,7 +132,7 @@ class QuadrupedObstacleAvoidingEnvironment(QuadrupedVisionTargetEnvironment):
         action: jax.Array,
         done: jax.Array,
     ) -> dict[str, jax.Array]:
-        rewards = QuadrupedVisionTargetEnvironment._get_rewards(
+        rewards = QuadrupedVisionTargetEnv._get_rewards(
             self, pipeline_state, state_info, action, done
         )
 

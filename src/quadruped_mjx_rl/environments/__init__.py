@@ -21,12 +21,12 @@ from quadruped_mjx_rl.environments.quadruped.joystick_teacher_student import (
     TeacherStudentEnvironmentConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.joystick_vision import (
-    QuadrupedVisionEnvConfig,
-    QuadrupedVisionEnvironment,
+    QuadrupedJoystickVisionEnvConfig,
+    QuadrupedJoystickVisionEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.obstacle_avoiding import (
     QuadrupedVisionTargetEnvConfig,
-    QuadrupedVisionTargetEnvironment,
+    QuadrupedVisionTargetEnv,
 )
 from quadruped_mjx_rl.robots import RobotConfig
 

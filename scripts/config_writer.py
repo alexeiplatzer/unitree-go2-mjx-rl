@@ -43,7 +43,7 @@ if __name__ == "__main__":
         ppo_training_config,
     )
 
-    vision_ppo_env_config = environments.QuadrupedVisionEnvConfig()
+    vision_ppo_env_config = environments.QuadrupedJoystickVisionEnvConfig()
     vision_ppo_model_config = models.TeacherStudentVisionConfig()
     vision_ppo_training_config = TrainingWithVisionConfig()
     vision_config = robotic_vision.VisionConfig()

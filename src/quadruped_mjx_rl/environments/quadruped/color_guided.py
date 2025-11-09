@@ -23,7 +23,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
 )
 from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnvConfig,
-    QuadrupedVisionTargetEnvironment,
+    QuadrupedVisionTargetEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
@@ -38,13 +38,13 @@ class QuadrupedColorGuidedEnvConfig(QuadrupedVisionTargetEnvConfig):
 
     @classmethod
     def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
-        return QuadrupedColorGuidedEnvironment
+        return QuadrupedColorGuidedEnv
 
 
 register_environment_config_class(QuadrupedColorGuidedEnvConfig)
 
 
-class QuadrupedColorGuidedEnvironment(QuadrupedVisionTargetEnvironment):
+class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
     """An expansion of the target-reaching environment to include obstacles, collision with
     which is punished."""
 

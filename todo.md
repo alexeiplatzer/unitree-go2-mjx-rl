@@ -20,5 +20,5 @@
 - [ ] add docstrings everywhere
 
 ## Current
-- [ ] finish vision env refactoring
+- [X] finish vision env refactoring
 - [ ] visualize the domain randomization

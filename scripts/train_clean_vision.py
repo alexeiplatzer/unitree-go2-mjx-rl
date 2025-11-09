@@ -2,7 +2,7 @@ import numpy as np
 import functools
 import paths
 from quadruped_mjx_rl.robots import predefined_robot_configs
-from quadruped_mjx_rl.environments import JoystickBaseEnvConfig, QuadrupedVisionEnvConfig
+from quadruped_mjx_rl.environments import JoystickBaseEnvConfig, QuadrupedJoystickVisionEnvConfig
 from quadruped_mjx_rl.models import TeacherStudentVisionConfig
 from quadruped_mjx_rl.training.configs import TrainingWithVisionConfig
 from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to_model
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # Prepare configs
     robot_config = predefined_robot_configs["unitree_go2"]()
 
-    env_config = QuadrupedVisionEnvConfig()
+    env_config = QuadrupedJoystickVisionEnvConfig()
 
     model_config = TeacherStudentVisionConfig(
         modules=TeacherStudentVisionConfig.ModulesConfig(

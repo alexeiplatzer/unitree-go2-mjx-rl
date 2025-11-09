@@ -133,7 +133,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
         return state
 
-    def _init_obs(
+    def _init_proprioceptive_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, ...],
@@ -141,7 +141,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         """Resamples the command in addition to initializing observation arrays."""
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
         state_info["command"] = self.sample_command(command_key)
-        return self._init_proprioceptive_obs(pipeline_state, state_info)
+        return super()._init_proprioceptive_obs(pipeline_state, state_info)
 
     def _get_proprioceptive_obs_list(
         self, pipeline_state: PipelineState, state_info: dict[str, ...]

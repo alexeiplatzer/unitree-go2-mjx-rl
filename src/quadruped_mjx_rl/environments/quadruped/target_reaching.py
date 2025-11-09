@@ -3,10 +3,8 @@ from dataclasses import dataclass, field
 
 import jax
 import jax.numpy as jnp
-import mujoco
 
 from quadruped_mjx_rl import math
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
@@ -18,40 +16,31 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
-    EnvironmentConfig,
     QuadrupedBaseEnv,
+)
+from quadruped_mjx_rl.environments.quadruped.vision_base import (
+    QuadrupedVisionBaseEnvConfig,
+    QuadrupedVisionBaseEnv,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 
-def adjust_brightness(img, scale):
-    """Adjusts the brightness of an image by scaling the pixel values."""
-    return jnp.clip(img * scale, 0, 1)
-
-
 @dataclass
-class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
-    use_vision: bool = True
+class QuadrupedVisionTargetEnvConfig(QuadrupedVisionBaseEnvConfig):
+
+    domain_rand: "QuadrupedVisionTargetEnvConfig.DomainRandConfig" = field(
+        default_factory=lambda: QuadrupedVisionTargetEnvConfig.DomainRandConfig(
+            apply_kicks=False
+        )
+    )
 
     @dataclass
-    class ObservationConfig(EnvironmentConfig.ObservationConfig):
-        brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
-
-    observation_noise: ObservationConfig = field(default_factory=ObservationConfig)
-
-    @dataclass
-    class DomainRandConfig(EnvironmentConfig.DomainRandConfig):
-        apply_kicks: bool = False
-
-    domain_rand: DomainRandConfig = field(default_factory=DomainRandConfig)
-
-    @dataclass
-    class RewardConfig(EnvironmentConfig.RewardConfig):
+    class RewardConfig(QuadrupedVisionBaseEnvConfig.RewardConfig):
         yaw_alignment_threshold: float = 1.35
 
         @dataclass
-        class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
+        class ScalesConfig(QuadrupedVisionBaseEnvConfig.RewardConfig.ScalesConfig):
             goal_progress: float = 2.5
             speed_towards_goal: float = 2.5
             goal_yaw_alignment: float = 1.0
@@ -66,13 +55,13 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
 
     @classmethod
     def get_environment_class(cls) -> type[QuadrupedBaseEnv]:
-        return QuadrupedVisionTargetEnvironment
+        return QuadrupedVisionTargetEnv
 
 
 register_environment_config_class(QuadrupedVisionTargetEnvConfig)
 
 
-class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
+class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
     """In this environment, the robot is tasked with reaching a target body using both visual
     and proprioceptive input."""
     def __init__(
@@ -80,29 +69,21 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         environment_config: QuadrupedVisionTargetEnvConfig,
         robot_config: RobotConfig,
         env_model: EnvSpec | EnvModel,
+        *,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
         renderer_maker: Callable[[PipelineModel], ...] | None = None,
     ):
-        super().__init__(environment_config, robot_config, env_model)
+        super().__init__(
+            environment_config,
+            robot_config,
+            env_model,
+            vision_config=vision_config,
+            renderer_maker=renderer_maker,
+        )
+        self._rewards_config = environment_config.rewards
         self._init_q = self._init_q if init_qpos is None else init_qpos
-
         self._goal_id = self._env_model.body("goal_sphere").id
-
-        self._use_vision = environment_config.use_vision
-        if self._use_vision:
-            if vision_config is None:
-                raise ValueError("use_vision set to true, VisionConfig not provided.")
-            self.renderer = renderer_maker(self.pipeline_model)
-
-    @staticmethod
-    def customize_model(
-        env_model: EnvModel, environment_config: QuadrupedVisionTargetEnvConfig
-    ):
-        env_model = QuadrupedBaseEnv.customize_model(env_model, environment_config)
-        floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
-        env_model.geom_size[floor_id, :2] = [25.0, 25.0]
-        return env_model
 
     def reset(self, rng: jax.Array) -> State:
         state = super().reset(rng)
@@ -111,56 +92,6 @@ class QuadrupedVisionTargetEnvironment(QuadrupedBaseEnv):
         state.info["last_pos_xy"] = state.pipeline_state.x.pos[0, :2]
 
         return state
-
-    def _init_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
-    ) -> dict[str, jax.Array]:
-        obs = {
-            "state": QuadrupedBaseEnv._init_obs(self, pipeline_state, state_info),
-        }
-        if self._use_vision:
-            rng = state_info["rng"]
-            rng_brightness, rng = jax.random.split(rng)
-            state_info["rng"] = rng
-            brightness = jax.random.uniform(
-                rng_brightness,
-                (1,),
-                minval=self._obs_config.brightness[0],
-                maxval=self._obs_config.brightness[1],
-            )
-            state_info["brightness"] = brightness
-
-            render_token, rgb, depth = self.renderer.init(
-                pipeline_state.data, self._pipeline_model.model
-            )
-            state_info["render_token"] = render_token
-
-            rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            rgb_adjusted = adjust_brightness(rgb_norm, brightness)
-
-            obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
-
-        return obs
-
-    def _get_obs(
-        self,
-        pipeline_state: PipelineState,
-        state_info: dict[str, ...],
-        last_obs: jax.Array | dict[str, jax.Array],
-    ) -> dict[str, jax.Array]:
-        obs = {
-            "state": QuadrupedBaseEnv._get_obs(
-                self, pipeline_state, state_info, last_obs["state"]
-            ),
-        }
-        if self._use_vision:
-            _, rgb, depth = self.renderer.render(
-                state_info["render_token"], pipeline_state.data
-            )
-            rgb_norm = jnp.asarray(rgb[0][..., :3], dtype=jnp.float32) / 255.0
-            rgb_adjusted = adjust_brightness(rgb_norm, state_info["brightness"])
-            obs |= {"pixels/view_frontal_ego": rgb_adjusted, "pixels/view_terrain": depth[1]}
-        return obs
 
     def _get_rewards(
         self,
