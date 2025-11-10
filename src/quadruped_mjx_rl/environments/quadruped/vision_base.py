@@ -38,24 +38,18 @@ class QuadrupedVisionBaseEnvConfig(EnvCfg):
 
         @dataclass
         class CameraInputConfig:
-            name: str
-            use_depth: bool
-            use_brightness_randomized_rgb: bool
-            use_actual_rgb: bool
+            name: str = "default"
+            use_depth: bool = False
+            use_brightness_randomized_rgb: bool = False
+            use_actual_rgb: bool = False
 
         camera_inputs: list[CameraInputConfig] = field(
             default_factory=lambda: [
                 QuadrupedVisionBaseEnvConfig.ObservationConfig.CameraInputConfig(
-                    name="frontal_ego",
-                    use_depth=False,
-                    use_brightness_randomized_rgb=True,
-                    use_actual_rgb=False,
+                    name="frontal_ego", use_brightness_randomized_rgb=True
                 ),
                 QuadrupedVisionBaseEnvConfig.ObservationConfig.CameraInputConfig(
-                    name="terrain",
-                    use_depth=True,
-                    use_brightness_randomized_rgb=False,
-                    use_actual_rgb=False,
+                    name="terrain", use_depth=True
                 ),
             ]
         )

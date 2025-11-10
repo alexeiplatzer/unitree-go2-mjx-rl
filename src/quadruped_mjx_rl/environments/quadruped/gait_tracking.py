@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from collections.abc import Callable
 
-import jax
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.robots import RobotConfig

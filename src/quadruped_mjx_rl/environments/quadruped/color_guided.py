@@ -1,24 +1,16 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import jax
-import jax.numpy as jnp
-import mujoco
 
-from quadruped_mjx_rl import math
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
-    Motion,
-    Transform,
     PipelineModel,
-    PipelineState,
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
-    EnvironmentConfig,
     QuadrupedBaseEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.target_reaching import (

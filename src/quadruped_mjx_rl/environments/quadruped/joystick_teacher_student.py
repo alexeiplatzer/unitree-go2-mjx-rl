@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
-from quadruped_mjx_rl.environments.physics_pipeline import EnvModel, EnvSpec, PipelineState
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineState
+from quadruped_mjx_rl.environments.quadruped.base import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,

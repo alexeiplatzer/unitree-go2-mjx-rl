@@ -2,16 +2,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import jax
-import jax.numpy as jnp
-import mujoco
 
 from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
     PipelineModel,
-    PipelineState,
-    State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
@@ -19,8 +15,8 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     QuadrupedJoystickBaseEnv,
 )
 from quadruped_mjx_rl.environments.quadruped.vision_base import (
-    QuadrupedVisionBaseEnvConfig,
     QuadrupedVisionBaseEnv,
+    QuadrupedVisionBaseEnvConfig,
 )
 from quadruped_mjx_rl.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
