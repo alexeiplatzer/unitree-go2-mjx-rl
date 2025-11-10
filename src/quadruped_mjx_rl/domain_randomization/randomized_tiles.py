@@ -93,8 +93,8 @@ def randomize_tiles(
         model=in_axes.model.tree_replace(
             {
                 "geom_rgba": 0,
-                "geom_friction": 0,
-                "geom_solref": 0,
+                #"geom_friction": 0,
+                #"geom_solref": 0,
             }
         )
     )
@@ -103,8 +103,8 @@ def randomize_tiles(
         model=pipeline_model.model.tree_replace(
             {
                 "geom_rgba": rgba,
-                "geom_friction": friction,
-                "geom_solref": solref,
+                #"geom_friction": friction,
+                #"geom_solref": solref,
             }
         )
     )
