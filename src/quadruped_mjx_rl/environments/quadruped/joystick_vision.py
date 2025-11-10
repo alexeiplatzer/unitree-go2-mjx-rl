@@ -3,12 +3,12 @@ from dataclasses import dataclass, field
 
 import jax
 
-from quadruped_mjx_rl.environments import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
     PipelineModel,
 )
+from quadruped_mjx_rl.environments.quadruped.base import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
