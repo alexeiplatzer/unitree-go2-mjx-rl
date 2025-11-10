@@ -91,7 +91,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
 
     @staticmethod
     def customize_model(env_model: EnvModel, environment_config: QuadrupedVisionBaseEnvConfig):
-        env_model = super().customize_model(env_model, environment_config)
+        env_model = QuadrupedBaseEnv.customize_model(env_model, environment_config)
         floor_id = mujoco.mj_name2id(env_model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
         env_model.geom_size[floor_id, :2] = [25.0, 25.0]
         return env_model
