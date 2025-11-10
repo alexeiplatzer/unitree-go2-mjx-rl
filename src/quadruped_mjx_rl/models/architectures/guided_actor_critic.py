@@ -11,7 +11,7 @@ from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
-from quadruped_mjx_rl.models.modules import ActivationFn, CNN, HeadMLP, MLP
+from quadruped_mjx_rl.models.modules import ActivationFn, CNN, MLP
 from quadruped_mjx_rl.models.networks import (
     AgentParams,
     ComponentNetworkArchitecture,
@@ -221,13 +221,13 @@ def make_teacher_student_networks(
         squeeze_output=False,
     )
 
-    policy_module = HeadMLP(
+    policy_module = MLP(
         layer_sizes=model_config.modules.policy + [parametric_action_distribution.param_size],
         activation=activation,
         activate_final=False,
     )
 
-    value_module = HeadMLP(
+    value_module = MLP(
         layer_sizes=model_config.modules.value + [1],
         activation=activation,
         activate_final=False,

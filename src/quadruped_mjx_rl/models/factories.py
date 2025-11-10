@@ -28,8 +28,8 @@ def get_networks_factory(
         networks_factory = functools.partial(
             guided_networks.make_teacher_student_networks,
             model_config=model_config,
-            teacher_obs_key="pixels/view_terrain",
-            student_obs_key="pixels/view_frontal_ego",
+            teacher_obs_key="pixels/terrain/depth",
+            student_obs_key="pixels/frontal_ego/rgb",
         )
     elif isinstance(model_config, TeacherStudentConfig):
         networks_factory = functools.partial(
@@ -66,8 +66,8 @@ def load_inference_fn(
                 "state": 1,
                 "state_history": 1,
                 "privileged_state": 1,
-                "pixels/view_terrain": 1,
-                "pixels/view_frontal_ego": 1,
+                "pixels/terrain/depth": 1,
+                "pixels/frontal_ego/rgb": 1,
             },
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,
