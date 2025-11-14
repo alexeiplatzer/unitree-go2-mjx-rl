@@ -19,7 +19,7 @@ from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
 )
 from quadruped_mjx_rl.models.networks import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.training import gradients, training_utils
-from quadruped_mjx_rl.training.acting import Evaluator
+from quadruped_mjx_rl.training.acting_recurrent import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition

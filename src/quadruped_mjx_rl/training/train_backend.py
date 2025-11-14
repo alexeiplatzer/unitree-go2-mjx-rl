@@ -11,7 +11,7 @@ from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.models.networks import AgentParams
 from quadruped_mjx_rl.training import (
-    acting,
+    acting_recurrent,
     logger as metric_logger,
     pmap,
     training_utils as _utils,
@@ -50,6 +50,7 @@ def train(
     local_key: PRNGKey,
     key_envs: PRNGKey,
     env_state: State,
+    init_recurrent_state: jax.Array,
 ):
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -98,30 +99,31 @@ def train(
         return (opt_state, network_params, key), metrics
 
     def training_step(
-        carry: tuple[TrainingState, State, PRNGKey], unused_t
-    ) -> tuple[tuple[TrainingState, State, PRNGKey], types.Metrics]:
-        training_state, state, key = carry
+        carry: tuple[TrainingState, State, jax.Array, PRNGKey], unused_t
+    ) -> tuple[tuple[TrainingState, State, jax.Array, PRNGKey], types.Metrics]:
+        training_state, state, recurrent_state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
         # policies = (policies,) if not isinstance(policies, tuple) else policies
 
         def roll(carry, unused_t):
-            current_state, current_key = carry
+            current_state, current_key, recurrent_state = carry
             current_key, next_key = jax.random.split(current_key)
-            next_state, data = acting.generate_unroll(
+            next_state, next_recurrent_state, data = acting_recurrent.generate_unroll(
                 env,
                 current_state,
                 acting_policy,
                 current_key,
+                recurrent_state,
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
             )
-            return (next_state, next_key), data
+            return (next_state, next_key, next_recurrent_state), data
 
-        (state, ignore_key), data = jax.lax.scan(
+        (state, ignore_key, final_recurrent_state), data = jax.lax.scan(
             roll,
-            (state, key_generate_unroll),
+            (state, key_generate_unroll, recurrent_state),
             (),
             length=batch_size * num_minibatches // num_envs,
         )
@@ -163,31 +165,38 @@ def train(
             ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
-        return (new_training_state, state, new_key), metrics
+        return (new_training_state, state, final_recurrent_state, new_key), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: State, key: PRNGKey
-    ) -> tuple[TrainingState, State, types.Metrics]:
-        (training_state, state, ignored_key), loss_metrics = jax.lax.scan(
+        training_state: TrainingState, state: State, recurrent_state: jax.Array, key: PRNGKey
+    ) -> tuple[TrainingState, State, jax.Array, types.Metrics]:
+        (
+            training_state, state, final_recurrent_state, ignored_key
+        ), loss_metrics = jax.lax.scan(
             training_step,
-            (training_state, state, key),
+            (training_state, state, recurrent_state, key),
             (),
             length=num_training_steps_per_epoch,
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
-        return training_state, state, loss_metrics
+        return training_state, state, final_recurrent_state, loss_metrics
 
     training_epoch = jax.pmap(training_epoch, axis_name=_utils.PMAP_AXIS_NAME)
 
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
-        training_state: TrainingState, env_state: State, key: PRNGKey
-    ) -> tuple[TrainingState, State, types.Metrics]:
+        training_state: TrainingState,
+        env_state: State,
+        recurrent_state: jax.Array,
+        key: PRNGKey,
+    ) -> tuple[TrainingState, State, jax.Array, types.Metrics]:
         nonlocal training_walltime
         t = time.time()
         training_state, env_state = _utils.strip_weak_type((training_state, env_state))
-        result = training_epoch(training_state, env_state, key)
-        training_state, env_state, metrics = _utils.strip_weak_type(result)
+        result = training_epoch(training_state, env_state, recurrent_state, key)
+        training_state, env_state, final_recurrent_state, metrics = _utils.strip_weak_type(
+            result
+        )
 
         metrics = jax.tree_util.tree_map(jnp.mean, metrics)
         jax.tree_util.tree_map(lambda x: x.block_until_ready(), metrics)
@@ -204,11 +213,12 @@ def train(
             "training/walltime": training_walltime,
             **{f"training/{name}": value for name, value in metrics.items()},
         }
-        return training_state, env_state, metrics
+        return training_state, env_state, final_recurrent_state, metrics
 
     training_metrics = {}
     training_walltime = 0
     current_step = 0
+    recurrent_state = init_recurrent_state
 
     # Run initial policy params fn
     params = _utils.unpmap(training_state.agent_params)
@@ -224,8 +234,10 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            training_state, env_state, training_metrics = training_epoch_with_timing(
-                training_state, env_state, epoch_keys
+            (
+                training_state, env_state, recurrent_state, training_metrics
+            ) = training_epoch_with_timing(
+                training_state, env_state, recurrent_state, epoch_keys
             )
             current_step = int(_utils.unpmap(training_state.env_steps))
 

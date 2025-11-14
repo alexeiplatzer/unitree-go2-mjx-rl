@@ -27,6 +27,7 @@ class Transition(NamedTuple):
     reward: NestedArray
     discount: NestedArray
     next_observation: NestedArray
+    recurrent_state: NestedArray
     extras: NestedArray = ()
 
 
@@ -35,7 +36,8 @@ class Policy(Protocol):
         self,
         observation: Observation,
         key: PRNGKey,
-    ) -> Tuple[Action, Extra]:
+        recurrent_state: ndarray,
+    ) -> Tuple[Action, Extra, ndarray]:
         pass
 
 

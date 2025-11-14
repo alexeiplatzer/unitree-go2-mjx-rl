@@ -20,7 +20,7 @@ from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
-from quadruped_mjx_rl.training.acting import Evaluator
+from quadruped_mjx_rl.training.acting_recurrent import Evaluator
 from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
 
 

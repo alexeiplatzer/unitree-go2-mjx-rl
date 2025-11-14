@@ -13,7 +13,7 @@ from quadruped_mjx_rl.models.configs import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks import AgentParams
 from quadruped_mjx_rl.training import (
-    acting,
+    acting_recurrent,
     logger as metric_logger,
     training_utils as _utils,
 )
@@ -189,6 +189,9 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
+    # TODO !!!
+    init_recurrent_state = jnp.array(())
+
     # Ensure positive logging cadence; fallback to env_step_per_training_step if unset or invalid.
     steps_between_logging = (
         training_config.training_metrics_steps
@@ -248,7 +251,7 @@ def train(
         )
     )
 
-    evaluator_factory = lambda k, policy_factory: acting.Evaluator(
+    evaluator_factory = lambda k, policy_factory: acting_recurrent.Evaluator(
         eval_env,
         functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
         num_eval_envs=num_eval_envs,
@@ -287,6 +290,7 @@ def train(
         local_key=local_key,
         key_envs=key_envs,
         env_state=env_state,
+        init_recurrent_state=init_recurrent_state,
     )
 
     logging.info("Time to jit: %s", eval_times[1] - eval_times[0])
