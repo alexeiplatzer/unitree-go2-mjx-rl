@@ -2,6 +2,7 @@ import jax
 from jax import numpy as jnp
 import mujoco
 
+from quadruped_mjx_rl.types import PRNGKey
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     PipelineModel,
@@ -38,12 +39,13 @@ def collect_tile_ids(env_model: EnvModel, tile_body_prefix: str = "tile_") -> ja
 
 def randomize_tiles(
     pipeline_model: PipelineModel,
-    rng: jax.Array,
     env_model: EnvModel,
-    tile_body_prefix: str = "tile_",
-):
+    rng_key: PRNGKey,
+    num_worlds: int,
+    # tile_body_prefix: str = "tile_",
+) -> tuple[PipelineModel, PipelineModel]:
     """Randomizes the mjx.Model. Assumes the ground is a square grid of square tiles."""
-    tile_geom_ids = collect_tile_ids(env_model, tile_body_prefix)
+    tile_geom_ids = collect_tile_ids(env_model)
     num_variants = 2
     rgbas = jnp.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
     friction_min = 0.6
@@ -86,15 +88,17 @@ def randomize_tiles(
 
         return geom_rgba, geom_friction, geom_solref
 
-    rgba, friction, solref = rand(rng)
+    key_envs = jax.random.split(rng_key, num_worlds)
+    rgba, friction, solref = rand(key_envs)
 
     in_axes = jax.tree.map(lambda x: None, pipeline_model)
     in_axes = in_axes.replace(
         model=in_axes.model.tree_replace(
             {
+                "geom_matid": 0,
                 "geom_rgba": 0,
-                #"geom_friction": 0,
-                #"geom_solref": 0,
+                "geom_friction": 0,
+                "geom_solref": 0,
             }
         )
     )
@@ -102,9 +106,16 @@ def randomize_tiles(
     pipeline_model = pipeline_model.replace(
         model=pipeline_model.model.tree_replace(
             {
+                "geom_matid": jnp.repeat(
+                    jnp.expand_dims(
+                        jnp.repeat(-2, pipeline_model.model.geom_matid.shape[0], 0), 0
+                    ),
+                    num_worlds,
+                    axis=0,
+                ),
                 "geom_rgba": rgba,
-                #"geom_friction": friction,
-                #"geom_solref": solref,
+                "geom_friction": friction,
+                "geom_solref": solref,
             }
         )
     )

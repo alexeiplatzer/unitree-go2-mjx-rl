@@ -1,17 +1,17 @@
 import jax
-from jax import numpy as jnp
 
+from quadruped_mjx_rl.types import PRNGKey
 from quadruped_mjx_rl.environments.physics_pipeline import EnvModel, PipelineModel
 
 
 def terrain_randomize(
     pipeline_model: PipelineModel,
-    rng: jax.Array,
-    mj_model: EnvModel,
-    difficulty: int = 1,
+    env_model: EnvModel,
+    rng_key: PRNGKey,
+    num_worlds: int,
 ) -> tuple[PipelineModel, PipelineModel]:
-    cylinder_1_id = mj_model.body("cylinder_0").id
-    cylinder_2_id = mj_model.body("cylinder_1").id
+    cylinder_1_id = env_model.body("cylinder_0").id
+    cylinder_2_id = env_model.body("cylinder_1").id
 
     @jax.vmap
     def rand(rng: jax.Array):
@@ -24,7 +24,8 @@ def terrain_randomize(
         body_pos = body_pos.at[cylinder_2_id, :2].set(body_pos[cylinder_2_id, :2] + offset_2)
         return body_pos
 
-    body_pos = rand(rng)
+    key_envs = jax.random.split(rng_key, num_worlds)
+    body_pos = rand(key_envs)
 
     in_axes = jax.tree_util.tree_map(lambda x: None, pipeline_model)
     in_axes = in_axes.replace(
