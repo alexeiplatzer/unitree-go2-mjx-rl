@@ -3,7 +3,7 @@
 ## Short term
 - [X] refactor the color rand function into the package
 - [X] add native support for madrona rendering visualization to the package
-- [ ] add the ability to add custom cameras to robots
+- [X] add the ability to add custom cameras to robots
 - [ ] add a more varied color palette to color randomization
 - [ ] normalize the position and location of grid tiles in color rand envs
 - [ ] recustomize the strings used for defining vision and teacher-student architectures

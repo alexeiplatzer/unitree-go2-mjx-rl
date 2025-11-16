@@ -4,7 +4,7 @@ be then compiled into the environment model with which the simulator will work."
 
 from pathlib import Path
 from quadruped_mjx_rl.terrain_gen.tile import TerrainConfig, get_simple_tiled_terrain
-from quadruped_mjx_rl.terrain_gen.simple import add_cylinders, add_goal_sphere, add_lights
+from quadruped_mjx_rl.terrain_gen.elements import add_cylinders, add_goal_sphere, add_lights
 from quadruped_mjx_rl.environments.physics_pipeline import EnvModel, load_to_spec, spec_to_model
 
 
