@@ -9,6 +9,18 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 )
 
 
+def color_meaning_fn(
+    rgba: jax.Array,
+    env_key: PRNGKey,
+    *,
+    rgba_table: jax.Array,
+    friction_table: jax.Array,
+    stiffness_table: jax.Array,
+) -> tuple[jax.Array, jax.Array]:
+    idx = jnp.argmax(jnp.sum(jnp.abs(rgba_table - rgba), axis=-1))
+    return friction_table[idx], stiffness_table[idx]
+
+
 def collect_tile_ids(env_model: EnvModel, tile_body_prefix: str = "tile_") -> jax.Array:
     """Collects the ids of geoms that belong to tile bodies.
 
@@ -47,7 +59,7 @@ def randomize_tiles(
     """Randomizes the mjx.Model. Assumes the ground is a square grid of square tiles."""
     tile_geom_ids = collect_tile_ids(env_model)
     num_variants = 2
-    rgbas = jnp.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
+    # rgbas = jnp.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
     friction_min = 0.6
     friction_max = 1.4
     solref_min = 0.002
@@ -57,13 +69,20 @@ def randomize_tiles(
     def rand(rng):
         key_tiles, key_friction, key_solref = jax.random.split(rng, 3)
 
-        colour_friction = jax.random.uniform(
+        color_palette = jnp.concatenate(
+            [
+                jax.random.uniform(key_tiles, shape=(num_variants, 3)),
+                jnp.ones((num_variants, 1)),
+            ],
+            axis=1,
+        )
+        color_friction = jax.random.uniform(
             key_friction,
             shape=(num_variants,),
             minval=friction_min,
             maxval=friction_max,
         )
-        colour_solref = jax.random.uniform(
+        color_solref = jax.random.uniform(
             key_solref,
             shape=(num_variants,),
             minval=solref_min,
@@ -76,9 +95,9 @@ def randomize_tiles(
             maxval=num_variants,
         )
 
-        chosen_colors = rgbas[tile_colour_indices]
-        chosen_frictions = colour_friction[tile_colour_indices]
-        chosen_solrefs = colour_solref[tile_colour_indices]
+        chosen_colors = color_palette[tile_colour_indices]
+        chosen_frictions = color_friction[tile_colour_indices]
+        chosen_solrefs = color_solref[tile_colour_indices]
 
         geom_rgba = pipeline_model.model.geom_rgba.at[tile_geom_ids].set(chosen_colors)
         geom_friction = pipeline_model.model.geom_friction.at[tile_geom_ids, 0].set(
@@ -86,10 +105,12 @@ def randomize_tiles(
         )
         geom_solref = pipeline_model.model.geom_solref.at[tile_geom_ids, 0].set(chosen_solrefs)
 
-        return geom_rgba, geom_friction, geom_solref
+        return (
+            geom_rgba, geom_friction, geom_solref, color_palette, color_friction, color_solref
+        )
 
     key_envs = jax.random.split(rng_key, num_worlds)
-    rgba, friction, solref = rand(key_envs)
+    rgba, friction, solref, rgba_table, friction_table, solref_table = rand(key_envs)
 
     in_axes = jax.tree.map(lambda x: None, pipeline_model)
     in_axes = in_axes.replace(
@@ -120,4 +141,4 @@ def randomize_tiles(
         )
     )
 
-    return pipeline_model, in_axes
+    return pipeline_model, in_axes, None #TODO add here returns of state infos
