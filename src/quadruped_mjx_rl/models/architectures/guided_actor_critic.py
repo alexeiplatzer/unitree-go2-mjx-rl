@@ -133,9 +133,9 @@ def make_teacher_student_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
-    teacher_obs_key: str = "privileged_state",
-    student_obs_key: str = "state_history",
-    common_obs_key: str = "state",
+    teacher_obs_key: str = "environment_privileged",
+    student_obs_key: str = "proprioceptive_history",
+    common_obs_key: str = "proprioceptive",
     latent_obs_key: str = "latent",
     model_config: TeacherStudentConfig = TeacherStudentConfig(),
     activation: ActivationFn = linen.swish,

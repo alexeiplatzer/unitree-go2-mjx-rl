@@ -88,8 +88,8 @@ def make_actor_critic_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
-    policy_obs_key: str = "state",
-    value_obs_key: str = "state",
+    policy_obs_key: str = "proprioceptive",
+    value_obs_key: str = "proprioceptive",
     model_config: configs.ActorCriticConfig = configs.ActorCriticConfig(),
     activation: modules.ActivationFn = linen.swish,
 ) -> ActorCriticNetworks:

@@ -63,9 +63,9 @@ def load_inference_fn(
             )
         teacher_student_networks = network_factories(
             observation_size={
-                "state": 1,
-                "state_history": 1,
-                "privileged_state": 1,
+                "proprioceptive": 1,
+                "proprioceptive_history": 1,
+                "environment_privileged": 1,
                 "pixels/terrain/depth": 1,
                 "pixels/frontal_ego/rgb": 1,
             },

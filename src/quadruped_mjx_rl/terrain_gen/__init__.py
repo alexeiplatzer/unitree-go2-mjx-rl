@@ -24,11 +24,11 @@ def make_empty_terrain(empty_scene_path: Path) -> EnvModel:
 
 
 def make_plain_tiled_terrain(
-    empty_scene_path: Path, n_rows: int = 4, n_columns: int = 4
+    empty_scene_path: Path, n_rows: int = 4, n_columns: int = 4, square_size: float = 1.0
 ) -> EnvModel:
     """Loads a terrain consisting of a square grid of square flat monochromatic tiles. Useful for
     domain randomization of tile properties."""
     spec = load_to_spec(empty_scene_path)
-    terrain_config = get_simple_tiled_terrain(n_rows, n_columns)
+    terrain_config = get_simple_tiled_terrain(n_rows, n_columns, square_size)
     terrain_config.make_arena(spec)
     return spec_to_model(spec)

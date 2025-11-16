@@ -58,14 +58,14 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
     ) -> jax.Array | dict[str, jax.Array]:
         state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         obs = {
-            "state": state_obs,
-            "privileged_state": previous_obs["privileged_state"],
+            "proprioceptive": state_obs,
+            "environment_privileged": previous_obs["environment_privileged"],
         }
 
         if self._obs_config.history_length is not None:
             assert isinstance(previous_obs, dict)
-            obs["state_history"] = self._update_obs_history(
-                obs_history=previous_obs["state_history"], current_obs=state_obs
+            obs["proprioceptive_history"] = self._update_obs_history(
+                obs_history=previous_obs["proprioceptive_history"], current_obs=state_obs
             )
         return obs
 
