@@ -44,11 +44,14 @@ class TerrainConfig(Configuration):
             raise ValueError("Tiles do not form a rectangular grid!")
 
         square_side = self.tiles[0][0].square_side
+        row_offset = len(self.tiles) // 2
         for i in range(len(self.tiles)):
             for j in range(len(self.tiles[0])):
                 self.tiles[i][j].create_tile(
                     spec=spec,
-                    grid_loc=[j * 2 * square_side, i * 2 * square_side],
+                    grid_loc=[
+                        j * 2 * square_side, (i + row_offset) * 2 * square_side
+                    ],
                     name=f"tile_{i}_{j}",
                 )
 

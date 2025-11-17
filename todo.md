@@ -2,19 +2,20 @@
 
 ## Short term
 - [X] add a more varied color palette to color randomization
-- [ ] normalize the position and location of grid tiles in color rand envs
-- [ ] figure out how to pass privileged terrain info into the environment
-
-## Mid term
+- [X] normalize the position and location of grid tiles in color rand envs
+- [X] figure out how to pass privileged terrain info into the environment
 - [ ] finish setting up RNN training
 - [ ] develop a simplified environment for testing the RNN setup
+
+## Mid term
+- [ ] check how multiple GPUs can be used for vision setups
+- [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] try to set up the department's GPUs
 - [ ] try to train with a simple MLP model
-- [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] draft a plan for the final paper
 - [ ] standardize and make configurable observation-related keywords
 - [ ] add a terrain generation config base class and corresponding config classes
-- [ ] check how multiple GPUs can be used for vision setups
+
 
 ## Long term
 

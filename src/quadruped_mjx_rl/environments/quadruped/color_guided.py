@@ -84,7 +84,7 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
         self, pipeline_state: PipelineState, state_info: dict[str, ...]
     ) -> dict[str, jax.Array]:
         obs = super()._init_obs(pipeline_state, state_info)
-
+        obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
         return obs
 
     def _get_obs(
@@ -94,13 +94,25 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
         previous_obs: dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = super()._get_obs(pipeline_state, state_info, previous_obs)
-
+        obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
         return obs
 
-    def _privileged_terrain_map(self, terrain_rgb: jax.Array) -> jax.Array:
-        # TODO apply the color meaning fn to every pixel and get an image of the friction
-        # and stiffenss values and return then as an image with two channels of the same size
-        # so we get from (WxHx4) to (WxHx2), 4 is for rgba, 2 is for friction and stiffness
-        # the rgba table and friction and stiffenss tables are stored in the env and set
-        # to the correct values with the Terrain Map wrapper
-        pass
+    def _privileged_terrain_map(self, terrain_rgba: jax.Array) -> jax.Array:
+        """ apply the color meaning fn to every pixel and get an image of the friction
+        and stiffness values and return then as an image with two channels of the same size.
+        So we get from (WxHx4) to (WxHx2), 4 is for rgba, 2 is for friction and stiffness.
+        The rgba table and friction and stiffness tables are stored in the env and set
+        to the correct values with the Terrain Map wrapper. """
+        # flat_rgba = terrain_rgba.reshape(-1, terrain_rgba.shape[-1])
+        return jax.vmap(
+            lambda rgba: jnp.stack(color_meaning_fn(
+                rgba=rgba,
+                rgba_table=self._rgba_table,
+                friction_table=self._friction_table,
+                stiffness_table=self._stiffness_table
+            ))
+        )(terrain_rgba)
+        # return jnp.stack([terrain_friction, terrain_stiffness], axis=-1).reshape(
+        #     terrain_rgba.shape[:-1] + (2,)
+        # )
+
