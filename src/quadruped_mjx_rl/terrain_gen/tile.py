@@ -44,11 +44,14 @@ class TerrainConfig(Configuration):
             raise ValueError("Tiles do not form a rectangular grid!")
 
         square_side = self.tiles[0][0].square_side
+        row_offset = len(self.tiles) // 2
         for i in range(len(self.tiles)):
             for j in range(len(self.tiles[0])):
                 self.tiles[i][j].create_tile(
                     spec=spec,
-                    grid_loc=[j * 2.5 * square_side, i * 2.5 * square_side],
+                    grid_loc=[
+                        j * 2 * square_side, (i + row_offset) * 2 * square_side
+                    ],
                     name=f"tile_{i}_{j}",
                 )
 
@@ -68,9 +71,14 @@ register_config_base_class(TerrainConfig)
 def get_simple_tiled_terrain(
     n_rows: int = 4,
     n_columns: int = 4,
+    square_size: float = 1.0,
 ):
     """This terrain is just a square grid of featureless flat tiles."""
-    return TerrainConfig(tiles=[[FlatTile() for _ in range(n_columns)] for _ in range(n_rows)])
+    return TerrainConfig(
+        tiles=[
+            [FlatTile(square_side=square_size) for _ in range(n_columns)] for _ in range(n_rows)
+        ]
+    )
 
 
 def get_randomized_terrain(

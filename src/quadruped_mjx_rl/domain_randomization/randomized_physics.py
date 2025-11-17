@@ -1,9 +1,15 @@
 import jax
 
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineModel
+from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.environments.physics_pipeline import PipelineModel, EnvModel
 
 
-def domain_randomize(pipeline_model: PipelineModel, rng: jax.Array):
+def domain_randomize(
+    pipeline_model: PipelineModel,
+    env_model: EnvModel,
+    rng_key: PRNGKey,
+    num_worlds: int,
+):
     """Randomizes the mjx.Model."""
 
     @jax.vmap
@@ -23,7 +29,8 @@ def domain_randomize(pipeline_model: PipelineModel, rng: jax.Array):
         bias = pipeline_model.model.actuator_biasprm.at[:, 1].set(-param)
         return friction, gain, bias
 
-    friction, gain, bias = rand(rng)
+    key_envs = jax.random.split(rng_key, num_worlds)
+    friction, gain, bias = rand(key_envs)
 
     in_axes = jax.tree.map(lambda x: None, pipeline_model)
     in_axes = in_axes.replace(

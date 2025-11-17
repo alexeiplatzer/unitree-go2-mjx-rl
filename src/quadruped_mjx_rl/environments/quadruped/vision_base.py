@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import jax
 import jax.numpy as jnp
 import mujoco
+from mujoco import mjx
 
 from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
@@ -87,6 +88,12 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
                 raise ValueError("use_vision set to true, VisionConfig not provided.")
             self._brightness_scaling = environment_config.observation_noise.brightness
             self._camera_inputs_config = environment_config.observation_noise.camera_inputs
+
+            # Execute one environment step to initialize mjx before madrona
+            mjx_model = mjx.put_model(env_model)
+            mjx_data = mjx.make_data(mjx_model)
+            _ = mjx.forward(mjx_model, mjx_data)
+
             self.renderer = renderer_maker(self.pipeline_model)
 
     @staticmethod

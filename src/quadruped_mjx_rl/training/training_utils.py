@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 import jax
 import jax.numpy as jnp
 
+from quadruped_mjx_rl.domain_randomization import DomainRandomizationFn
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.types import Params, PRNGKey
@@ -36,9 +37,7 @@ def maybe_wrap_env(
     device_count: int,
     key_env: PRNGKey,
     wrap_env_fn: Callable | None = None,
-    randomization_fn: (
-        Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
-    ) = None,
+    randomization_fn: DomainRandomizationFn | None = None,
     vision: bool = False,
 ):
     """Wraps the environment for training/eval if wrap_env is True."""
@@ -51,8 +50,10 @@ def maybe_wrap_env(
     if randomization_fn is not None:
         # randomization_batch_size = num_envs // device_count
         # all devices get the same randomization rng
-        randomization_rng = jax.random.split(key_env, randomization_batch_size)
-        v_randomization_fn = functools.partial(randomization_fn, rng=randomization_rng)
+        # randomization_rng = jax.random.split(key_env, randomization_batch_size)
+        v_randomization_fn = functools.partial(
+            randomization_fn, rng_key=key_env, num_worlds=randomization_batch_size
+        )
     wrap = wrap_env_fn or wrap_for_training
     return wrap(
         env,

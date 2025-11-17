@@ -1,12 +1,30 @@
 # Todo list
 
-## By Section
+## Short term
+- [X] add a more varied color palette to color randomization
+- [X] normalize the position and location of grid tiles in color rand envs
+- [X] figure out how to pass privileged terrain info into the environment
+- [ ] finish setting up RNN training
+- [ ] develop a simplified environment for testing the RNN setup
+
+## Mid term
+- [ ] check how multiple GPUs can be used for vision setups
+- [ ] improve and persist resulting evaluation and convergence data from the plots
+- [ ] try to set up the department's GPUs
+- [ ] try to train with a simple MLP model
+- [ ] draft a plan for the final paper
+- [ ] standardize and make configurable observation-related keywords
+- [ ] add a terrain generation config base class and corresponding config classes
+
+
+## Long term
 
 ### Package
 - [ ] add obstacle position randomization into the vision env reset
 - [ ] improve the non-vision teacher student env and test it
 - [ ] add pure tracking and forward moving cumulative reward to metrics, no normalizations.
 - [ ] add more robust checkpointing to the training
+- [ ] add an "implements" decorator for checking protocol adherence on definition
 
 ### Notebooks
 - [ ] configure a curriculum training kaggle pipeline with terrain
@@ -18,7 +36,3 @@
 - [ ] update the notion workspace
 - [ ] update the readme
 - [ ] add docstrings everywhere
-
-## Current
-- [X] finish vision env refactoring
-- [ ] visualize the domain randomization

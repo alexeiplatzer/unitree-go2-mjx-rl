@@ -5,6 +5,7 @@ import mujoco as mj
 import numpy as np
 
 from quadruped_mjx_rl.environments.physics_pipeline import EnvSpec
+from quadruped_mjx_rl.robots import RobotConfig
 
 
 def add_lights(
@@ -56,4 +57,44 @@ def add_goal_sphere(
         type=mj.mjtGeom.mjGEOM_SPHERE,
         size=[size, 0, 0],
         rgba=[1, 0, 0, 1],
+    )
+
+
+def add_world_camera(
+    spec: EnvSpec,
+    name: str,
+    location: list[float] | None = None,
+    xyaxes: list[float] | None = None,
+):
+    """Adds a fixed camera attached to the world body to the environment spec."""
+    spec.worldbody.add_camera(
+        name=name,
+        mode=mj.mjtCamLight.mjCAMLIGHT_FIXED,
+        pos=location or [0, 0, 0],
+        xyaxes=xyaxes or [0, 0, 1, 0, -1, 0],
+    )
+
+
+def add_robot_camera(
+    spec: EnvSpec,
+    name: str,
+    robot_config: RobotConfig,
+    mode: str = "fixed",  # or "track"
+    location: list[float] | None = None,
+    xyaxes: list[float] | None = None,
+    orthographic: bool = False,
+    fovy: float = 45.0,
+):
+    """Adds a camera to the robot's torso/main body."""
+    modes = {
+        "fixed": mj.mjtCamLight.mjCAMLIGHT_FIXED,
+        "track": mj.mjtCamLight.mjCAMLIGHT_TRACK,
+    }
+    spec.body(robot_config.main_body_name).add_camera(
+        name=name,
+        mode=modes[mode],
+        pos=location or [0, 0, 0],
+        xyaxes=xyaxes or [0, 0, 1, 0, -1, 0],
+        orthographic=orthographic,
+        fovy=fovy,
     )

@@ -162,7 +162,7 @@ def make_network(
     obs_size: ObservationSize,
     preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     preprocess_obs_keys: Collection[str] = (),
-    apply_to_obs_keys: Sequence[str] = ("state",),
+    apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
     squeeze_output: bool = False,
 ):
     """
