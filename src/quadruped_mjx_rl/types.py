@@ -5,13 +5,18 @@ from typing import Any, NamedTuple, Protocol, Tuple, TypeVar
 
 from jax.numpy import ndarray
 
-from quadruped_mjx_rl.running_statistics import NestedArray, RunningStatisticsState
+from quadruped_mjx_rl.running_statistics import (
+    NestedArray,
+    NestedTensor,
+    RunningStatisticsState,
+)
 
 Params = Any
 PRNGKey = ndarray
 Metrics = Mapping[str, ndarray]
 Observation = ndarray | Mapping[str, ndarray]
 ObservationSize = int | Mapping[str, tuple[int, ...] | int]
+RecurrentState = tuple[ndarray, ndarray] | None
 Action = ndarray
 Extra = Mapping[str, Any]
 PreprocessorParams = RunningStatisticsState
@@ -27,7 +32,7 @@ class Transition(NamedTuple):
     reward: NestedArray
     discount: NestedArray
     next_observation: NestedArray
-    recurrent_state: NestedArray
+    recurrent_state: NestedTensor
     extras: NestedArray = ()
 
 
@@ -36,8 +41,8 @@ class Policy(Protocol):
         self,
         observation: Observation,
         key: PRNGKey,
-        recurrent_state: ndarray,
-    ) -> Tuple[Action, Extra, ndarray]:
+        recurrent_state: RecurrentState,
+    ) -> Tuple[Action, RecurrentState, Extra]:
         pass
 
 

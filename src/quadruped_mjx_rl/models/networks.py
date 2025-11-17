@@ -17,6 +17,7 @@ from quadruped_mjx_rl.types import (
     identity_observation_preprocessor,
     Observation,
     ObservationSize,
+    RecurrentState,
     Params,
     PreprocessObservationFn,
     PreprocessorParams,
@@ -75,7 +76,12 @@ class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
         pass
 
     @abstractmethod
-    def policy_apply(self, params: AgentNetworkParams, observation: Observation) -> jax.Array:
+    def policy_apply(
+        self,
+        params: AgentNetworkParams,
+        observation: Observation,
+        recurrent_state: RecurrentState,
+    ) -> tuple[jax.Array, RecurrentState]:
         """Gets the logits for applying the network's policy with the provided params to the
         provided observations"""
         pass
@@ -86,24 +92,25 @@ class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
 
 
 def policy_factory(
-    policy_apply,
+    policy_apply: Callable,
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
-):
+) -> Policy:
     def policy(
         observation: Observation,
         sample_key: PRNGKey,
-    ) -> tuple[Action, Extra]:
-        policy_logits = policy_apply(params, observation)
+        recurrent_state: RecurrentState,
+    ) -> tuple[Action, RecurrentState, Extra]:
+        policy_logits, next_recurrent_state = policy_apply(params, observation, recurrent_state)
         if deterministic:
-            return parametric_action_distribution.mode(policy_logits), {}
+            return parametric_action_distribution.mode(policy_logits), next_recurrent_state, {}
         raw_actions = parametric_action_distribution.sample_no_postprocessing(
             policy_logits, sample_key
         )
         log_prob = parametric_action_distribution.log_prob(policy_logits, raw_actions)
         postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-        return postprocessed_actions, {
+        return postprocessed_actions, next_recurrent_state, {
             "log_prob": log_prob,
             "raw_action": raw_actions,
         }
@@ -164,9 +171,11 @@ def make_network(
     preprocess_obs_keys: Collection[str] = (),
     apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
     squeeze_output: bool = False,
+    recurrent_size: int = 0,
 ):
     """
-    Creates a feedforward network that selects and preprocesses the specified observations.
+    Creates a feedforward or recurrent network that selects and preprocesses the specified
+    observations.
     """
 
     def to_input_vector(obs: Observation) -> jax.Array:
@@ -177,8 +186,11 @@ def make_network(
             return obs
 
     def apply(
-        processor_params: PreprocessorParams, params: Params, obs: Observation
-    ) -> jax.Array:
+        processor_params: PreprocessorParams,
+        params: Params,
+        obs: Observation,
+        recurrent_state: RecurrentState = None,
+    ) -> tuple[jax.Array, RecurrentState]:
         obs = preprocess_by_key(
             preprocess_obs_fn=preprocess_observations_fn,
             processor_params=processor_params,
@@ -186,10 +198,19 @@ def make_network(
             preprocess_obs_keys=preprocess_obs_keys,
         )
         input_vector = to_input_vector(obs)
-        out = module.apply(params, input_vector)
+        if recurrent_size > 0:
+            out, next_recurrent_state = module.apply(params, input_vector, recurrent_state)
+        else:
+            out = module.apply(params, input_vector)
+            next_recurrent_state = recurrent_state
         if squeeze_output:
-            return jnp.squeeze(out, axis=-1)
-        return out
+            return jnp.squeeze(out, axis=-1), next_recurrent_state
+        return out, next_recurrent_state
+
+    if recurrent_size > 0 and not isinstance(module, linen.RNNCellBase):
+        raise ValueError("A recurrent network requires a recurrent cell module.")
+    if recurrent_size == 0 and isinstance(module, linen.RNNCellBase):
+        raise ValueError("A feedforward network is not compatible with a recurrent module.")
 
     logging.info(f"observation size: {obs_size}")
 
@@ -199,4 +220,12 @@ def make_network(
         is_leaf=lambda x: isinstance(x, tuple),
     )
     dummy_input = to_input_vector(dummy_obs)
-    return FeedForwardNetwork(init=lambda key: module.init(key, dummy_input), apply=apply)
+    init = lambda key: module.init(key, dummy_input)
+    if recurrent_size > 0:
+        return RecurrentNetwork(
+            init=init,
+            apply=apply,
+            init_carry=lambda key: module.initialize_carry(key, dummy_input.shape)
+        )
+    else:
+        return FeedForwardNetwork(init=init, apply=apply)

@@ -68,6 +68,22 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
         return "TeacherStudentVision"
 
 
+@dataclass
+class TeacherStudentRecurrentConfig(TeacherStudentConfig):
+    @dataclass
+    class ModulesConfig(ActorCriticConfig.ModulesConfig):
+        encoder_convolutional: list[int] = field(default_factory=lambda: [16, 16, 16])
+        adapter_convolutional: list[int] = field(default_factory=lambda: [32, 32, 32])
+        recurrent_size: int = 16
+        adapter_dense: list[int] = field(default_factory=lambda: [16])
+
+    modules: ModulesConfig = field(default_factory=ModulesConfig)
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "TeacherStudentRecurrent"
+
+
 _model_config_classes = {
     config.config_class_key(): config
     for config in (
@@ -75,5 +91,6 @@ _model_config_classes = {
         ActorCriticConfig,
         TeacherStudentConfig,
         TeacherStudentVisionConfig,
+        TeacherStudentRecurrentConfig,
     )
 }

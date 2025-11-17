@@ -10,14 +10,20 @@ from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
     ActorCriticNetworkParams,
     ActorCriticNetworks,
 )
-from quadruped_mjx_rl.models.configs import TeacherStudentConfig, TeacherStudentVisionConfig
-from quadruped_mjx_rl.models.modules import ActivationFn, CNN, MLP
+from quadruped_mjx_rl.models.configs import (
+    TeacherStudentConfig,
+    TeacherStudentRecurrentConfig,
+    TeacherStudentVisionConfig,
+)
+from quadruped_mjx_rl.models.modules import ActivationFn, CNN, MLP, LSTM
 from quadruped_mjx_rl.models.networks import (
     AgentParams,
     ComponentNetworkArchitecture,
     FeedForwardNetwork,
+    RecurrentNetwork,
     make_network,
     policy_factory,
+    RecurrentState,
 )
 
 
@@ -101,7 +107,12 @@ class TeacherStudentNetworks(
             params.preprocessor_params, params.network_params.value, observation, latent_vector
         )
 
-    def policy_apply(self, params: TeacherStudentAgentParams, observation: types.Observation):
+    def policy_apply(
+        self,
+        params: TeacherStudentAgentParams,
+        observation: types.Observation,
+        recurrent_state: RecurrentState,
+    ):
         return self.teacher_policy_apply(params, observation)
 
     def policy_metafactory(self):
@@ -167,6 +178,19 @@ def make_teacher_student_networks(
         event_size=action_size
     )
 
+    if isinstance(model_config, TeacherStudentRecurrentConfig):
+        student_preencoder_module = CNN(
+            num_filters=model_config.modules.adapter_convolutional,
+            kernel_sizes=[(3, 3)] * len(model_config.modules.adapter_convolutional),
+            strides=[(1, 1)] * len(model_config.modules.adapter_convolutional),
+            dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
+            activation=activation,
+            activate_final=True,
+        )
+        student_encoder_module = LSTM(
+            hidden_size=model_config.modules.recurrent_size,
+            output_size=model_config.latent_size,
+        )
     if isinstance(model_config, TeacherStudentVisionConfig):
         teacher_encoder_module = CNN(
             num_filters=model_config.modules.encoder_convolutional,

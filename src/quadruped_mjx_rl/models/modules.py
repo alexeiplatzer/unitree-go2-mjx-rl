@@ -26,7 +26,6 @@ class MLP(linen.Module):
         for i, hidden_size in enumerate(self.layer_sizes):
             hidden = linen.Dense(
                 hidden_size,
-                name=f"hidden_{i}",
                 kernel_init=self.kernel_init,
                 use_bias=self.bias,
             )(hidden)
@@ -35,28 +34,6 @@ class MLP(linen.Module):
                 if self.layer_norm:
                     hidden = linen.LayerNorm()(hidden)
         return hidden
-
-
-# class HeadMLP(linen.Module):
-#     """MLP module over pre-processed latent vectors."""
-#
-#     layer_sizes: Sequence[int]
-#     activation: ActivationFn = linen.relu
-#     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
-#     activate_final: bool = False
-#     bias: bool = True
-#     layer_norm: bool = False
-#
-#     @linen.compact
-#     def __call__(self, *input_vectors: jax.Array):
-#         joint_input_vector = jnp.concatenate(input_vectors, axis=-1)
-#         return MLP(
-#             layer_sizes=self.layer_sizes,
-#             activation=self.activation,
-#             kernel_init=self.kernel_init,
-#             activate_final=self.activate_final,
-#             layer_norm=self.layer_norm,
-#         )(joint_input_vector)
 
 
 class CNN(linen.Module):
@@ -85,7 +62,6 @@ class CNN(linen.Module):
             hidden = self.activation(hidden)
             hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
 
-        # hidden = hidden.reshape((hidden.shape[0], -1))
         hidden = jnp.mean(hidden, axis=(-2, -3))
         return MLP(
             layer_sizes=self.dense_layer_sizes,
@@ -95,43 +71,34 @@ class CNN(linen.Module):
         )(hidden)
 
 
-class ProprioceptiveLSTM(linen.recurrent.Module):
-    """LSTM module that fuses proprioceptive observations with latent inputs."""
+class LSTM(linen.RNNCellBase):
 
-    hidden_size: int
-    output_size: int
-    activation: ActivationFn = jax.nn.tanh
-    gate_fn: ActivationFn = jax.nn.sigmoid
-    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
-    recurrent_kernel_init: Initializer = jax.nn.initializers.orthogonal()
-    bias_init: Initializer = jax.nn.initializers.zeros
+    recurrent_layer_size: int
+    dense_layer_sizes: Sequence[int]
+    carry_init: Initializer = jax.nn.initializers.zeros
 
-    def setup(self):
-        self.lstm_cell = linen.LSTMCell(
-            features=self.output_size,
-            gate_fn=self.gate_fn,
-            activation_fn=self.activation,
-            kernel_init=self.kernel_init,
-            recurrent_kernel_init=self.recurrent_kernel_init,
-            bias_init=self.bias_init,
-        )
-
-    def initialize_carry(
-        self, rng: jax.Array, batch_dims: Sequence[int] | int
-    ) -> tuple[jax.Array, jax.Array]:
-        """Initializes the LSTM hidden and cell states."""
-
-        if isinstance(batch_dims, int):
-            batch_dims = (batch_dims,)
-
-        return self.lstm_cell.initialize_carry(rng, batch_dims, self.hidden_size)
-
+    @linen.compact
     def __call__(
         self,
+        data: jax.Array,
         carry: tuple[jax.Array, jax.Array],
-        *input_vectors: jax.Array,
-    ) -> tuple[tuple[jax.Array, jax.Array], jax.Array]:
-        """Applies an LSTM step over proprioceptive and latent features."""
-        input_vector = jnp.concatenate(input_vectors, axis=-1)
-        new_carry, output = self.lstm_cell(carry, input_vector)
-        return new_carry, output
+    ):
+        carry, hidden = linen.OptimizedLSTMCell(features=self.recurrent_layer_size)(carry, data)
+        hidden = MLP(layer_sizes=self.dense_layer_sizes)(hidden)
+        return carry, hidden
+
+    @linen.nowrap
+    def initialize_carry(
+        self, rng: jax.Array, input_shape: tuple[int, ...]
+    ) -> tuple[jax.Array, jax.Array]:
+        """Initializes the LSTM hidden and cell states."""
+        batch_dims = input_shape[:-1]
+        key1, key2 = jax.random.split(rng)
+        mem_shape = batch_dims + (self.recurrent_layer_size,)
+        cell_state = self.carry_init(key1, mem_shape)
+        hidden_state = self.carry_init(key2, mem_shape)
+        return cell_state, hidden_state
+
+    @property
+    def num_feature_axes(self) -> int:
+        return 1
