@@ -1,7 +1,7 @@
 # Todo list
 
 ## Short term
-- [ ] add a more varied color palette to color randomization
+- [X] add a more varied color palette to color randomization
 - [ ] normalize the position and location of grid tiles in color rand envs
 - [ ] figure out how to pass privileged terrain info into the environment
 

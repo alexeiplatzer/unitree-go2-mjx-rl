@@ -11,13 +11,12 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 
 def color_meaning_fn(
     rgba: jax.Array,
-    env_key: PRNGKey,
     *,
     rgba_table: jax.Array,
     friction_table: jax.Array,
     stiffness_table: jax.Array,
 ) -> tuple[jax.Array, jax.Array]:
-    idx = jnp.argmax(jnp.sum(jnp.abs(rgba_table - rgba), axis=-1))
+    idx = jnp.argmin(jnp.sum(jnp.abs(rgba_table - rgba), axis=-1))
     return friction_table[idx], stiffness_table[idx]
 
 
@@ -54,12 +53,23 @@ def randomize_tiles(
     env_model: EnvModel,
     rng_key: PRNGKey,
     num_worlds: int,
-    # tile_body_prefix: str = "tile_",
 ) -> tuple[PipelineModel, PipelineModel]:
+    pipeline_model_v, in_axes, _ = randomize_tiles_with_internals(
+        pipeline_model, env_model, rng_key, num_worlds
+    )
+    return pipeline_model_v, in_axes
+
+
+def randomize_tiles_with_internals(
+    pipeline_model: PipelineModel,
+    env_model: EnvModel,
+    rng_key: PRNGKey,
+    num_worlds: int,
+    num_colors: int = 2,
+    # tile_body_prefix: str = "tile_",
+) -> tuple[PipelineModel, PipelineModel, tuple[jax.Array, jax.Array, jax.Array]]:
     """Randomizes the mjx.Model. Assumes the ground is a square grid of square tiles."""
     tile_geom_ids = collect_tile_ids(env_model)
-    num_variants = 2
-    # rgbas = jnp.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
     friction_min = 0.6
     friction_max = 1.4
     solref_min = 0.002
@@ -71,20 +81,20 @@ def randomize_tiles(
 
         color_palette = jnp.concatenate(
             [
-                jax.random.uniform(key_tiles, shape=(num_variants, 3)),
-                jnp.ones((num_variants, 1)),
+                jax.random.uniform(key_tiles, shape=(num_colors, 3)),
+                jnp.ones((num_colors, 1)),
             ],
             axis=1,
         )
         color_friction = jax.random.uniform(
             key_friction,
-            shape=(num_variants,),
+            shape=(num_colors,),
             minval=friction_min,
             maxval=friction_max,
         )
         color_solref = jax.random.uniform(
             key_solref,
-            shape=(num_variants,),
+            shape=(num_colors,),
             minval=solref_min,
             maxval=solref_max,
         )
@@ -92,7 +102,7 @@ def randomize_tiles(
             key_tiles,
             shape=(tile_geom_ids.shape[0],),
             minval=0,
-            maxval=num_variants,
+            maxval=num_colors,
         )
 
         chosen_colors = color_palette[tile_colour_indices]
@@ -141,4 +151,4 @@ def randomize_tiles(
         )
     )
 
-    return pipeline_model, in_axes, None #TODO add here returns of state infos
+    return pipeline_model, in_axes, (rgba_table, friction_table, solref_table)
