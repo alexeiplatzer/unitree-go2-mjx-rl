@@ -40,7 +40,7 @@ class EpisodeWrapper(Wrapper):
         state = self.env.reset(rng)
         state.info["steps"] = jnp.zeros(rng.shape[:-1])
         state.info["truncation"] = jnp.zeros(rng.shape[:-1])
-        # Keep a separate record of episode-done as state.info['done'] can be erased
+        # Keep a separate record of "episode-done" as state.info['done'] can be erased
         # by AutoResetWrapper
         state.info["episode_done"] = jnp.zeros(rng.shape[:-1])
         episode_metrics = dict()
@@ -53,8 +53,8 @@ class EpisodeWrapper(Wrapper):
 
     def step(self, state: State, action: jax.Array) -> State:
         def f(state, _):
-            nstate = self.env.step(state, action)
-            return nstate, nstate.reward
+            next_state = self.env.step(state, action)
+            return next_state, next_state.reward
 
         state, rewards = jax.lax.scan(f, state, (), self.action_repeat)
         state = state.replace(reward=jnp.sum(rewards, axis=0))

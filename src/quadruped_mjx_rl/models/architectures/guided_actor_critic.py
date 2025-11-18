@@ -28,11 +28,17 @@ from quadruped_mjx_rl.models.networks import (
 
 
 @flax_dataclass
+class MixedEncoderParams:
+    visual_encoder: types.Params
+    mixed_encoder: types.Params
+
+
+@flax_dataclass
 class TeacherStudentNetworkParams(ActorCriticNetworkParams):
     """Contains training state for the learner."""
 
-    teacher_encoder: types.Params
-    student_encoder: types.Params
+    teacher_encoder: types.Params | MixedEncoderParams
+    student_encoder: types.Params | MixedEncoderParams
 
 
 @flax_dataclass
@@ -62,8 +68,8 @@ class TeacherStudentAgentParams(AgentParams[TeacherStudentNetworkParams]):
 class TeacherStudentNetworks(
     ActorCriticNetworks, ComponentNetworkArchitecture[TeacherStudentNetworkParams]
 ):
-    teacher_encoder_network: FeedForwardNetwork
-    student_encoder_network: FeedForwardNetwork
+    teacher_encoder_network: FeedForwardNetwork | RecurrentNetwork
+    student_encoder_network: FeedForwardNetwork | RecurrentNetwork
 
     def agent_params_class(self):
         return TeacherStudentAgentParams
@@ -306,3 +312,6 @@ def make_teacher_student_networks(
         value_network=value_network,
         parametric_action_distribution=parametric_action_distribution,
     )
+
+
+# def make_()

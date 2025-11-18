@@ -74,7 +74,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentConfig):
     class ModulesConfig(ActorCriticConfig.ModulesConfig):
         encoder_convolutional: list[int] = field(default_factory=lambda: [16, 16, 16])
         adapter_convolutional: list[int] = field(default_factory=lambda: [32, 32, 32])
-        recurrent_size: int = 16
+        adapter_recurrent_size: int = 16
         adapter_dense: list[int] = field(default_factory=lambda: [16])
 
     modules: ModulesConfig = field(default_factory=ModulesConfig)

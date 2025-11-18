@@ -70,3 +70,8 @@ class NetworkFactory(Protocol[NetworkType]):
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     ) -> NetworkType:
         pass
+
+
+class InitCarryFn(Protocol):
+    def __call__(self, rng: PRNGKey) -> RecurrentState:
+        pass

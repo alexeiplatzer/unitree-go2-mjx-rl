@@ -18,6 +18,7 @@ from quadruped_mjx_rl.domain_randomization import (
     DomainRandomizationFn,
     TerrainMapRandomizationFn,
 )
+from quadruped_mjx_rl.types import InitCarryFn, RecurrentState
 
 
 def wrap_for_training(
@@ -284,3 +285,34 @@ class TerrainMapWrapper(Wrapper):
             action,
         )
         return res
+
+
+class RecurrentWrapper:
+    """This wrapper lets the environment take care of the recurrent state resetting."""
+    def __init__(self, env: Env, init_carry_fn: InitCarryFn):
+        self.env = env
+        self._init_carry_fn = init_carry_fn
+
+    def reset(self, rng: jax.Array) -> tuple[State, RecurrentState]:
+        env_rng, carry_rng = jax.random.split(rng, 2)
+        state = self.env.reset(env_rng)
+        recurrent_state = self._init_carry_fn(carry_rng)
+        state.info["first_recurrent_state"] = recurrent_state
+        return state, recurrent_state
+
+    def step(
+        self, state: State, action: jax.Array, recurrent_state: RecurrentState
+    ) -> tuple[State, RecurrentState]:
+
+        state = self.env.step(state, action)
+
+        def where_done(x, y):
+            done = state.done
+            if done.shape:
+                done = jnp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))
+            return jnp.where(done, x, y)
+
+        recurrent_state = jax.tree.map(
+            where_done, state.info["first_recurrent_state"], recurrent_state
+        )
+        return state, recurrent_state

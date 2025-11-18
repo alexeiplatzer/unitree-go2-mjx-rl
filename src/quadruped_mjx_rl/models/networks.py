@@ -128,9 +128,9 @@ class NetworkFactory(Protocol[AgentNetworkParams]):
         pass
 
 
-def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:
-    obs_size = obs_size[obs_key] if isinstance(obs_size, Mapping) else obs_size
-    return jax.tree_util.tree_flatten(obs_size)[0][-1]
+# def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:
+#     obs_size = obs_size[obs_key] if isinstance(obs_size, Mapping) else obs_size
+#     return jax.tree_util.tree_flatten(obs_size)[0][-1]
 
 
 def normalizer_select(
