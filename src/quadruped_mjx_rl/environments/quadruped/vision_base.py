@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -35,14 +36,14 @@ class QuadrupedVisionBaseEnvConfig(EnvCfg):
 
     @dataclass
     class ObservationConfig(EnvCfg.ObservationConfig):
-        brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
-
         @dataclass
         class CameraInputConfig:
             name: str = "default"
             use_depth: bool = False
             use_brightness_randomized_rgb: bool = False
             use_actual_rgb: bool = False
+
+        brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
         camera_inputs: list[CameraInputConfig] = field(
             default_factory=lambda: [
@@ -79,7 +80,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
         env_model: EnvSpec | EnvModel,
         *,
         vision_config: VisionConfig | None = None,
-        renderer_maker: Callable[[PipelineModel], ...] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ) -> None:
         super().__init__(environment_config, robot_config, env_model)
         self._use_vision = environment_config.use_vision
@@ -110,7 +111,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
         )
 
     def _init_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
     ) -> dict[str, jax.Array]:
         obs = {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
         if self._use_vision:
@@ -137,7 +138,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
@@ -148,7 +149,7 @@ class QuadrupedVisionBaseEnv(QuadrupedBaseEnv):
         return obs
 
     def _format_camera_observations(
-        self, rgb_inputs: jax.Array, depth_inputs: jax.Array, state_info: dict[str, ...]
+        self, rgb_inputs: jax.Array, depth_inputs: jax.Array, state_info: dict[str, Any]
     ) -> dict[str, jax.Array]:
         """Prepares rgb and depth observations from cameras' inputs."""
         camera_obs = {}

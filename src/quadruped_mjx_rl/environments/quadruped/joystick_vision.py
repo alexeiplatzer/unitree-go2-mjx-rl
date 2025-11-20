@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import jax
 
@@ -52,7 +53,7 @@ class QuadrupedJoystickVisionEnv(QuadrupedVisionBaseEnv, QuadrupedJoystickBaseEn
         *,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
-        renderer_maker: Callable[[PipelineModel], ...] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ):
         super().__init__(
             environment_config,

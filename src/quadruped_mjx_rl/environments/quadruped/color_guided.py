@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import jax
 from jax import numpy as jnp
@@ -65,7 +66,7 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
         env_model: EnvSpec | EnvModel,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
-        renderer_maker: Callable[[PipelineModel], ...] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ):
         super().__init__(
             environment_config=environment_config,
@@ -81,7 +82,7 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
         self._stiffness_table = jnp.array(())
 
     def _init_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
     ) -> dict[str, jax.Array]:
         obs = super()._init_obs(pipeline_state, state_info)
         obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
@@ -90,7 +91,7 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: dict[str, jax.Array],
     ) -> dict[str, jax.Array]:
         obs = super()._get_obs(pipeline_state, state_info, previous_obs)

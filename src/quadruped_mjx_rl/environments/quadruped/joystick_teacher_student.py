@@ -1,6 +1,7 @@
 """A simple teacher student joystick environment."""
 
 from dataclasses import dataclass
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -35,7 +36,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
     def _init_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
     ) -> jax.Array | dict[str, jax.Array]:
         state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         privileged_obs = jnp.concatenate(self._get_privileged_obs_list())
@@ -53,7 +54,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)

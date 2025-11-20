@@ -55,13 +55,11 @@ class ActorCriticNetworks(ComponentNetworkArchitecture[ActorCriticNetworkParams]
         self,
         params: ActorCriticAgentParams,
         observation: Observation,
-        recurrent_state: types.RecurrentState,
-    ) -> tuple[jax.Array, types.RecurrentState]:
+    ) -> jax.Array:
         return self.policy_network.apply(
             params.preprocessor_params,
             params.network_params.policy,
             observation,
-            recurrent_state,
         )
 
     def value_apply(

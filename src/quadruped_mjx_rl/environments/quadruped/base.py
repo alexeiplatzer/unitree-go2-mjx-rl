@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -314,14 +315,14 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _init_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
     ) -> jax.Array | dict[str, jax.Array]:
         return self._init_proprioceptive_obs(pipeline_state, state_info)
 
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         return self._get_proprioceptive_obs(pipeline_state, state_info, previous_obs)
@@ -329,7 +330,7 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _init_proprioceptive_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
     ) -> jax.Array | dict[str, jax.Array]:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         if self._obs_config.history_length is not None:
@@ -340,7 +341,7 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _get_proprioceptive_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
@@ -355,7 +356,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         return jnp.roll(obs_history, current_obs.size).at[: current_obs.size].set(current_obs)
 
     def _get_proprioceptive_obs_vector(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
     ) -> jax.Array:
         """Compounds all proprioceptive observations into a single vector. Clips and adds noise
         to values if requested."""
@@ -374,7 +375,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         return obs
 
     def _get_proprioceptive_obs_list(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
     ) -> list[jax.Array]:
         """Computes a list of proprioceptive observations. Override this to extend or define
         custom proprioceptive observations."""
@@ -415,7 +416,7 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _get_rewards(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         action: jax.Array,
         done: jax.Array,
     ) -> dict[str, jax.Array]:

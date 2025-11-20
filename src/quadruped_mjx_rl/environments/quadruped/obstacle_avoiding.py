@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -73,7 +74,7 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
         env_model: EnvSpec | EnvModel,
         vision_config: VisionConfig | None = None,
         init_qpos: jax.Array | None = None,
-        renderer_maker: Callable[[PipelineModel], ...] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ):
         super().__init__(
             environment_config=environment_config,
@@ -128,7 +129,7 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
     def _get_rewards(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         action: jax.Array,
         done: jax.Array,
     ) -> dict[str, jax.Array]:

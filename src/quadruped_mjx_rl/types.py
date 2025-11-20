@@ -1,7 +1,7 @@
 """Brax training types."""
 
 from collections.abc import Mapping
-from typing import Any, NamedTuple, Protocol, Tuple, TypeVar
+from typing import Any, NamedTuple, Protocol, Tuple, TypeVar, Union
 
 from jax.numpy import ndarray
 
@@ -16,7 +16,7 @@ PRNGKey = ndarray
 Metrics = Mapping[str, ndarray]
 Observation = ndarray | Mapping[str, ndarray]
 ObservationSize = int | Mapping[str, tuple[int, ...] | int]
-RecurrentState = tuple[ndarray, ndarray] | None
+RecurrentHiddenState = tuple[ndarray, ndarray] | None
 Action = ndarray
 Extra = Mapping[str, Any]
 PreprocessorParams = RunningStatisticsState
@@ -36,14 +36,26 @@ class Transition(NamedTuple):
     extras: NestedArray = ()
 
 
-class Policy(Protocol):
+class FeedForwardPolicy(Protocol):
     def __call__(
         self,
         observation: Observation,
         key: PRNGKey,
-        recurrent_state: RecurrentState,
-    ) -> Tuple[Action, RecurrentState, Extra]:
+    ) -> Tuple[Action, Extra]:
         pass
+
+
+class RecurrentPolicy(Protocol):
+    def __call__(
+        self,
+        observation: Observation,
+        key: PRNGKey,
+        recurrent_state: RecurrentHiddenState,
+    ) -> Tuple[Action, RecurrentHiddenState, Extra]:
+        pass
+
+
+Policy = FeedForwardPolicy | RecurrentPolicy
 
 
 class PreprocessObservationFn(Protocol):
@@ -73,5 +85,5 @@ class NetworkFactory(Protocol[NetworkType]):
 
 
 class InitCarryFn(Protocol):
-    def __call__(self, rng: PRNGKey) -> RecurrentState:
+    def __call__(self, rng: PRNGKey) -> RecurrentHiddenState:
         pass

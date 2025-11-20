@@ -85,7 +85,7 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         carry: tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey],
         data: Transition,
         normalizer_params: RunningStatisticsState,
-    ) -> tuple[tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey], dict[str, ...]]:
+    ) -> tuple[tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey], dict[str, Any]]:
         pass
 
     @abstractmethod

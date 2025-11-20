@@ -82,10 +82,10 @@ class LSTM(linen.RNNCellBase):
         self,
         data: jax.Array,
         carry: tuple[jax.Array, jax.Array],
-    ):
+    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
         carry, hidden = linen.OptimizedLSTMCell(features=self.recurrent_layer_size)(carry, data)
         hidden = MLP(layer_sizes=self.dense_layer_sizes)(hidden)
-        return carry, hidden
+        return hidden, carry
 
     @linen.nowrap
     def initialize_carry(
@@ -98,6 +98,31 @@ class LSTM(linen.RNNCellBase):
         cell_state = self.carry_init(key1, mem_shape)
         hidden_state = self.carry_init(key2, mem_shape)
         return cell_state, hidden_state
+
+    @property
+    def num_feature_axes(self) -> int:
+        return 1
+
+
+class MixedModeRNN(linen.RNNCellBase):
+    convolutional_module: CNN
+    recurrent_module: LSTM
+
+    def __call__(
+        self,
+        visual_data: jax.Array,
+        proprioceptive_data: jax.Array,
+        carry: tuple[jax.Array, jax.Array],
+    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
+        visual_latent = self.convolutional_module(visual_data)
+        recurrent_input = jnp.concatenate([proprioceptive_data, visual_latent], axis=-1)
+        return self.recurrent_module(recurrent_input, carry)
+
+    @linen.nowrap
+    def initialize_carry(
+        self, rng: jax.Array, input_shape: tuple[int, ...]
+    ) -> tuple[jax.Array, jax.Array]:
+        return self.recurrent_module.initialize_carry(rng, input_shape)
 
     @property
     def num_feature_axes(self) -> int:

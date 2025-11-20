@@ -1,6 +1,7 @@
 """Base environment for training quadruped joystick policies in MJX."""
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -136,7 +137,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def _init_proprioceptive_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
     ) -> jax.Array | dict[str, jax.Array]:
         """Resamples the command in addition to initializing observation arrays."""
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
@@ -144,7 +145,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         return super()._init_proprioceptive_obs(pipeline_state, state_info)
 
     def _get_proprioceptive_obs_list(
-        self, pipeline_state: PipelineState, state_info: dict[str, ...]
+        self, pipeline_state: PipelineState, state_info: dict[str, Any]
     ) -> list[jax.Array]:
         obs_list = [
             state_info["command"] * jnp.array([2.0, 2.0, 0.25]),  # command
@@ -155,7 +156,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
     def _get_rewards(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         action: jax.Array,
         done: jax.Array,
     ):

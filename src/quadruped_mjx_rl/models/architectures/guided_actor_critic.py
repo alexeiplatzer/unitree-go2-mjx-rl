@@ -23,22 +23,16 @@ from quadruped_mjx_rl.models.networks import (
     RecurrentNetwork,
     make_network,
     policy_factory,
-    RecurrentState,
+    RecurrentHiddenState,
 )
-
-
-@flax_dataclass
-class MixedEncoderParams:
-    visual_encoder: types.Params
-    mixed_encoder: types.Params
 
 
 @flax_dataclass
 class TeacherStudentNetworkParams(ActorCriticNetworkParams):
     """Contains training state for the learner."""
 
-    teacher_encoder: types.Params | MixedEncoderParams
-    student_encoder: types.Params | MixedEncoderParams
+    teacher_encoder: types.Params
+    student_encoder: types.Params
 
 
 @flax_dataclass
@@ -68,7 +62,7 @@ class TeacherStudentAgentParams(AgentParams[TeacherStudentNetworkParams]):
 class TeacherStudentNetworks(
     ActorCriticNetworks, ComponentNetworkArchitecture[TeacherStudentNetworkParams]
 ):
-    teacher_encoder_network: FeedForwardNetwork | RecurrentNetwork
+    teacher_encoder_network: FeedForwardNetwork
     student_encoder_network: FeedForwardNetwork | RecurrentNetwork
 
     def agent_params_class(self):
@@ -96,12 +90,20 @@ class TeacherStudentNetworks(
     def student_policy_apply(
         self, params: TeacherStudentAgentParams, observation: types.Observation
     ):
-        latent_vector = self.student_encoder_network.apply(
+        encoding = self.student_encoder_network.apply(
             params.preprocessor_params, params.network_params.student_encoder, observation
         )
-        return self.policy_network.apply(
+        if isinstance(self.student_encoder_network, RecurrentNetwork):
+            latent_vector, recurrent_hidden_state = encoding
+        else:
+            latent_vector = encoding
+        policy_logits = self.policy_network.apply(
             params.preprocessor_params, params.network_params.policy, observation, latent_vector
         )
+        if isinstance(self.student_encoder_network, RecurrentNetwork):
+            return policy_logits, recurrent_hidden_state
+        else:
+            return policy_logits
 
     def value_apply(
         self, params: TeacherStudentAgentParams, observation: types.Observation
@@ -117,7 +119,6 @@ class TeacherStudentNetworks(
         self,
         params: TeacherStudentAgentParams,
         observation: types.Observation,
-        recurrent_state: RecurrentState,
     ):
         return self.teacher_policy_apply(params, observation)
 

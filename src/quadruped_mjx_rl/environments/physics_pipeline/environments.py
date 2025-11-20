@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-
+from typing import Any
 import jax
 from flax.struct import dataclass as flax_dataclass
 
@@ -21,7 +21,7 @@ class State(Base):
     reward: jax.Array
     done: jax.Array
     metrics: dict[str, jax.Array]
-    info: dict[str, ...]
+    info: dict[str, Any]
 
 
 class Env(ABC):

@@ -62,11 +62,9 @@ class PipelineEnv(Env):
         self._ctrl_dt = ctrl_dt
         self._n_frames = int(ctrl_dt / sim_dt)
 
-    @abstractmethod
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
 
-    @abstractmethod
     def step(self, state: State, action: jax.Array) -> State:
         """Run one timestep of the environment's dynamics."""
 

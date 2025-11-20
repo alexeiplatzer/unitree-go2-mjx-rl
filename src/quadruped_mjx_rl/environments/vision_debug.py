@@ -2,6 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from etils.epath import PathLike
+from typing import Any
 
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import load_to_model, PipelineState, State
@@ -66,7 +67,7 @@ class VisionDebugEnv(PipelineEnv):
     def _init_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
     ) -> jax.Array | dict[str, jax.Array]:
         render_token, rgb, depth = self.renderer.init(
             pipeline_state.data, self.pipeline_model.model
@@ -82,7 +83,7 @@ class VisionDebugEnv(PipelineEnv):
     def _get_obs(
         self,
         pipeline_state: PipelineState,
-        state_info: dict[str, ...],
+        state_info: dict[str, Any],
         previous_obs: jax.Array | dict[str, jax.Array],
     ) -> jax.Array | dict[str, jax.Array]:
         _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state.data)

@@ -17,7 +17,7 @@ from quadruped_mjx_rl.types import (
     identity_observation_preprocessor,
     Observation,
     ObservationSize,
-    RecurrentState,
+    RecurrentHiddenState,
     Params,
     PreprocessObservationFn,
     PreprocessorParams,
@@ -80,8 +80,7 @@ class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
         self,
         params: AgentNetworkParams,
         observation: Observation,
-        recurrent_state: RecurrentState,
-    ) -> tuple[jax.Array, RecurrentState]:
+    ) -> jax.Array:
         """Gets the logits for applying the network's policy with the provided params to the
         provided observations"""
         pass
@@ -96,26 +95,35 @@ def policy_factory(
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
+    recurrent: bool = False,
 ) -> Policy:
-    def policy(
-        observation: Observation,
-        sample_key: PRNGKey,
-        recurrent_state: RecurrentState,
-    ) -> tuple[Action, RecurrentState, Extra]:
-        policy_logits, next_recurrent_state = policy_apply(params, observation, recurrent_state)
+    def process_logits(logits: jax.Array, sample_key: PRNGKey) -> tuple[Action, Extra]:
         if deterministic:
-            return parametric_action_distribution.mode(policy_logits), next_recurrent_state, {}
+            return parametric_action_distribution.mode(logits), {}
         raw_actions = parametric_action_distribution.sample_no_postprocessing(
-            policy_logits, sample_key
+            logits, sample_key
         )
-        log_prob = parametric_action_distribution.log_prob(policy_logits, raw_actions)
+        log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
         postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-        return postprocessed_actions, next_recurrent_state, {
+        return postprocessed_actions, {
             "log_prob": log_prob,
             "raw_action": raw_actions,
         }
+    def recurrent_policy(
+        observation: Observation,
+        sample_key: PRNGKey,
+        recurrent_state: RecurrentHiddenState = None,
+    ) -> tuple[Action, RecurrentHiddenState, Extra]:
+        policy_logits, next_recurrent_state = policy_apply(
+            params, observation, recurrent_state
+        )
+        action, extra = process_logits(policy_logits, sample_key)
+        return action, next_recurrent_state, extra
 
-    return policy
+    if recurrent:
+        return recurrent_policy
+    else:
+        return lambda obs, rng: process_logits(policy_apply(params, obs), rng)
 
 
 class NetworkFactory(Protocol[AgentNetworkParams]):
@@ -128,9 +136,10 @@ class NetworkFactory(Protocol[AgentNetworkParams]):
         pass
 
 
-# def _get_obs_state_size(obs_size: ObservationSize, obs_key: str) -> int:
-#     obs_size = obs_size[obs_key] if isinstance(obs_size, Mapping) else obs_size
-#     return jax.tree_util.tree_flatten(obs_size)[0][-1]
+def recurry(fun):
+    return lambda *args, **kwargs: lambda first_arg: fun(
+         first_arg, *args, **kwargs
+    )
 
 
 def normalizer_select(
@@ -144,13 +153,13 @@ def normalizer_select(
     )
 
 
-def preprocess_by_key(
+def preprocess_obs_by_key(
     *,
     preprocess_obs_fn: PreprocessObservationFn,
     processor_params: PreprocessorParams,
     obs: Observation,
     preprocess_obs_keys: Collection[str] = (),
-):
+) -> Observation:
     """Preprocesses the specified observations only, returns the same structure."""
     if not isinstance(obs, Mapping):
         return preprocess_obs_fn(obs, processor_params)
@@ -164,68 +173,115 @@ def preprocess_by_key(
     }
 
 
+@recurry
+def wrap_network_input(
+    fun,
+    apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
+    concatenate_inputs: bool = True,
+):
+    """Allows the function to be only applied to the selected obs keys,
+    concatenated optionally."""
+    def wrap(first_arg, obs, *args, **kwargs):
+        if isinstance(obs, Mapping):
+            obs_list = [obs[k] for k in apply_to_obs_keys]
+            if concatenate_inputs:
+                input_vector = jnp.concatenate(obs_list, axis=-1)
+                return fun(first_arg, input_vector, *args, **kwargs)
+            else:
+                return fun(first_arg, *obs_list, *args, **kwargs)
+        else:
+            return fun(first_arg, obs, *args, **kwargs)
+    return wrap
+
+
+@recurry
+def wrap_apply_with_preprocessor(
+    apply_fun,
+    preprocess_observation_fn: PreprocessObservationFn = identity_observation_preprocessor,
+    preprocess_obs_keys: Collection[str] = (),
+):
+    def wrap(
+        preprocessor_params: PreprocessorParams,
+        params: Params,
+        obs: Observation,
+        *args,
+        **kwargs,
+    ):
+        obs = preprocess_obs_by_key(
+            preprocess_obs_fn=preprocess_observation_fn,
+            processor_params=preprocessor_params,
+            obs=obs,
+            preprocess_obs_keys=preprocess_obs_keys,
+        )
+        return apply_fun(params, obs, *args, **kwargs)
+    return wrap
+
+
+@recurry
+def maybe_squeeze_output(output, squeeze_output: bool = False):
+    if squeeze_output:
+        return jnp.squeeze(output, axis=-1)
+    else:
+        return output
+
+
+def pipeline(f1, f2):
+    def fun(*args, **kwargs):
+        return f2(f1(*args, **kwargs))
+    return fun
+
+
+def pipeline_first_output(f1, f2):
+    def fun(*args, **kwargs):
+        first, *rest = f1(*args, **kwargs)
+        return f2(first), *rest
+    return fun
+
+
+def wrap_apply_to_dummy_obs(obs_size: ObservationSize):
+    logging.info(f"observation size: {obs_size}")
+    def decorator(fun):
+        def wrap(first_arg, *args, **kwargs):
+            dummy_obs = jax.tree_util.tree_map(
+                lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
+                obs_size,
+                is_leaf=lambda x: isinstance(x, tuple),
+            )
+            return fun(first_arg, dummy_obs, *args, **kwargs)
+        return wrap
+    return decorator
+
+
 def make_network(
     module: linen.Module,
     obs_size: ObservationSize,
     preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     preprocess_obs_keys: Collection[str] = (),
     apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
+    concatenate_inputs: bool = True,
     squeeze_output: bool = False,
-    recurrent_size: int = 0,
+    recurrent: bool = False,
 ):
     """
-    Creates a feedforward or recurrent network that selects and preprocesses the specified
-    observations.
+    Creates a network that selects and preprocesses the specified observations.
     """
+    wrap_input = wrap_network_input(apply_to_obs_keys, concatenate_inputs)
 
-    def to_input_vector(obs: Observation) -> jax.Array:
-        """Selects the needed observations and concatenates them into a single input vector."""
-        if isinstance(obs, Mapping):
-            return jnp.concatenate([obs[k] for k in apply_to_obs_keys], axis=-1)
-        else:
-            return obs
-
-    def apply(
-        processor_params: PreprocessorParams,
-        params: Params,
-        obs: Observation,
-        recurrent_state: RecurrentState = None,
-    ) -> tuple[jax.Array, RecurrentState]:
-        obs = preprocess_by_key(
-            preprocess_obs_fn=preprocess_observations_fn,
-            processor_params=processor_params,
-            obs=obs,
-            preprocess_obs_keys=preprocess_obs_keys,
-        )
-        input_vector = to_input_vector(obs)
-        if recurrent_size > 0:
-            out, next_recurrent_state = module.apply(params, input_vector, recurrent_state)
-        else:
-            out = module.apply(params, input_vector)
-            next_recurrent_state = recurrent_state
-        if squeeze_output:
-            return jnp.squeeze(out, axis=-1), next_recurrent_state
-        return out, next_recurrent_state
-
-    if recurrent_size > 0 and not isinstance(module, linen.RNNCellBase):
-        raise ValueError("A recurrent network requires a recurrent cell module.")
-    if recurrent_size == 0 and isinstance(module, linen.RNNCellBase):
-        raise ValueError("A feedforward network is not compatible with a recurrent module.")
-
-    logging.info(f"observation size: {obs_size}")
-
-    dummy_obs = jax.tree_util.tree_map(
-        lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
-        obs_size,
-        is_leaf=lambda x: isinstance(x, tuple),
+    apply = wrap_apply_with_preprocessor(preprocess_observations_fn, preprocess_obs_keys)(
+        wrap_input(module.apply)
     )
-    dummy_input = to_input_vector(dummy_obs)
-    init = lambda key: module.init(key, dummy_input)
-    if recurrent_size > 0:
-        return RecurrentNetwork(
-            init=init,
-            apply=apply,
-            init_carry=lambda key: module.initialize_carry(key, dummy_input.shape)
+
+    wrap_dummy_obs = wrap_apply_to_dummy_obs(obs_size)
+    init = wrap_dummy_obs(wrap_input(module.init))
+
+    maybe_squeeze = maybe_squeeze_output(squeeze_output)
+
+    if recurrent:
+        apply = pipeline_first_output(apply, maybe_squeeze)
+        init_carry = wrap_dummy_obs(
+            wrap_input(lambda k, dummy_in: module.initialize_carry(k, dummy_in.shape))
         )
+        return RecurrentNetwork(init=init, apply=apply, init_carry=init_carry)
     else:
+        apply = pipeline(apply, maybe_squeeze)
         return FeedForwardNetwork(init=init, apply=apply)
