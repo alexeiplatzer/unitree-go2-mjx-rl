@@ -1,4 +1,3 @@
-
 import functools
 import logging
 
@@ -13,7 +12,9 @@ from quadruped_mjx_rl.domain_randomization.randomized_tiles import randomize_til
 from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.environments import QuadrupedVisionBaseEnvConfig
 from quadruped_mjx_rl.environments.rendering import (
-    large_overview_camera, render_model, show_image,
+    large_overview_camera,
+    render_model,
+    show_image,
 )
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.robotic_vision import get_renderer
@@ -108,7 +109,7 @@ if __name__ == "__main__":
         env=env,
         vision=True,
         num_vision_envs=num_envs,
-        randomization_fn=functools.partial(randomize_tiles, env_model=env_model, rng=env_keys)
+        randomization_fn=functools.partial(randomize_tiles, env_model=env_model, rng=env_keys),
     )
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
@@ -122,14 +123,12 @@ if __name__ == "__main__":
     terrain_view = state.obs["pixels/terrain/rgb"]
     print(terrain_view.shape)
 
-
     def tile(img, d):
         assert img.shape[0] == d * d
         img = img.reshape((d, d) + img.shape[1:])
         return np.concat(
             np.concat(img, axis=1), axis=1
         )  # replace with 2 for multi-camera tensors!
-
 
     # image = tile(rgb_tensor[:16], 4)
     # image.shape

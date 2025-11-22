@@ -1,10 +1,10 @@
 """Utility functions for instantiating neural networks."""
 
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Generic, TypeVar, Protocol
-import logging
+from typing import Generic, Protocol, TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -14,17 +14,17 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
+    Action,
+    Extra,
     identity_observation_preprocessor,
     Observation,
     ObservationSize,
-    RecurrentHiddenState,
     Params,
+    Policy,
     PreprocessObservationFn,
     PreprocessorParams,
     PRNGKey,
-    Policy,
-    Action,
-    Extra,
+    RecurrentHiddenState,
 )
 
 
@@ -109,14 +109,13 @@ def policy_factory(
             "log_prob": log_prob,
             "raw_action": raw_actions,
         }
+
     def recurrent_policy(
         observation: Observation,
         sample_key: PRNGKey,
         recurrent_state: RecurrentHiddenState = None,
     ) -> tuple[Action, RecurrentHiddenState, Extra]:
-        policy_logits, next_recurrent_state = policy_apply(
-            params, observation, recurrent_state
-        )
+        policy_logits, next_recurrent_state = policy_apply(params, observation, recurrent_state)
         action, extra = process_logits(policy_logits, sample_key)
         return action, next_recurrent_state, extra
 
@@ -136,10 +135,11 @@ class NetworkFactory(Protocol[AgentNetworkParams]):
         pass
 
 
-def recurry(fun):
-    return lambda *args, **kwargs: lambda first_arg: fun(
-         first_arg, *args, **kwargs
-    )
+WrappedFunOutput = TypeVar("WrappedFunOutput")
+
+
+def recurry(fun: Callable[..., WrappedFunOutput]) -> Callable[..., WrappedFunOutput]:
+    return lambda *args, **kwargs: lambda first_arg: fun(first_arg, *args, **kwargs)
 
 
 def normalizer_select(
@@ -175,12 +175,13 @@ def preprocess_obs_by_key(
 
 @recurry
 def wrap_network_input(
-    fun,
+    fun: Callable[..., WrappedFunOutput],
     apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
     concatenate_inputs: bool = True,
-):
+) -> Callable[..., WrappedFunOutput]:
     """Allows the function to be only applied to the selected obs keys,
     concatenated optionally."""
+
     def wrap(first_arg, obs, *args, **kwargs):
         if isinstance(obs, Mapping):
             obs_list = [obs[k] for k in apply_to_obs_keys]
@@ -191,15 +192,16 @@ def wrap_network_input(
                 return fun(first_arg, *obs_list, *args, **kwargs)
         else:
             return fun(first_arg, obs, *args, **kwargs)
+
     return wrap
 
 
 @recurry
 def wrap_apply_with_preprocessor(
-    apply_fun,
+    apply_fun: Callable[..., WrappedFunOutput],
     preprocess_observation_fn: PreprocessObservationFn = identity_observation_preprocessor,
     preprocess_obs_keys: Collection[str] = (),
-):
+) -> Callable[..., WrappedFunOutput]:
     def wrap(
         preprocessor_params: PreprocessorParams,
         params: Params,
@@ -214,6 +216,7 @@ def wrap_apply_with_preprocessor(
             preprocess_obs_keys=preprocess_obs_keys,
         )
         return apply_fun(params, obs, *args, **kwargs)
+
     return wrap
 
 
@@ -228,6 +231,7 @@ def maybe_squeeze_output(output, squeeze_output: bool = False):
 def pipeline(f1, f2):
     def fun(*args, **kwargs):
         return f2(f1(*args, **kwargs))
+
     return fun
 
 
@@ -235,11 +239,13 @@ def pipeline_first_output(f1, f2):
     def fun(*args, **kwargs):
         first, *rest = f1(*args, **kwargs)
         return f2(first), *rest
+
     return fun
 
 
 def wrap_apply_to_dummy_obs(obs_size: ObservationSize):
     logging.info(f"observation size: {obs_size}")
+
     def decorator(fun):
         def wrap(first_arg, *args, **kwargs):
             dummy_obs = jax.tree_util.tree_map(
@@ -248,7 +254,9 @@ def wrap_apply_to_dummy_obs(obs_size: ObservationSize):
                 is_leaf=lambda x: isinstance(x, tuple),
             )
             return fun(first_arg, dummy_obs, *args, **kwargs)
+
         return wrap
+
     return decorator
 
 

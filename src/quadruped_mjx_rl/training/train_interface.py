@@ -11,7 +11,7 @@ from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.configs import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models.networks import AgentParams
+from quadruped_mjx_rl.models.networks_utils import AgentParams
 from quadruped_mjx_rl.training import (
     acting_recurrent,
     logger as metric_logger,

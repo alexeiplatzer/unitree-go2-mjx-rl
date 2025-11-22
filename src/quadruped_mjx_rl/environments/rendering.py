@@ -71,7 +71,7 @@ def render_vision_observations(
             env_model=env.env_model,
             rng_key=domain_rand_key,
             num_worlds=num_worlds,
-        )
+        ),
     )
     jit_reset = jax.jit(wrapped_env.reset)
     jit_step = jax.jit(wrapped_env.step)
@@ -81,10 +81,9 @@ def render_vision_observations(
     state = jit_step(state, jnp.zeros((num_worlds, env.action_size)))
 
     n_images, n_rows = (
-        (16, 4) if num_worlds >= 16
-        else (9, 3) if num_worlds >= 9
-        else (4, 2) if num_worlds >= 4
-        else (1, 1)
+        (16, 4)
+        if num_worlds >= 16
+        else (9, 3) if num_worlds >= 9 else (4, 2) if num_worlds >= 4 else (1, 1)
     )
     images = []
     for key in state.obs:

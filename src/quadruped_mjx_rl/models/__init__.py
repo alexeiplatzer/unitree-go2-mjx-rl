@@ -1,8 +1,8 @@
-from quadruped_mjx_rl.models.factories import get_networks_factory, load_inference_fn
-from quadruped_mjx_rl.models.configs import (
-    ModelConfig,
+from quadruped_mjx_rl.models.architectures import (
     ActorCriticConfig,
+    ModelConfig,
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
 )
-from quadruped_mjx_rl.models.networks import FeedForwardNetwork, AgentParams
+from quadruped_mjx_rl.models.factories import get_networks_factory, load_inference_fn
+from quadruped_mjx_rl.models.networks_utils import AgentParams, FeedForwardNetwork

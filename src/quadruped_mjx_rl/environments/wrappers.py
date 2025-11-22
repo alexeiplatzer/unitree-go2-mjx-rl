@@ -213,8 +213,10 @@ class TerrainMapWrapper(Wrapper):
         num_colors: int = 2,
     ):
         super().__init__(env)
-        self._sys_v, self._in_axes, (
-            self._rgba_table_v, self._friction_table_v, self._stiffness_table_v
+        (
+            self._sys_v,
+            self._in_axes,
+            (self._rgba_table_v, self._friction_table_v, self._stiffness_table_v),
         ) = colored_terrain_randomization_fn(
             pipeline_model=self.pipeline_model,
             env_model=self.env_model,
@@ -255,7 +257,7 @@ class TerrainMapWrapper(Wrapper):
             self._rgba_table_v,
             self._friction_table_v,
             self._stiffness_table_v,
-            rng
+            rng,
         )
         return state
 

@@ -9,7 +9,7 @@ from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
-from quadruped_mjx_rl.models.networks import AgentParams
+from quadruped_mjx_rl.models.networks_utils import AgentParams
 from quadruped_mjx_rl.training import (
     acting_recurrent,
     logger as metric_logger,
@@ -170,13 +170,13 @@ def train(
     def training_epoch(
         training_state: TrainingState, state: State, recurrent_state: jax.Array, key: PRNGKey
     ) -> tuple[TrainingState, State, jax.Array, types.Metrics]:
-        (
-            training_state, state, final_recurrent_state, ignored_key
-        ), loss_metrics = jax.lax.scan(
-            training_step,
-            (training_state, state, recurrent_state, key),
-            (),
-            length=num_training_steps_per_epoch,
+        (training_state, state, final_recurrent_state, ignored_key), loss_metrics = (
+            jax.lax.scan(
+                training_step,
+                (training_state, state, recurrent_state, key),
+                (),
+                length=num_training_steps_per_epoch,
+            )
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
         return training_state, state, final_recurrent_state, loss_metrics
@@ -234,10 +234,10 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            (
-                training_state, env_state, recurrent_state, training_metrics
-            ) = training_epoch_with_timing(
-                training_state, env_state, recurrent_state, epoch_keys
+            (training_state, env_state, recurrent_state, training_metrics) = (
+                training_epoch_with_timing(
+                    training_state, env_state, recurrent_state, epoch_keys
+                )
             )
             current_step = int(_utils.unpmap(training_state.env_steps))
 

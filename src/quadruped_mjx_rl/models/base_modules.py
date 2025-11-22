@@ -40,8 +40,6 @@ class CNN(linen.Module):
     """CNN module. Inputs are expected in Batch * HWC format."""
 
     num_filters: Sequence[int]
-    kernel_sizes: Sequence[tuple]
-    strides: Sequence[tuple]
     dense_layer_sizes: Sequence[int]
     activation: ActivationFn = linen.relu
     activate_final: bool = False
@@ -50,8 +48,10 @@ class CNN(linen.Module):
     @linen.compact
     def __call__(self, data: jnp.ndarray):
         hidden = data
+        kernel_sizes = [(3, 3)] * len(self.num_filters)
+        strides = [(1, 1)] * len(self.num_filters)
         for i, (num_filter, kernel_size, stride) in enumerate(
-            zip(self.num_filters, self.kernel_sizes, self.strides)
+            zip(self.num_filters, kernel_sizes, strides)
         ):
             hidden = linen.Conv(
                 num_filter,

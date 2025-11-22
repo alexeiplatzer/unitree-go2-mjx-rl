@@ -116,7 +116,12 @@ def randomize_tiles_with_internals(
         geom_solref = pipeline_model.model.geom_solref.at[tile_geom_ids, 0].set(chosen_solrefs)
 
         return (
-            geom_rgba, geom_friction, geom_solref, color_palette, color_friction, color_solref
+            geom_rgba,
+            geom_friction,
+            geom_solref,
+            color_palette,
+            color_friction,
+            color_solref,
         )
 
     key_envs = jax.random.split(rng_key, num_worlds)

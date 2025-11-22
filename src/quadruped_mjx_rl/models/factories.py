@@ -5,17 +5,17 @@ from etils.epath import PathLike
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.models import io
 from quadruped_mjx_rl.models.architectures import (
-    guided_actor_critic as guided_networks,
-    raw_actor_critic as raw_networks,
+    actor_critic_base as raw_networks,
+    teacher_student_base as guided_networks,
     TeacherStudentAgentParams,
 )
-from quadruped_mjx_rl.models.configs import (
+from quadruped_mjx_rl.models.architectures import (
     ActorCriticConfig,
     ModelConfig,
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
 )
-from quadruped_mjx_rl.models.networks import (
+from quadruped_mjx_rl.models.networks_utils import (
     NetworkFactory,
 )
 

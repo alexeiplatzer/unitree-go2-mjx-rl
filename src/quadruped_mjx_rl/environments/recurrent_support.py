@@ -12,6 +12,7 @@ class RecurrentEnvState(State):
 
 class RecurrentWrapper(Wrapper):
     """This wrapper lets the environment take care of the recurrent state resetting."""
+
     def __init__(self, env: Env, init_carry_fn: InitCarryFn):
         super().__init__(env)
         self._init_carry_fn = init_carry_fn

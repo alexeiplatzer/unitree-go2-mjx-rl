@@ -49,9 +49,7 @@ class TerrainConfig(Configuration):
             for j in range(len(self.tiles[0])):
                 self.tiles[i][j].create_tile(
                     spec=spec,
-                    grid_loc=[
-                        j * 2 * square_side, (i + row_offset) * 2 * square_side
-                    ],
+                    grid_loc=[j * 2 * square_side, (i + row_offset) * 2 * square_side],
                     name=f"tile_{i}_{j}",
                 )
 

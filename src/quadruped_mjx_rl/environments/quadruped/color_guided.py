@@ -10,7 +10,8 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
     PipelineModel,
-    PipelineState, State,
+    PipelineState,
+    State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
@@ -99,21 +100,22 @@ class QuadrupedColorGuidedEnv(QuadrupedVisionTargetEnv):
         return obs
 
     def _privileged_terrain_map(self, terrain_rgba: jax.Array) -> jax.Array:
-        """ apply the color meaning fn to every pixel and get an image of the friction
+        """apply the color meaning fn to every pixel and get an image of the friction
         and stiffness values and return then as an image with two channels of the same size.
         So we get from (WxHx4) to (WxHx2), 4 is for rgba, 2 is for friction and stiffness.
         The rgba table and friction and stiffness tables are stored in the env and set
-        to the correct values with the Terrain Map wrapper. """
+        to the correct values with the Terrain Map wrapper."""
         # flat_rgba = terrain_rgba.reshape(-1, terrain_rgba.shape[-1])
         return jax.vmap(
-            lambda rgba: jnp.stack(color_meaning_fn(
-                rgba=rgba,
-                rgba_table=self._rgba_table,
-                friction_table=self._friction_table,
-                stiffness_table=self._stiffness_table
-            ))
+            lambda rgba: jnp.stack(
+                color_meaning_fn(
+                    rgba=rgba,
+                    rgba_table=self._rgba_table,
+                    friction_table=self._friction_table,
+                    stiffness_table=self._stiffness_table,
+                )
+            )
         )(terrain_rgba)
         # return jnp.stack([terrain_friction, terrain_stiffness], axis=-1).reshape(
         #     terrain_rgba.shape[:-1] + (2,)
         # )
-

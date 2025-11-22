@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
+from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticNetworkParams,
     ActorCriticNetworks,
     ActorCriticAgentParams,

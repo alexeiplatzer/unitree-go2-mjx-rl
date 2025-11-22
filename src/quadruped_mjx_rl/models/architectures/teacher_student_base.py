@@ -1,4 +1,6 @@
+import functools
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 import jax
 from flax import linen
@@ -6,24 +8,21 @@ from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import distributions
-from quadruped_mjx_rl.models.architectures.raw_actor_critic import (
+from quadruped_mjx_rl.models.architectures.actor_critic_base import (
+    ActorCriticConfig,
     ActorCriticNetworkParams,
     ActorCriticNetworks,
 )
-from quadruped_mjx_rl.models.configs import (
-    TeacherStudentConfig,
-    TeacherStudentRecurrentConfig,
-    TeacherStudentVisionConfig,
-)
-from quadruped_mjx_rl.models.modules import ActivationFn, CNN, MLP, LSTM
-from quadruped_mjx_rl.models.networks import (
+from quadruped_mjx_rl.models.architectures.configs_base import register_model_config_class
+from quadruped_mjx_rl.models.base_modules import ActivationFn, MLP
+from quadruped_mjx_rl.models.networks_utils import (
     AgentParams,
     ComponentNetworkArchitecture,
     FeedForwardNetwork,
-    RecurrentNetwork,
     make_network,
     policy_factory,
     RecurrentHiddenState,
+    RecurrentNetwork,
 )
 
 
@@ -88,22 +87,28 @@ class TeacherStudentNetworks(
         )
 
     def student_policy_apply(
-        self, params: TeacherStudentAgentParams, observation: types.Observation
+        self,
+        params: TeacherStudentAgentParams,
+        observation: types.Observation,
+        recurrent_carry: RecurrentHiddenState = None,
     ):
-        encoding = self.student_encoder_network.apply(
-            params.preprocessor_params, params.network_params.student_encoder, observation
+        encoder_fn = functools.partial(
+            self.student_encoder_network.apply,
+            params.preprocessor_params,
+            params.network_params.student_encoder,
+        )
+        policy_fn = functools.partial(
+            self.policy_apply,
+            params.preprocessor_params,
+            params.network_params.policy,
         )
         if isinstance(self.student_encoder_network, RecurrentNetwork):
-            latent_vector, recurrent_hidden_state = encoding
+            latent_vector, recurrent_carry = encoder_fn(observation, recurrent_carry)
+            policy_logits = policy_fn(observation, latent_vector)
+            return policy_logits, recurrent_carry
         else:
-            latent_vector = encoding
-        policy_logits = self.policy_network.apply(
-            params.preprocessor_params, params.network_params.policy, observation, latent_vector
-        )
-        if isinstance(self.student_encoder_network, RecurrentNetwork):
-            return policy_logits, recurrent_hidden_state
-        else:
-            return policy_logits
+            latent_vector = encoder_fn(observation)
+            return policy_fn(observation, latent_vector)
 
     def value_apply(
         self, params: TeacherStudentAgentParams, observation: types.Observation
@@ -139,9 +144,28 @@ class TeacherStudentNetworks(
                 parametric_action_distribution=self.parametric_action_distribution,
                 params=params,
                 deterministic=deterministic,
+                recurrent=isinstance(self.student_encoder_network, RecurrentNetwork),
             )
 
         return make_teacher_policy, make_student_policy
+
+
+@dataclass
+class TeacherStudentConfig(ActorCriticConfig):
+    @dataclass
+    class ModulesConfig(ActorCriticConfig.ModulesConfig):
+        encoder: list[int] = field(default_factory=lambda: [256, 256])
+        adapter: list[int] = field(default_factory=lambda: [256, 256])
+
+    modules: ModulesConfig = field(default_factory=ModulesConfig)
+    latent_size: int = 16
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "TeacherStudent"
+
+
+register_model_config_class(TeacherStudentConfig)
 
 
 def make_teacher_student_networks(
@@ -161,6 +185,8 @@ def make_teacher_student_networks(
     """Make teacher-student network with preprocessor."""
 
     # Sanity check
+    if not isinstance(model_config, TeacherStudentConfig):
+        raise TypeError("Model configuration must be a TeacherStudentConfig instance.")
     if not isinstance(observation_size, Mapping):
         raise TypeError(
             f"Environment observations must be a dictionary (Mapping),"
@@ -185,54 +211,18 @@ def make_teacher_student_networks(
         event_size=action_size
     )
 
-    if isinstance(model_config, TeacherStudentRecurrentConfig):
-        student_preencoder_module = CNN(
-            num_filters=model_config.modules.adapter_convolutional,
-            kernel_sizes=[(3, 3)] * len(model_config.modules.adapter_convolutional),
-            strides=[(1, 1)] * len(model_config.modules.adapter_convolutional),
-            dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
-            activation=activation,
-            activate_final=True,
-        )
-        student_encoder_module = LSTM(
-            hidden_size=model_config.modules.recurrent_size,
-            output_size=model_config.latent_size,
-        )
-    if isinstance(model_config, TeacherStudentVisionConfig):
-        teacher_encoder_module = CNN(
-            num_filters=model_config.modules.encoder_convolutional,
-            kernel_sizes=[(3, 3)] * len(model_config.modules.encoder_convolutional),
-            strides=[(1, 1)] * len(model_config.modules.encoder_convolutional),
-            dense_layer_sizes=model_config.modules.encoder_dense + [model_config.latent_size],
-            activation=activation,
-            activate_final=True,
-        )
-        student_encoder_module = CNN(
-            num_filters=model_config.modules.adapter_convolutional,
-            kernel_sizes=[(3, 3)] * len(model_config.modules.adapter_convolutional),
-            strides=[(1, 1)] * len(model_config.modules.adapter_convolutional),
-            dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
-            activation=activation,
-            activate_final=True,
-        )
-        # Visual observations are not preprocessed
-        teacher_preprocess_keys = ()
-        student_preprocess_keys = ()
-    elif isinstance(model_config, TeacherStudentConfig):
-        teacher_encoder_module = MLP(
-            layer_sizes=model_config.modules.encoder + [model_config.latent_size],
-            activation=activation,
-            activate_final=True,
-        )
-        student_encoder_module = MLP(
-            layer_sizes=model_config.modules.adapter + [model_config.latent_size],
-            activation=activation,
-            activate_final=True,
-        )
-        teacher_preprocess_keys = (teacher_obs_key,)
-        student_preprocess_keys = (student_obs_key,)
-    else:
-        raise TypeError("Model configuration must be a TeacherStudentConfig instance.")
+    teacher_encoder_module = MLP(
+        layer_sizes=model_config.modules.encoder + [model_config.latent_size],
+        activation=activation,
+        activate_final=True,
+    )
+    student_encoder_module = MLP(
+        layer_sizes=model_config.modules.adapter + [model_config.latent_size],
+        activation=activation,
+        activate_final=True,
+    )
+    teacher_preprocess_keys = (teacher_obs_key,)
+    student_preprocess_keys = (student_obs_key,)
 
     teacher_encoder_network = make_network(
         module=teacher_encoder_module,
@@ -313,6 +303,3 @@ def make_teacher_student_networks(
         value_network=value_network,
         parametric_action_distribution=parametric_action_distribution,
     )
-
-
-# def make_()

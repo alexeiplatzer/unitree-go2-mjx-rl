@@ -10,14 +10,14 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models.architectures.guided_actor_critic import (
+from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentNetworks,
     ActorCriticNetworks,
     FeedForwardNetwork,
 )
-from quadruped_mjx_rl.models.networks import AgentNetworkParams, PolicyFactory
+from quadruped_mjx_rl.models.networks_utils import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting_recurrent import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization

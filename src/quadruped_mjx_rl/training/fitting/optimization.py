@@ -10,7 +10,7 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models.networks import (
+from quadruped_mjx_rl.models.networks_utils import (
     AgentNetworkParams,
     AgentParams,
     ComponentNetworkArchitecture,

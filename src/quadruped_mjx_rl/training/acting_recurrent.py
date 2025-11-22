@@ -23,14 +23,18 @@ def actor_step(
     actions, policy_extras, new_recurrent_state = policy(env_state.obs, key, recurrent_state)
     nstate = env.step(env_state, actions)
     state_extras = {x: nstate.info[x] for x in extra_fields}
-    return nstate, new_recurrent_state, Transition(
-        observation=env_state.obs,
-        action=actions,
-        reward=nstate.reward,
-        discount=1 - nstate.done,
-        next_observation=nstate.obs,
-        recurrent_state=new_recurrent_state,
-        extras={"policy_extras": policy_extras, "state_extras": state_extras},
+    return (
+        nstate,
+        new_recurrent_state,
+        Transition(
+            observation=env_state.obs,
+            action=actions,
+            reward=nstate.reward,
+            discount=1 - nstate.done,
+            next_observation=nstate.obs,
+            recurrent_state=new_recurrent_state,
+            extras={"policy_extras": policy_extras, "state_extras": state_extras},
+        ),
     )
 
 
