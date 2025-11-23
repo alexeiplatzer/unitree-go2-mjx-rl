@@ -36,7 +36,7 @@ def get_renderer(
     if debug:
         return MockRenderer(vision_config)
     else:
-        from madrona_mjx.renderer import BatchRenderer  # pytype: disable=import-error
+        from madrona_mjx.renderer import BatchRenderer
 
         return BatchRenderer(
             m=pipeline_model.model,

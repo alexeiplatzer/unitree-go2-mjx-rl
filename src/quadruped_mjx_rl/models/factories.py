@@ -5,15 +5,16 @@ from etils.epath import PathLike
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.models import io
 from quadruped_mjx_rl.models.architectures import (
-    actor_critic_base as raw_networks,
-    teacher_student_base as guided_networks,
     TeacherStudentAgentParams,
-)
-from quadruped_mjx_rl.models.architectures import (
     ActorCriticConfig,
     ModelConfig,
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
+    TeacherStudentRecurrentConfig,
+    make_actor_critic_networks,
+    make_teacher_student_networks,
+    make_teacher_student_recurrent_networks,
+    make_teacher_student_vision_networks,
 )
 from quadruped_mjx_rl.models.networks_utils import (
     NetworkFactory,
@@ -24,21 +25,24 @@ def get_networks_factory(
     model_config: ModelConfig,
 ) -> NetworkFactory:
     """Checks the model type from the configuration and returns the appropriate factory."""
-    if isinstance(model_config, TeacherStudentVisionConfig):
+    if isinstance(model_config, TeacherStudentRecurrentConfig):
         networks_factory = functools.partial(
-            guided_networks.make_teacher_student_networks,
+            make_teacher_student_recurrent_networks,
             model_config=model_config,
-            teacher_obs_key="pixels/terrain/depth",
-            student_obs_key="pixels/frontal_ego/rgb",
+        )
+    elif isinstance(model_config, TeacherStudentVisionConfig):
+        networks_factory = functools.partial(
+            make_teacher_student_vision_networks,
+            model_config=model_config,
         )
     elif isinstance(model_config, TeacherStudentConfig):
         networks_factory = functools.partial(
-            guided_networks.make_teacher_student_networks,
+            make_teacher_student_networks,
             model_config=model_config,
         )
     elif isinstance(model_config, ActorCriticConfig):
         networks_factory = functools.partial(
-            raw_networks.make_actor_critic_networks,
+            make_actor_critic_networks,
             model_config=model_config,
         )
     else:
@@ -68,6 +72,8 @@ def load_inference_fn(
                 "environment_privileged": 1,
                 "pixels/terrain/depth": 1,
                 "pixels/frontal_ego/rgb": 1,
+                "pixels/frontal_ego/rgb_adjusted": 1,
+                "privileged_terrain_map": 1,
             },
             action_size=action_size,
             preprocess_observations_fn=running_statistics.normalize,

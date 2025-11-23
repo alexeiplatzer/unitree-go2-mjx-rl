@@ -16,23 +16,20 @@ def actor_step(
     policy: Policy,
     key: PRNGKey,
     *,
-    recurrent_state: jax.Array,
     extra_fields: Sequence[str] = (),
-) -> tuple[State, jax.Array, Transition]:
+) -> tuple[State, Transition]:
     """Collect data."""
-    actions, policy_extras, new_recurrent_state = policy(env_state.obs, key, recurrent_state)
+    actions, policy_extras = policy(env_state.obs, key)
     nstate = env.step(env_state, actions)
     state_extras = {x: nstate.info[x] for x in extra_fields}
     return (
         nstate,
-        new_recurrent_state,
         Transition(
             observation=env_state.obs,
             action=actions,
             reward=nstate.reward,
             discount=1 - nstate.done,
             next_observation=nstate.obs,
-            recurrent_state=new_recurrent_state,
             extras={"policy_extras": policy_extras, "state_extras": state_extras},
         ),
     )
@@ -43,30 +40,28 @@ def generate_unroll(
     env_state: State,
     policy: Policy,
     key: PRNGKey,
-    first_recurrent_state: jax.Array,
     unroll_length: int,
     extra_fields: Sequence[str] = (),
-) -> tuple[State, jax.Array, Transition]:
+) -> tuple[State, Transition]:
     """Collect trajectories of the given unroll_length."""
 
     @jax.jit
     def f(carry, unused_t):
         state, current_key, recurrent_state = carry
         current_key, next_key = jax.random.split(current_key)
-        nstate, next_recurrent_state, transition = actor_step(
+        nstate, transition = actor_step(
             env,
             state,
             policy,
             current_key,
-            recurrent_state=recurrent_state,
             extra_fields=extra_fields,
         )
-        return (nstate, next_key, next_recurrent_state), transition
+        return (nstate, next_key), transition
 
     (final_state, _, final_recurrent_state), data = jax.lax.scan(
-        f, (env_state, key, first_recurrent_state), (), length=unroll_length
+        f, (env_state, key), (), length=unroll_length
     )
-    return final_state, final_recurrent_state, data
+    return final_state, data
 
 
 class Evaluator:
@@ -104,7 +99,6 @@ class Evaluator:
                 eval_first_state,
                 eval_policy_fn(policy_params),
                 key,
-                first_recurrent_state=None,  # TODO
                 unroll_length=episode_length // action_repeat,
             )[0]
 

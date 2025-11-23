@@ -1,7 +1,7 @@
 import functools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Protocol
+from typing import Generic, Protocol, Any
 from collections.abc import Callable
 import logging
 
@@ -44,11 +44,11 @@ def make_optimizer(learning_rate: float, max_grad_norm: float | None = None):
 class LossFn(Protocol[AgentNetworkParams]):
     def __call__(
         self,
-        network: ComponentNetworkArchitecture[AgentNetworkParams],
         network_params: AgentNetworkParams,
         preprocessor_params: PreprocessorParams,
         data: Transition,
         rng: PRNGKey,
+        network: ComponentNetworkArchitecture[AgentNetworkParams],
         hyperparams: HyperparamsPPO,
     ) -> tuple[jnp.ndarray, Metrics]:
         pass

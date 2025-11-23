@@ -41,11 +41,11 @@ def make_teacher_student_vision_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
-    teacher_obs_key: str = "environment_privileged",
-    student_obs_key: str = "proprioceptive_history",
+    teacher_obs_key: str = "pixels/terrain/depth",
+    student_obs_key: str = "pixels/frontal_ego/rgb_adjusted",
     common_obs_key: str = "proprioceptive",
     latent_obs_key: str = "latent",
-    model_config: TeacherStudentConfig = TeacherStudentConfig(),
+    model_config: TeacherStudentVisionConfig = TeacherStudentVisionConfig(),
     activation: ActivationFn = linen.swish,
 ):
     """Make teacher-student network with preprocessor."""
@@ -130,6 +130,7 @@ def make_teacher_student_vision_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=False,
+        concatenate_inputs=True,
     )
 
     value_network = make_network(
@@ -139,6 +140,7 @@ def make_teacher_student_vision_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=True,
+        concatenate_inputs=True,
     )
 
     policy_raw_apply = policy_network.apply

@@ -8,8 +8,9 @@ import jax.numpy as jnp
 import numpy as np
 
 from quadruped_mjx_rl import running_statistics, types
+from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.models.configs import ModelConfig
+from quadruped_mjx_rl.models.architectures import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks_utils import AgentParams
 from quadruped_mjx_rl.training import (
@@ -114,15 +115,8 @@ def train(
     # The number of environment steps executed for every training step.
     env_step_per_training_step = batch_size * unroll_length * num_minibatches * action_repeat
     num_evals_after_init = max(num_evals - 1, 1)
+
     # The number of training_step calls per training_epoch call.
-    # Equals to ceil(
-    #   num_timesteps
-    #   / (
-    #       num_evals
-    #       * env_step_per_training_step
-    #       * num_resets_per_eval
-    #   )
-    # )
     num_training_steps_per_epoch = np.ceil(
         num_timesteps
         / (
@@ -133,12 +127,12 @@ def train(
     ).astype(int)
 
     key = jax.random.PRNGKey(training_config.seed)
+    # key_networks should be global, so that networks are initialized the same
+    # way for different processes.
     global_key, local_key = jax.random.split(key)
     del key
     local_key = jax.random.fold_in(local_key, process_id)
     local_key, key_env, eval_key = jax.random.split(local_key, 3)
-    # key_networks should be global, so that networks are initialized the same
-    # way for different processes.
 
     if num_envs % device_count != 0:
         raise ValueError(
@@ -146,18 +140,17 @@ def train(
             f"({device_count})."
         )
 
-    env = _utils.maybe_wrap_env(
-        training_env,
-        wrap_env,
-        num_envs,
-        training_config.episode_length,
-        action_repeat,
-        device_count,
-        key_env,
-        None,
-        randomization_fn,
+    env = wrap_for_training(
+        env=training_env,
+        num_envs=num_envs,
+        device_count=device_count,
+        episode_length=training_config.episode_length,
+        action_repeat=action_repeat,
+        randomization_fn=randomization_fn,
+        rng_key=key_env,
         vision=training_config.use_vision,
-    )
+    ) if wrap_env else training_env
+
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
@@ -188,20 +181,6 @@ def train(
         main_loss_fn=compute_ppo_loss,
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
-
-    # TODO !!!
-    init_recurrent_state = jnp.array(())
-
-    # Ensure positive logging cadence; fallback to env_step_per_training_step if unset or invalid.
-    steps_between_logging = (
-        training_config.training_metrics_steps
-        if training_config.training_metrics_steps and training_config.training_metrics_steps > 0
-        else env_step_per_training_step
-    )
-    # metrics_aggregator = metric_logger.EpisodeMetricsLogger(
-    #     steps_between_logging=steps_between_logging,
-    #     progress_fn=progress_fn,
-    # )
 
     # Initialize model params and training state.
     network_init_params = ppo_networks.initialize(global_key)
@@ -236,17 +215,15 @@ def train(
 
     eval_env = (
         env
-        if training_config.use_vision
-        else _utils.maybe_wrap_env(
-            evaluation_env or training_env,
-            wrap_env,
-            num_eval_envs,
-            training_config.episode_length,
-            action_repeat,
+        if training_config.use_vision or not wrap_env
+        else wrap_for_training(
+            env=evaluation_env or training_env,
+            num_envs=num_eval_envs,
             device_count=1,  # eval on the host only
-            key_env=eval_key,
-            wrap_env_fn=None,
+            episode_length=training_config.episode_length,
+            action_repeat=action_repeat,
             randomization_fn=randomization_fn,
+            rng_key=eval_key,
             vision=training_config.use_vision,
         )
     )
@@ -290,7 +267,6 @@ def train(
         local_key=local_key,
         key_envs=key_envs,
         env_state=env_state,
-        init_recurrent_state=init_recurrent_state,
     )
 
     logging.info("Time to jit: %s", eval_times[1] - eval_times[0])

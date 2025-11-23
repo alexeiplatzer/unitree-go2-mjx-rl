@@ -11,16 +11,21 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentConfig,
     TeacherStudentNetworks,
 )
-from quadruped_mjx_rl.models.base_modules import ActivationFn, CNN, MLP
+from quadruped_mjx_rl.models.architectures.teacher_student_vision import (
+    TeacherStudentVisionConfig,
+)
+from quadruped_mjx_rl.models.base_modules import ActivationFn, CNN, MLP, LSTM, MixedModeRNN
 from quadruped_mjx_rl.models.networks_utils import make_network
 
 
 @dataclass
-class TeacherStudentRecurrentConfig(TeacherStudentConfig):
+class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
     @dataclass
-    class ModulesConfig(ActorCriticConfig.ModulesConfig):
+    class ModulesConfig(TeacherStudentVisionConfig.ModulesConfig):
         encoder_convolutional: list[int] = field(default_factory=lambda: [16, 16, 16])
         adapter_convolutional: list[int] = field(default_factory=lambda: [32, 32, 32])
+        adapter_visual_dense: list[int] = field(default_factory=lambda: [128, 128])
+        visual_latent_size: int = 64
         adapter_recurrent_size: int = 16
         adapter_dense: list[int] = field(default_factory=lambda: [16])
 
@@ -34,18 +39,19 @@ class TeacherStudentRecurrentConfig(TeacherStudentConfig):
 register_model_config_class(TeacherStudentRecurrentConfig)
 
 
-def make_teacher_student_vision_networks(
+def make_teacher_student_recurrent_networks(
     *,
     observation_size: types.ObservationSize,
     action_size: int,
     preprocess_observations_fn: types.PreprocessObservationFn = (
         types.identity_observation_preprocessor
     ),
-    teacher_obs_key: str = "environment_privileged",
-    student_obs_key: str = "proprioceptive_history",
+    teacher_obs_key: str = "privileged_terrain_map",
+    student_visual_obs_key: str = "pixels/frontal_ego/rgb_adjusted",
+    student_proprioceptive_obs_key: str = "proprioceptive",
     common_obs_key: str = "proprioceptive",
     latent_obs_key: str = "latent",
-    model_config: TeacherStudentConfig = TeacherStudentConfig(),
+    model_config: TeacherStudentRecurrentConfig = TeacherStudentRecurrentConfig(),
     activation: ActivationFn = linen.swish,
 ):
     """Make teacher-student network with preprocessor."""
@@ -62,10 +68,10 @@ def make_teacher_student_vision_networks(
         raise ValueError(
             f"Teacher observation key {teacher_obs_key} must be in environment observations."
         )
-    if student_obs_key not in observation_size:
-        raise ValueError(
-            f"Student observation key {student_obs_key} must be in environment observations."
-        )
+    # if student_obs_key not in observation_size:
+    #     raise ValueError(
+    #         f"Student observation key {student_obs_key} must be in environment observations."
+    #     )
     if common_obs_key not in observation_size:
         raise ValueError(
             f"Common observation key {common_obs_key} must be in environment observations."
@@ -83,15 +89,23 @@ def make_teacher_student_vision_networks(
         activation=activation,
         activate_final=True,
     )
-    student_encoder_module = CNN(
+    student_vision_encoder_module = CNN(
         num_filters=model_config.modules.adapter_convolutional,
-        dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
+        dense_layer_sizes=model_config.modules.adapter_visual_dense + [model_config.modules.visual_latent_size],
         activation=activation,
         activate_final=True,
     )
+    student_recurrent_cell_module = LSTM(
+        recurrent_layer_size=model_config.modules.adapter_recurrent_size,
+        dense_layer_sizes=model_config.modules.adapter_dense + [model_config.latent_size],
+    )
+    student_encoder_module = MixedModeRNN(
+        convolutional_module=student_vision_encoder_module,
+        recurrent_module=student_recurrent_cell_module,
+    )
     # Visual observations are not preprocessed
     teacher_preprocess_keys = ()
-    student_preprocess_keys = ()
+    student_preprocess_keys = (student_proprioceptive_obs_key,)
 
     teacher_encoder_network = make_network(
         module=teacher_encoder_module,
@@ -107,8 +121,10 @@ def make_teacher_student_vision_networks(
         obs_size=observation_size,
         preprocess_observations_fn=preprocess_observations_fn,
         preprocess_obs_keys=student_preprocess_keys,
-        apply_to_obs_keys=(student_obs_key,),
+        apply_to_obs_keys=(student_visual_obs_key, student_proprioceptive_obs_key),
         squeeze_output=False,
+        concatenate_inputs=False,
+        recurrent=True,
     )
 
     policy_module = MLP(
@@ -130,6 +146,7 @@ def make_teacher_student_vision_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=False,
+        concatenate_inputs=True,
     )
 
     value_network = make_network(
@@ -139,6 +156,7 @@ def make_teacher_student_vision_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=True,
+        concatenate_inputs=True,
     )
 
     policy_raw_apply = policy_network.apply

@@ -261,6 +261,7 @@ def make_teacher_student_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=False,
+        concatenate_inputs=True,
     )
 
     value_network = make_network(
@@ -270,6 +271,7 @@ def make_teacher_student_networks(
         preprocess_obs_keys=(common_obs_key,),
         apply_to_obs_keys=(common_obs_key, latent_obs_key),
         squeeze_output=True,
+        concatenate_inputs=True,
     )
 
     policy_raw_apply = policy_network.apply

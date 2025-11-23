@@ -50,7 +50,6 @@ def train(
     local_key: PRNGKey,
     key_envs: PRNGKey,
     env_state: State,
-    init_recurrent_state: jax.Array,
 ):
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -99,9 +98,9 @@ def train(
         return (opt_state, network_params, key), metrics
 
     def training_step(
-        carry: tuple[TrainingState, State, jax.Array, PRNGKey], unused_t
-    ) -> tuple[tuple[TrainingState, State, jax.Array, PRNGKey], types.Metrics]:
-        training_state, state, recurrent_state, key = carry
+        carry: tuple[TrainingState, State, PRNGKey], unused_t
+    ) -> tuple[tuple[TrainingState, State, PRNGKey], types.Metrics]:
+        training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
@@ -110,20 +109,19 @@ def train(
         def roll(carry, unused_t):
             current_state, current_key, recurrent_state = carry
             current_key, next_key = jax.random.split(current_key)
-            next_state, next_recurrent_state, data = acting_recurrent.generate_unroll(
+            next_state, data = acting_recurrent.generate_unroll(
                 env,
                 current_state,
                 acting_policy,
                 current_key,
-                recurrent_state,
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
             )
-            return (next_state, next_key, next_recurrent_state), data
+            return (next_state, next_key), data
 
         (state, ignore_key, final_recurrent_state), data = jax.lax.scan(
             roll,
-            (state, key_generate_unroll, recurrent_state),
+            (state, key_generate_unroll),
             (),
             length=batch_size * num_minibatches // num_envs,
         )
@@ -165,21 +163,21 @@ def train(
             ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
-        return (new_training_state, state, final_recurrent_state, new_key), metrics
+        return (new_training_state, state, new_key), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: State, recurrent_state: jax.Array, key: PRNGKey
-    ) -> tuple[TrainingState, State, jax.Array, types.Metrics]:
-        (training_state, state, final_recurrent_state, ignored_key), loss_metrics = (
+        training_state: TrainingState, state: State, key: PRNGKey
+    ) -> tuple[TrainingState, State, types.Metrics]:
+        (training_state, state, ignored_key), loss_metrics = (
             jax.lax.scan(
                 training_step,
-                (training_state, state, recurrent_state, key),
+                (training_state, state, key),
                 (),
                 length=num_training_steps_per_epoch,
             )
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
-        return training_state, state, final_recurrent_state, loss_metrics
+        return training_state, state, loss_metrics
 
     training_epoch = jax.pmap(training_epoch, axis_name=_utils.PMAP_AXIS_NAME)
 
@@ -187,14 +185,13 @@ def train(
     def training_epoch_with_timing(
         training_state: TrainingState,
         env_state: State,
-        recurrent_state: jax.Array,
         key: PRNGKey,
-    ) -> tuple[TrainingState, State, jax.Array, types.Metrics]:
+    ) -> tuple[TrainingState, State, types.Metrics]:
         nonlocal training_walltime
         t = time.time()
         training_state, env_state = _utils.strip_weak_type((training_state, env_state))
-        result = training_epoch(training_state, env_state, recurrent_state, key)
-        training_state, env_state, final_recurrent_state, metrics = _utils.strip_weak_type(
+        result = training_epoch(training_state, env_state, key)
+        training_state, env_state, metrics = _utils.strip_weak_type(
             result
         )
 
@@ -213,12 +210,11 @@ def train(
             "training/walltime": training_walltime,
             **{f"training/{name}": value for name, value in metrics.items()},
         }
-        return training_state, env_state, final_recurrent_state, metrics
+        return training_state, env_state, metrics
 
     training_metrics = {}
     training_walltime = 0
     current_step = 0
-    recurrent_state = init_recurrent_state
 
     # Run initial policy params fn
     params = _utils.unpmap(training_state.agent_params)
@@ -234,9 +230,9 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            (training_state, env_state, recurrent_state, training_metrics) = (
+            (training_state, env_state, training_metrics) = (
                 training_epoch_with_timing(
-                    training_state, env_state, recurrent_state, epoch_keys
+                    training_state, env_state, epoch_keys
                 )
             )
             current_step = int(_utils.unpmap(training_state.env_steps))

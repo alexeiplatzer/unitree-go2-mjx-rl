@@ -84,8 +84,16 @@ class TrainingWithVisionConfig(TrainingConfig):
         return "PPO_Vision"
 
 
+class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "PPO_RecurrentStudent"
+
+
 _training_config_classes = {
     "default": TrainingConfig,
     "PPO": TrainingConfig,
     "PPO_Vision": TrainingWithVisionConfig,
+    "PPO_RecurrentStudent": TrainingWithRecurrentStudentConfig,
 }

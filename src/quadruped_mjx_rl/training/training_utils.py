@@ -1,14 +1,10 @@
 """Utility functions used for training models."""
 
-import functools
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.domain_randomization import DomainRandomizationFn
-from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.types import Params, PRNGKey
 
 PMAP_AXIS_NAME = "i"
@@ -26,43 +22,6 @@ def strip_weak_type(tree):
         return leaf.astype(leaf.dtype)
 
     return jax.tree_util.tree_map(f, tree)
-
-
-def maybe_wrap_env(
-    env: Env,
-    wrap_env: bool,
-    num_envs: int,
-    episode_length: int | None,
-    action_repeat: int,
-    device_count: int,
-    key_env: PRNGKey,
-    wrap_env_fn: Callable | None = None,
-    randomization_fn: DomainRandomizationFn | None = None,
-    vision: bool = False,
-):
-    """Wraps the environment for training/eval if wrap_env is True."""
-    if not wrap_env:
-        return env
-    if episode_length is None:
-        raise ValueError("episode_length must be specified in train")
-    v_randomization_fn = None
-    randomization_batch_size = num_envs // device_count
-    if randomization_fn is not None:
-        # randomization_batch_size = num_envs // device_count
-        # all devices get the same randomization rng
-        # randomization_rng = jax.random.split(key_env, randomization_batch_size)
-        v_randomization_fn = functools.partial(
-            randomization_fn, rng_key=key_env, num_worlds=randomization_batch_size
-        )
-    wrap = wrap_env_fn or wrap_for_training
-    return wrap(
-        env,
-        episode_length=episode_length,
-        action_repeat=action_repeat,
-        randomization_fn=v_randomization_fn,
-        vision=vision,
-        num_vision_envs=randomization_batch_size,
-    )
 
 
 def random_translate_pixels(
