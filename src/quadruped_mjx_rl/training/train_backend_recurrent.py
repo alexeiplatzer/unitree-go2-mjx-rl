@@ -71,17 +71,17 @@ def train(
         opt_state, network_params, key = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
 
-        if training_config.augment_pixels:
-            key, key_rt = jax.random.split(key)
-            r_translate = functools.partial(_utils.random_translate_pixels, key=key_rt)
-            data = types.Transition(
-                observation=r_translate(data.observation),
-                action=data.action,
-                reward=data.reward,
-                discount=data.discount,
-                next_observation=r_translate(data.next_observation),
-                extras=data.extras,
-            )
+        # if training_config.augment_pixels:
+        #     key, key_rt = jax.random.split(key)
+        #     r_translate = functools.partial(_utils.random_translate_pixels, key=key_rt)
+        #     data = types.Transition(
+        #         observation=r_translate(data.observation),
+        #         action=data.action,
+        #         reward=data.reward,
+        #         discount=data.discount,
+        #         next_observation=r_translate(data.next_observation),
+        #         extras=data.extras,
+        #     )
 
         def convert_data(x: jnp.ndarray):
             x = jax.random.permutation(key_perm, x)
@@ -104,18 +104,19 @@ def train(
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
-        # policies = (policies,) if not isinstance(policies, tuple) else policies
+        recurrent_encoder = None  # TODO
 
         def roll(carry, unused_t):
             current_state, current_key, recurrent_state = carry
             current_key, next_key = jax.random.split(current_key)
-            next_state, data = acting_recurrent.generate_unroll(
+            next_state, data = acting.generate_unroll(
                 env,
                 current_state,
                 acting_policy,
                 current_key,
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
+                recurrent_encoder=recurrent_encoder,
             )
             return (next_state, next_key), data
 
@@ -130,13 +131,6 @@ def train(
         data = jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data)
         assert data.discount.shape[1:] == (unroll_length,)
 
-        # if training_config.log_training_metrics:  # log unroll metrics
-        #     jax.debug.callback(
-        #         metrics_aggregator.update_episode_metrics,
-        #         data.extras["state_extras"]["episode_metrics"],
-        #         data.extras["state_extras"]["episode_done"],
-        #     )
-
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(
             training_state.agent_params.preprocessor_params,
@@ -144,7 +138,7 @@ def train(
             pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
-        (opt_state, ts_params, ignore_key), metrics = jax.lax.scan(
+        (opt_state, network_params, ignore_key), metrics = jax.lax.scan(
             functools.partial(sgd_step, data=data, normalizer_params=normalizer_params),
             (
                 training_state.optimizer_state,
@@ -158,7 +152,7 @@ def train(
         new_training_state = TrainingState(
             optimizer_state=opt_state,
             agent_params=type(training_state.agent_params)(
-                network_params=ts_params,
+                network_params=network_params,
                 preprocessor_params=normalizer_params,
             ),
             env_steps=training_state.env_steps + env_step_per_training_step,

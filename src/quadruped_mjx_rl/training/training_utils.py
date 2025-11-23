@@ -74,7 +74,9 @@ def remove_pixels(
     """Removes pixel observations from the observation dict."""
     if not isinstance(obs, Mapping):
         return obs
-    return {k: v for k, v in obs.items() if not k.startswith("pixels/")}
+    return {
+        k: v for k, v in obs.items() if not k.startswith("pixels/") and not k.endswith("_map")
+    }
 
 
 def param_size(params: Params) -> int:

@@ -14,7 +14,7 @@ from quadruped_mjx_rl.models.architectures import ModelConfig
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks_utils import AgentParams
 from quadruped_mjx_rl.training import (
-    acting_recurrent,
+    acting,
     logger as metric_logger,
     training_utils as _utils,
 )

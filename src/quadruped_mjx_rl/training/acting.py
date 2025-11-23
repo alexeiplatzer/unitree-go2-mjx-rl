@@ -6,8 +6,11 @@ from collections.abc import Callable, Sequence
 import jax
 import numpy as np
 
-from quadruped_mjx_rl.environments.physics_pipeline import Env, EvalWrapper, State
-from quadruped_mjx_rl.types import Metrics, Policy, PolicyParams, PRNGKey, Transition
+from quadruped_mjx_rl.types import Observation, RecurrentHiddenState, Transition
+from quadruped_mjx_rl.environments.physics_pipeline import Env, State
+from quadruped_mjx_rl.environments.recurrent_support import RecurrentEnvState, RecurrentWrapper
+from quadruped_mjx_rl.environments.wrappers import EvalWrapper
+from quadruped_mjx_rl.types import Metrics, Policy, PolicyParams, PRNGKey, RecurrentTransition
 
 
 def actor_step(
@@ -16,23 +19,32 @@ def actor_step(
     policy: Policy,
     key: PRNGKey,
     *,
+    recurrent_encoder: Callable[[Observation, RecurrentHiddenState], jax.Array] | None = None,
     extra_fields: Sequence[str] = (),
-) -> tuple[State, Transition]:
+) -> tuple[State, RecurrentTransition]:
     """Collect data."""
     actions, policy_extras = policy(env_state.obs, key)
     nstate = env.step(env_state, actions)
     state_extras = {x: nstate.info[x] for x in extra_fields}
-    return (
-        nstate,
-        Transition(
-            observation=env_state.obs,
-            action=actions,
-            reward=nstate.reward,
-            discount=1 - nstate.done,
-            next_observation=nstate.obs,
-            extras={"policy_extras": policy_extras, "state_extras": state_extras},
-        ),
+    transition = Transition(
+        observation=env_state.obs,
+        action=actions,
+        reward=nstate.reward,
+        discount=1 - nstate.done,
+        next_observation=nstate.obs,
+        extras={"policy_extras": policy_extras, "state_extras": state_extras},
     )
+    if recurrent_encoder:
+        assert isinstance(env, RecurrentWrapper)
+        assert isinstance(nstate, RecurrentEnvState)
+        recurrent_encoding, recurrent_carry = recurrent_encoder(
+            env_state.obs, nstate.recurrent_hidden_state
+        )
+        nstate = nstate.replace(recurrent_hidden_state=recurrent_carry)
+        transition = RecurrentTransition(
+            *transition, recurrent_encoding=recurrent_encoding
+        )
+    return nstate, transition
 
 
 def generate_unroll(
@@ -42,6 +54,7 @@ def generate_unroll(
     key: PRNGKey,
     unroll_length: int,
     extra_fields: Sequence[str] = (),
+    recurrent_encoder: Callable[[Observation, RecurrentHiddenState], jax.Array] | None = None,
 ) -> tuple[State, Transition]:
     """Collect trajectories of the given unroll_length."""
 
@@ -55,6 +68,7 @@ def generate_unroll(
             policy,
             current_key,
             extra_fields=extra_fields,
+            recurrent_encoder=recurrent_encoder,
         )
         return (nstate, next_key), transition
 

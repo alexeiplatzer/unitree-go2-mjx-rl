@@ -35,7 +35,7 @@ class RecurrentWrapper(Wrapper):
 
     def step(
         self, state: RecurrentEnvState, action: jax.Array
-    ) -> State:
+    ) -> RecurrentEnvState:
 
         state = self.env.step(state, action)
         assert isinstance(state, RecurrentEnvState)

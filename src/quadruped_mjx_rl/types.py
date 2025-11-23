@@ -35,6 +35,17 @@ class Transition(NamedTuple):
     extras: NestedArray = ()
 
 
+class RecurrentTransition(NamedTuple):
+    """Container for a transition."""
+
+    observation: NestedArray
+    action: NestedArray
+    reward: NestedArray
+    discount: NestedArray
+    next_observation: NestedArray
+    extras: NestedArray = ()
+    recurrent_encoding: NestedArray = ()
+
 class FeedForwardPolicy(Protocol):
     def __call__(
         self,
