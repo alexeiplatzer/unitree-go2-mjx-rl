@@ -49,4 +49,4 @@ class RecurrentWrapper(Wrapper):
         recurrent_state = jax.tree.map(
             where_done, state.info["first_recurrent_state"], state.recurrent_hidden_state
         )
-        return state.replace(recurrent_state=recurrent_state)
+        return state.replace(recurrent_hidden_state=recurrent_state)

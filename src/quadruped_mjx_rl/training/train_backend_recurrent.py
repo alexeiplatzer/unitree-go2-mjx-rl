@@ -104,7 +104,11 @@ def train(
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
-        recurrent_encoder = None  # TODO
+        recurrent_encoder = functools.partial(
+            fitter.network.student_encoder_network.apply,
+            preprocessor_params=training_state.agent_params.preprocessor_params,
+            params=training_state.agent_params.network_params.student_encoder,
+        )
 
         def roll(carry, unused_t):
             current_state, current_key, recurrent_state = carry

@@ -17,7 +17,9 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     ActorCriticNetworks,
     FeedForwardNetwork,
 )
-from quadruped_mjx_rl.models.networks_utils import AgentNetworkParams, PolicyFactory
+from quadruped_mjx_rl.models.networks_utils import (
+    AgentNetworkParams, PolicyFactory, RecurrentNetwork
+)
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
@@ -40,6 +42,8 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         algorithm_hyperparams: optimization.HyperparamsPPO,
     ):
         self.network = network
+        if isinstance(network.student_encoder_network, RecurrentNetwork):
+            self.recurrent = True
         self.teacher_optimizer = optimization.make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
         )

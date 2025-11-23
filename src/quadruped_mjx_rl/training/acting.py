@@ -60,7 +60,7 @@ def generate_unroll(
 
     @jax.jit
     def f(carry, unused_t):
-        state, current_key, recurrent_state = carry
+        state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
         nstate, transition = actor_step(
             env,
@@ -72,7 +72,7 @@ def generate_unroll(
         )
         return (nstate, next_key), transition
 
-    (final_state, _, final_recurrent_state), data = jax.lax.scan(
+    (final_state, _), data = jax.lax.scan(
         f, (env_state, key), (), length=unroll_length
     )
     return final_state, data
