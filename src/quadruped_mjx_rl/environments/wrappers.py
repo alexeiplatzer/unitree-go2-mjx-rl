@@ -13,7 +13,6 @@ from quadruped_mjx_rl.environments.physics_pipeline.base import (
     PipelineModel, EnvModel
 )
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
-from quadruped_mjx_rl.environments.recurrent_support import RecurrentWrapper
 from quadruped_mjx_rl.types import InitCarryFn, PRNGKey
 
 
@@ -26,8 +25,6 @@ def wrap_for_training(
     randomization_fn: DomainRandomizationFn | None = None,
     rng_key: PRNGKey | None = None,
     vision: bool = False,
-    recurrent: bool = False,
-    recurrent_init_carry_fn: InitCarryFn | None = None,
 ) -> Wrapper:
     """
     Common wrapper pattern for all training agents.
@@ -64,8 +61,6 @@ def wrap_for_training(
         )
     env = EpisodeWrapper(env, episode_length, action_repeat)
     env = AutoResetWrapper(env)
-    if recurrent:
-        env = RecurrentWrapper(env, recurrent_init_carry_fn)
     return env
 
 

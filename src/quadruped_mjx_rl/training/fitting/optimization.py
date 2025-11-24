@@ -76,6 +76,11 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         pass
 
     @abstractmethod
+    @property
+    def network(self):
+        pass
+
+    @abstractmethod
     def optimizer_init(self, network_params: AgentNetworkParams) -> OptimizerState:
         pass
 
@@ -107,7 +112,7 @@ class SimpleFitter(Fitter):
         main_loss_fn,
         algorithm_hyperparams,
     ):
-        self.network = network
+        self._network = network
         self.optimizer = make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
         )
@@ -122,6 +127,10 @@ class SimpleFitter(Fitter):
             pmap_axis_name=training_utils.PMAP_AXIS_NAME,
             has_aux=True,
         )
+
+    @property
+    def network(self):
+        return self._network
 
     def optimizer_init(self, network_params):
         return OptimizerState(optimizer_state=self.optimizer.init(network_params))

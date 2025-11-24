@@ -35,37 +35,13 @@ class Transition(NamedTuple):
     extras: NestedArray = ()
 
 
-class RecurrentTransition(NamedTuple):
-    """Container for a transition."""
-
-    observation: NestedArray
-    action: NestedArray
-    reward: NestedArray
-    discount: NestedArray
-    next_observation: NestedArray
-    extras: NestedArray = ()
-    recurrent_encoding: NestedArray = ()
-
-class FeedForwardPolicy(Protocol):
+class Policy(Protocol):
     def __call__(
         self,
         observation: Observation,
         key: PRNGKey,
     ) -> Tuple[Action, Extra]:
         pass
-
-
-class RecurrentPolicy(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        key: PRNGKey,
-        recurrent_state: RecurrentHiddenState,
-    ) -> Tuple[Action, RecurrentHiddenState, Extra]:
-        pass
-
-
-Policy = FeedForwardPolicy | RecurrentPolicy
 
 
 class PreprocessObservationFn(Protocol):

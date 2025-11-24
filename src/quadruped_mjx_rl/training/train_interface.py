@@ -228,7 +228,7 @@ def train(
         )
     )
 
-    evaluator_factory = lambda k, policy_factory: acting_recurrent.Evaluator(
+    evaluator_factory = lambda k, policy_factory: acting.Evaluator(
         eval_env,
         functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
         num_eval_envs=num_eval_envs,
