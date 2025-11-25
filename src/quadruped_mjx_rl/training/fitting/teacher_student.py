@@ -187,7 +187,7 @@ def compute_student_loss(
     student_latent_vector = adapter_apply(
         preprocessor_params, network_params.student_encoder, data.observation
     )
-    teacher_latent = jax.lax.stop_gradient(teacher_latent_vector)
+    teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
 
     return total_loss, {"student_total_loss": total_loss}

@@ -1,7 +1,8 @@
 # Todo list
 
 ## Short term
-- [ ] adapt training utils and wrap for training for new domain rand architectures
+- [X] implement a rendering parallelising wrapper
+- [X] adapt training utils and wrap for training for new domain rand architectures
 - [X] add a more varied color palette to color randomization
 - [X] normalize the position and location of grid tiles in color rand envs
 - [X] figure out how to pass privileged terrain info into the environment

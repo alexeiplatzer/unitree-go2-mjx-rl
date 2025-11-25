@@ -1,5 +1,6 @@
 from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import robots, environments, models, policy_rendering, robotic_vision
+from quadruped_mjx_rl import robots, environments, models, policy_rendering
+from quadruped_mjx_rl.environments.vision import robotic_vision
 from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
 
 import paths

@@ -5,7 +5,6 @@ import numpy as np
 
 import paths
 from quadruped_mjx_rl.config_utils import prepare_configs
-from quadruped_mjx_rl.domain_randomization.randomized_obstacles import terrain_randomize
 from quadruped_mjx_rl.environments import (
     get_env_factory,
     QuadrupedVisionTargetEnvConfig,
@@ -15,8 +14,8 @@ from quadruped_mjx_rl.environments.rendering import (
     render_model,
     save_image,
 )
-from quadruped_mjx_rl.robotic_vision import get_renderer
-from quadruped_mjx_rl.terrain_gen import make_simple_obstacle_terrain, make_empty_terrain
+from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
+from quadruped_mjx_rl.terrain_gen import make_empty_terrain
 from quadruped_mjx_rl.training.train_interface import train
 
 if __name__ == "__main__":

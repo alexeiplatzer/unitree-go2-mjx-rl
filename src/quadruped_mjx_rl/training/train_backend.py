@@ -109,7 +109,7 @@ def train(
         def roll(carry, unused_t):
             current_state, current_key, recurrent_state = carry
             current_key, next_key = jax.random.split(current_key)
-            next_state, data = acting_recurrent.generate_unroll(
+            next_state, data = acting.generate_unroll(
                 env,
                 current_state,
                 acting_policy,

@@ -106,14 +106,23 @@ class LSTM(linen.RNNCellBase):
 
 class MixedModeRNN(linen.RNNCellBase):
     convolutional_module: CNN
+    proprioceptive_preprocessing_module: MLP
     recurrent_module: LSTM
 
     def __call__(
         self,
-        visual_data: jax.Array,
-        proprioceptive_data: jax.Array,
-        carry: tuple[jax.Array, jax.Array],
+        visual_data: jax.Array,  # Batch x Time x H x W x C
+        proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
+        carry: tuple[jax.Array, jax.Array],  # Batch
     ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
+        # Should result in Batch x (Time*Substeps*L)
+        proprioceptive_vector = jnp.reshape(
+            proprioceptive_data, (proprioceptive_data.shape[:-2], -1)
+        )
+        proprioceptive_latent = self.proprioceptive_preprocessing_module(proprioceptive_vector)
+        # Should result in Batch x H x W x (C*Time)
+        visual_data = jnp.moveaxis(visual_data, -4, -1)
+        visual_data = jnp.reshape(visual_data, (visual_data.shape[:-2], -1))
         visual_latent = self.convolutional_module(visual_data)
         recurrent_input = jnp.concatenate([proprioceptive_data, visual_latent], axis=-1)
         return self.recurrent_module(recurrent_input, carry)

@@ -17,8 +17,8 @@ from quadruped_mjx_rl.environments.rendering import (
     show_image,
 )
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
-from quadruped_mjx_rl.robotic_vision import get_renderer
-from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
+from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import predefined_robot_configs
 from quadruped_mjx_rl.terrain_gen import make_plain_tiled_terrain
 

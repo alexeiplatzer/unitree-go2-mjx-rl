@@ -19,7 +19,7 @@ from quadruped_mjx_rl.environments.quadruped.vision_base import (
     QuadrupedVisionBaseEnv,
     QuadrupedVisionBaseEnvConfig,
 )
-from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 

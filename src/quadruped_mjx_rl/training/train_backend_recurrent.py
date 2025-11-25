@@ -30,6 +30,12 @@ class TrainingState:
     env_steps: jnp.ndarray
 
 
+@flax_dataclass
+class AgentState:
+    recurrent_carry: types.RecurrentHiddenState
+    recurrent_buffer: jax.Array
+
+
 def train(
     training_config: TrainingConfig,
     env: Env,
@@ -60,6 +66,11 @@ def train(
     batch_size = training_config.batch_size
     unroll_length = training_config.unroll_length
 
+    bptt_truncation = 64
+    latent_sizes = 64
+
+    recurrent_buffer = jnp.zeros((num_minibatches*batch_size, bptt_truncation, latent_sizes))
+
     xt = time.time()
 
     def sgd_step(
@@ -68,7 +79,7 @@ def train(
         data: types.Transition,
         normalizer_params: running_statistics.RunningStatisticsState,
     ):
-        opt_state, network_params, key = carry
+        opt_state, network_params, key, agent_state = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
 
         # if training_config.augment_pixels:
@@ -84,23 +95,50 @@ def train(
         #     )
 
         def convert_data(x: jnp.ndarray):
-            x = jax.random.permutation(key_perm, x)
+            # x = jax.random.permutation(key_perm, x)
             x = jnp.reshape(x, (num_minibatches, -1) + x.shape[1:])
             return x
 
+        def restore_data(x: jnp.ndarray):
+            return jnp.reshape(x, (-1,) + x.shape[2:])
+
         shuffled_data = jax.tree_util.tree_map(convert_data, data)
-        (opt_state, network_params, ignore_key), metrics = jax.lax.scan(
-            functools.partial(fitter.minibatch_step, normalizer_params=normalizer_params),
-            (opt_state, network_params, key_grad),
-            shuffled_data,
-            length=num_minibatches,
+        agent_state_batched = jax.tree_util.tree_map(convert_data, agent_state)
+        (opt_state, network_params, ignore_key), (agent_state_batched_updated, metrics) = (
+            jax.lax.scan(
+                functools.partial(fitter.minibatch_step, normalizer_params=normalizer_params),
+                (opt_state, network_params, key_grad),
+                (shuffled_data, agent_state_batched),
+                length=num_minibatches,
+            )
         )
-        return (opt_state, network_params, key), metrics
+        agent_state_updated = jax.tree_util.tree_map(
+            restore_data, agent_state_batched_updated
+        )
+        return (opt_state, network_params, key, agent_state_updated), metrics
+
+    # def recurrent_student_step(opt_state, network_params, key, data, normalizer_params):
+    #     key_smth, key_perm = jax.random.split(key, 2)
+    #     prev_carry = None
+    #     recurrent_buffer = None
+    #
+    #     render_every = 5
+    #     images = data.observation["pixels/frontal_ego/rgb_adjusted"][:, ::render_every]
+    #     output, carry = fitter.network.student_encoder_network.apply(
+    #         preprocessor_params=normalizer_params,
+    #         params=network_params.student_encoder,
+    #         key=key_smth,
+    #         visual_inputs=images,
+    #         proprio_inputs=data.observation,
+    #         carry=prev_carry,
+    #     )
+    #     recurrent_buffer = jnp.roll(recurrent_buffer, 1, axis=-2)
+    #     # now do a gradient update of the lstm
 
     def training_step(
-        carry: tuple[TrainingState, State, PRNGKey], unused_t
-    ) -> tuple[tuple[TrainingState, State, PRNGKey], types.Metrics]:
-        training_state, state, key = carry
+        carry: tuple[TrainingState, State, PRNGKey, AgentState], _
+    ) -> tuple[tuple[TrainingState, State, PRNGKey, AgentState], types.Metrics]:
+        training_state, state, key, agent_state = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
@@ -110,7 +148,7 @@ def train(
             params=training_state.agent_params.network_params.student_encoder,
         )
 
-        def roll(carry, unused_t):
+        def roll(carry, _):
             current_state, current_key, recurrent_state = carry
             current_key, next_key = jax.random.split(current_key)
             next_state, data = acting.generate_unroll(
@@ -120,7 +158,8 @@ def train(
                 current_key,
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
-                recurrent_encoder=recurrent_encoder,
+                add_vision_obs=True,
+                proprioceptive_steps_per_vision_step=5,  # TODO configure
             )
             return (next_state, next_key), data
 
@@ -142,12 +181,13 @@ def train(
             pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
-        (opt_state, network_params, ignore_key), metrics = jax.lax.scan(
+        (opt_state, network_params, ignore_key, new_agent_state), metrics = jax.lax.scan(
             functools.partial(sgd_step, data=data, normalizer_params=normalizer_params),
             (
                 training_state.optimizer_state,
                 training_state.agent_params.network_params,
                 key_sgd,
+                agent_state,
             ),
             (),
             length=num_updates_per_batch,
@@ -161,8 +201,9 @@ def train(
             ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
-        return (new_training_state, state, new_key), metrics
+        return (new_training_state, state, new_key, new_agent_state), metrics
 
+    # TODO update carries with the agent state
     def training_epoch(
         training_state: TrainingState, state: State, key: PRNGKey
     ) -> tuple[TrainingState, State, types.Metrics]:

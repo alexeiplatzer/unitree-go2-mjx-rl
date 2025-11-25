@@ -14,7 +14,7 @@ from quadruped_mjx_rl.environments.rendering import (
     render_model,
     show_image,
 )
-from quadruped_mjx_rl.robotic_vision import get_renderer
+from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
 from quadruped_mjx_rl.terrain_gen import make_simple_obstacle_terrain
 from quadruped_mjx_rl.training.train_interface import train
 

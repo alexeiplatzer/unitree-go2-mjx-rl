@@ -7,10 +7,6 @@ import jax.numpy as jnp
 import mujoco
 from mujoco import mjx
 
-from quadruped_mjx_rl.environments.quadruped.base import (
-    EnvironmentConfig,
-    QuadrupedBaseEnv,
-)
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
@@ -22,7 +18,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     QuadrupedBaseEnv,
     register_environment_config_class,
 )
-from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 

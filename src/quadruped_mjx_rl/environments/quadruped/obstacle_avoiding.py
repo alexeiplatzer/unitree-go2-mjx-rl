@@ -20,7 +20,7 @@ from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnvConfig,
     QuadrupedVisionTargetEnv,
 )
-from quadruped_mjx_rl.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 

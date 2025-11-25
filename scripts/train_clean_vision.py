@@ -13,7 +13,7 @@ from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, StripesTile
 from quadruped_mjx_rl.terrain_gen.tile import TerrainConfig
 from quadruped_mjx_rl.environments import resolve_env_class, get_env_factory
 from quadruped_mjx_rl.training.train_interface import train
-from quadruped_mjx_rl.robotic_vision import get_renderer, VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer, VisionConfig
 from jax import numpy as jnp
 import logging
 

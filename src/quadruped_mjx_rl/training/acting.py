@@ -6,6 +6,7 @@ from collections.abc import Callable, Sequence
 import jax
 import numpy as np
 
+from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.types import Observation, RecurrentHiddenState, Transition
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.wrappers import EvalWrapper
@@ -36,30 +37,48 @@ def actor_step(
 
 
 def generate_unroll(
-    env: Env,
+    env: Env | VisionWrapper,
     env_state: State,
     policy: Policy,
     key: PRNGKey,
     unroll_length: int,
     extra_fields: Sequence[str] = (),
-) -> tuple[State, Transition]:
+    add_vision_obs: bool = False,
+    proprioceptive_steps_per_vision_step: int = 1,
+) -> tuple[State, Transition | tuple[Transition, Observation]]:
     """Collect trajectories of the given unroll_length."""
 
     @jax.jit
-    def f(carry, unused_t):
+    def visually_enriched_step(carry, _):
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
-        nstate, transition = actor_step(
+        (next_state, _), transitions = jax.lax.scan(
+            proprioceptive_step,
+            (state, current_key),
+            (),
+            length=proprioceptive_steps_per_vision_step,
+        )
+        vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
+        return (next_state, next_key), (transitions, vision_obs)
+
+    @jax.jit
+    def proprioceptive_step(carry, _):
+        state, current_key = carry
+        current_key, next_key = jax.random.split(current_key)
+        next_state, transition = actor_step(
             env,
             state,
             policy,
             current_key,
             extra_fields=extra_fields,
         )
-        return (nstate, next_key), transition
+        return (next_state, next_key), transition
 
     (final_state, _), data = jax.lax.scan(
-        f, (env_state, key), (), length=unroll_length
+        visually_enriched_step,
+        (env_state, key),
+        (),
+        length=unroll_length // proprioceptive_steps_per_vision_step,
     )
     return final_state, data
 
