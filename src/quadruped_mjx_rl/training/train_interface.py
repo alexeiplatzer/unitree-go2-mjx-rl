@@ -10,9 +10,9 @@ import numpy as np
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.models.architectures import ModelConfig
+from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentNetworks
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models.networks_utils import AgentParams
+from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentNetwork
 from quadruped_mjx_rl.training import (
     acting,
     logger as metric_logger,
@@ -25,6 +25,10 @@ from quadruped_mjx_rl.training.configs import TrainingConfig
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.fitting import get_fitter
 from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
+from quadruped_mjx_rl.training.train_backend_recurrent import (
+    train as recurrent_train,
+)
+from quadruped_mjx_rl.training.fitting.recurrent_student import AgentState
 
 
 def validate_args_for_vision(
@@ -154,6 +158,7 @@ def train(
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
+    key_envs, key_agent_states = jax.random.split(key_envs)
     env_state = reset_fn(key_envs)
 
     # Shapes of different observation tensors
@@ -181,6 +186,27 @@ def train(
         main_loss_fn=compute_ppo_loss,
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
+
+    if (
+        isinstance(ppo_networks, TeacherStudentNetworks)
+        and isinstance(ppo_networks.student_encoder_network, RecurrentNetwork)
+    ):
+        init_carries = ppo_networks.student_encoder_network.init_carry(key_agent_states)
+        recurrent_buffer_length = 64
+        latents_size = 16
+        recurrent_buffer = jnp.zeros(
+            (
+                local_devices_to_use,
+                num_envs // process_count,
+                latents_size,
+                recurrent_buffer_length,
+            )
+        )
+        episode_terminations = jnp.ones(env_state.done.shape + (recurrent_buffer_length,))
+        agent_state = AgentState(init_carries, recurrent_buffer, episode_terminations)
+        train_fn = functools.partial(recurrent_train, agent_state=agent_state)
+    else:
+        train_fn = backed_train
 
     # Initialize model params and training state.
     network_init_params = ppo_networks.initialize(global_key)
@@ -250,7 +276,7 @@ def train(
 
     logging.info("Setup took %s", time.time() - xt)
 
-    final_params = backed_train(
+    final_params = train_fn(
         training_config=training_config,
         env=env,
         fitter=fitter,

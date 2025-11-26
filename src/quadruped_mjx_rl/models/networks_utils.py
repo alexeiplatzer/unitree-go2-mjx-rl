@@ -1,7 +1,6 @@
 """Utility functions for instantiating neural networks."""
 
 import logging
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
@@ -12,6 +11,7 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworkArchitecture
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
     Action,
@@ -63,30 +63,6 @@ class PolicyFactory(Protocol[AgentNetworkParams]):
         params: AgentParams[AgentNetworkParams],
         deterministic: bool,
     ) -> Policy:
-        pass
-
-
-class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
-    @abstractmethod
-    def agent_params_class(self):
-        pass
-
-    @abstractmethod
-    def initialize(self, rng: PRNGKey) -> AgentNetworkParams:
-        pass
-
-    @abstractmethod
-    def policy_apply(
-        self,
-        params: AgentNetworkParams,
-        observation: Observation,
-    ) -> jax.Array:
-        """Gets the logits for applying the network's policy with the provided params to the
-        provided observations"""
-        pass
-
-    @abstractmethod
-    def policy_metafactory(self) -> tuple[PolicyFactory[AgentNetworkParams], ...]:
         pass
 
 

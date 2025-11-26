@@ -113,19 +113,53 @@ class MixedModeRNN(linen.RNNCellBase):
         self,
         visual_data: jax.Array,  # Batch x Time x H x W x C
         proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
-        carry: tuple[jax.Array, jax.Array],  # Batch
-    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
+        first_carry: tuple[jax.Array, jax.Array],  # Batch
+        recurrent_buffer: jax.Array,   # Batch x BufferSize x LatentSize
+        done_buffer: jax.Array,  # Batch x BufferSize
+        init_carry_fn: Callable[[jax.Array], tuple[jax.Array, jax.Array]],
+        init_carry_key: jax.Array,  # Batch x KeySize
+    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array]:
         # Should result in Batch x (Time*Substeps*L)
         proprioceptive_vector = jnp.reshape(
             proprioceptive_data, (proprioceptive_data.shape[:-2], -1)
         )
         proprioceptive_latent = self.proprioceptive_preprocessing_module(proprioceptive_vector)
+
         # Should result in Batch x H x W x (C*Time)
         visual_data = jnp.moveaxis(visual_data, -4, -1)
         visual_data = jnp.reshape(visual_data, (visual_data.shape[:-2], -1))
         visual_latent = self.convolutional_module(visual_data)
-        recurrent_input = jnp.concatenate([proprioceptive_data, visual_latent], axis=-1)
-        return self.recurrent_module(recurrent_input, carry)
+
+        recurrent_input = jnp.concatenate([proprioceptive_latent, visual_latent], axis=-1)
+
+        def apply_one_step(carry, data):
+            recurrent_carry, key = carry
+            key, init_key = jax.random.split(key)
+            init_carry = init_carry_fn(init_key)
+            current_input, current_done = data
+            current_output, next_carry = self.recurrent_module(current_input, recurrent_carry)
+
+            def where_done(x, y):
+                done = current_done
+                if done.shape:
+                    done = jnp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))
+                return jnp.where(done, x, y)
+
+            next_carry = jax.tree_util.tree_map(where_done, next_carry, init_carry)
+            return (next_carry, key), current_output
+
+        (first_carry, init_carry_key), _ = apply_one_step(
+            (first_carry, init_carry_key), (recurrent_buffer[0], done_buffer[0])
+        )
+        recurrent_buffer = jnp.roll(
+            recurrent_buffer, shift=-1, axis=-2
+        ).at[-1].set(recurrent_input)
+        done_buffer = jnp.roll(done_buffer, shift=-1, axis=-1).at[-1].set(0)
+        _, outputs = jax.lax.scan(
+            apply_one_step, (first_carry, init_carry_key), (recurrent_buffer, done_buffer)
+        )
+
+        return outputs[-1], first_carry, recurrent_buffer
 
     @linen.nowrap
     def initialize_carry(

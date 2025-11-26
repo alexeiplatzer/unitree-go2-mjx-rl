@@ -8,6 +8,7 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
+from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
@@ -16,15 +17,22 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     FeedForwardNetwork,
 )
 from quadruped_mjx_rl.models.networks_utils import (
-    AgentNetworkParams, PolicyFactory, RecurrentNetwork
+    AgentNetworkParams, AgentParams, PolicyFactory, RecurrentNetwork,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
-from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
+from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition, Observation
 from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerState
+
+
+@flax_dataclass
+class AgentState:
+    recurrent_carry: types.RecurrentHiddenState
+    recurrent_buffer: jax.Array
+    episode_terminations: jax.Array
 
 
 class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
@@ -78,17 +86,18 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def minibatch_step(
         self,
         carry: tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey],
-        data,
+        data: tuple[tuple[Transition, Observation], AgentState],
         normalizer_params,
         recurrent_buffer=None,
     ):
         optimizer_state, network_params, key = carry
         key, teacher_key, student_key = jax.random.split(key, 3)
+        (transitions, vision_obs), agent_state = data
         ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
             self.teacher_gradient_update_fn(
                 network_params,
                 normalizer_params,
-                data,
+                transitions,  # TODO: add ppo support for visual obs in teacher
                 teacher_key,
                 optimizer_state=optimizer_state.optimizer_state,
             )
@@ -111,6 +120,18 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         metrics = teacher_metrics | student_metrics
         return (optimizer_state, network_params, key), metrics
 
+    def update_agent_state(
+        self,
+        agent_params: TeacherStudentAgentParams,
+        agent_state: AgentState,
+        transitions: Transition,
+        vision_obs: Observation,
+        init_carry_key: PRNGKey,
+    ):
+        done_anywhere = jnp.any(1 - transitions.discount, axis=-1)
+        preencoded_latents = self.network.student_encoder_network.apply(agent_params, vision_obs, agent_state.recurrent_carry)
+        return agent_state
+
     def make_evaluation_fn(
         self,
         rng: PRNGKey,
@@ -125,3 +146,6 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
 def compute_student_recurrent_loss(*args, **kwargs):
     # TODO
     pass
+
+
+

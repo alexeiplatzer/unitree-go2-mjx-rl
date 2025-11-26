@@ -13,9 +13,9 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.models.networks_utils import (
     AgentNetworkParams,
     AgentParams,
-    ComponentNetworkArchitecture,
     PolicyFactory,
 )
+from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworkArchitecture
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig

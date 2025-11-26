@@ -11,10 +11,6 @@ from quadruped_mjx_rl.models.architectures import (
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
     TeacherStudentRecurrentConfig,
-    make_actor_critic_networks,
-    make_teacher_student_networks,
-    make_teacher_student_recurrent_networks,
-    make_teacher_student_vision_networks,
 )
 from quadruped_mjx_rl.models.networks_utils import (
     NetworkFactory,
@@ -25,29 +21,8 @@ def get_networks_factory(
     model_config: ModelConfig,
 ) -> NetworkFactory:
     """Checks the model type from the configuration and returns the appropriate factory."""
-    if isinstance(model_config, TeacherStudentRecurrentConfig):
-        networks_factory = functools.partial(
-            make_teacher_student_recurrent_networks,
-            model_config=model_config,
-        )
-    elif isinstance(model_config, TeacherStudentVisionConfig):
-        networks_factory = functools.partial(
-            make_teacher_student_vision_networks,
-            model_config=model_config,
-        )
-    elif isinstance(model_config, TeacherStudentConfig):
-        networks_factory = functools.partial(
-            make_teacher_student_networks,
-            model_config=model_config,
-        )
-    elif isinstance(model_config, ActorCriticConfig):
-        networks_factory = functools.partial(
-            make_actor_critic_networks,
-            model_config=model_config,
-        )
-    else:
-        raise NotImplementedError
-    return networks_factory
+    model_class = type(model_config).get_model_class()
+    return functools.partial(model_class, model_config=model_config)
 
 
 def load_inference_fn(

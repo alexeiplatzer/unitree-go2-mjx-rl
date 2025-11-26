@@ -85,6 +85,9 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
+    recurrent_buffer_length: int = 64
+    unroll_length: int = 25
+    proprio_obs_per_vision_obs: int = 5
 
     @classmethod
     def config_class_key(cls) -> str:

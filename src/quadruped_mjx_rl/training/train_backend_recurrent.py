@@ -12,12 +12,12 @@ from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.models.networks_utils import AgentParams
 from quadruped_mjx_rl.training import (
     acting,
-    logger as metric_logger,
     pmap,
     training_utils as _utils,
 )
-from quadruped_mjx_rl.training.configs import TrainingConfig
+from quadruped_mjx_rl.training.configs import TrainingWithRecurrentStudentConfig
 from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState
+from quadruped_mjx_rl.training.fitting.recurrent_student import AgentState
 from quadruped_mjx_rl.types import PRNGKey
 
 
@@ -30,14 +30,8 @@ class TrainingState:
     env_steps: jnp.ndarray
 
 
-@flax_dataclass
-class AgentState:
-    recurrent_carry: types.RecurrentHiddenState
-    recurrent_buffer: jax.Array
-
-
 def train(
-    training_config: TrainingConfig,
+    training_config: TrainingWithRecurrentStudentConfig,
     env: Env,
     fitter: Fitter,
     acting_policy_factory,
@@ -56,6 +50,7 @@ def train(
     local_key: PRNGKey,
     key_envs: PRNGKey,
     env_state: State,
+    agent_state: AgentState,
 ):
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -66,16 +61,11 @@ def train(
     batch_size = training_config.batch_size
     unroll_length = training_config.unroll_length
 
-    bptt_truncation = 64
-    latent_sizes = 64
-
-    recurrent_buffer = jnp.zeros((num_minibatches*batch_size, bptt_truncation, latent_sizes))
-
     xt = time.time()
 
     def sgd_step(
         carry,
-        unused_t,
+        _,
         data: types.Transition,
         normalizer_params: running_statistics.RunningStatisticsState,
     ):
@@ -142,11 +132,6 @@ def train(
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
         acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
-        recurrent_encoder = functools.partial(
-            fitter.network.student_encoder_network.apply,
-            preprocessor_params=training_state.agent_params.preprocessor_params,
-            params=training_state.agent_params.network_params.student_encoder,
-        )
 
         def roll(carry, _):
             current_state, current_key, recurrent_state = carry
@@ -159,7 +144,7 @@ def train(
                 unroll_length,
                 extra_fields=("truncation", "episode_metrics", "episode_done"),
                 add_vision_obs=True,
-                proprioceptive_steps_per_vision_step=5,  # TODO configure
+                proprio_steps_per_vision_step=training_config.proprio_obs_per_vision_obs,
             )
             return (next_state, next_key), data
 
@@ -190,7 +175,7 @@ def train(
                 agent_state,
             ),
             (),
-            length=num_updates_per_batch,
+            length=num_updates_per_batch,  # TODO: buffers should not be updated multiple times
         )
 
         new_training_state = TrainingState(
@@ -203,20 +188,19 @@ def train(
         )
         return (new_training_state, state, new_key, new_agent_state), metrics
 
-    # TODO update carries with the agent state
     def training_epoch(
-        training_state: TrainingState, state: State, key: PRNGKey
-    ) -> tuple[TrainingState, State, types.Metrics]:
-        (training_state, state, ignored_key), loss_metrics = (
+        training_state: TrainingState, state: State, key: PRNGKey, agent_state: AgentState
+    ) -> tuple[TrainingState, State, types.Metrics, AgentState]:
+        (training_state, state, ignored_key, agent_state), loss_metrics = (
             jax.lax.scan(
                 training_step,
-                (training_state, state, key),
+                (training_state, state, key, agent_state),
                 (),
                 length=num_training_steps_per_epoch,
             )
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
-        return training_state, state, loss_metrics
+        return training_state, state, loss_metrics, agent_state
 
     training_epoch = jax.pmap(training_epoch, axis_name=_utils.PMAP_AXIS_NAME)
 
@@ -225,12 +209,15 @@ def train(
         training_state: TrainingState,
         env_state: State,
         key: PRNGKey,
-    ) -> tuple[TrainingState, State, types.Metrics]:
+        agent_state: AgentState,
+    ) -> tuple[TrainingState, State, types.Metrics, AgentState]:
         nonlocal training_walltime
         t = time.time()
-        training_state, env_state = _utils.strip_weak_type((training_state, env_state))
-        result = training_epoch(training_state, env_state, key)
-        training_state, env_state, metrics = _utils.strip_weak_type(
+        training_state, env_state, agent_state = _utils.strip_weak_type(
+            (training_state, env_state, agent_state)
+        )
+        result = training_epoch(training_state, env_state, key, agent_state)
+        training_state, env_state, metrics, agent_state = _utils.strip_weak_type(
             result
         )
 
@@ -249,7 +236,7 @@ def train(
             "training/walltime": training_walltime,
             **{f"training/{name}": value for name, value in metrics.items()},
         }
-        return training_state, env_state, metrics
+        return training_state, env_state, metrics, agent_state
 
     training_metrics = {}
     training_walltime = 0
@@ -269,9 +256,9 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            (training_state, env_state, training_metrics) = (
+            training_state, env_state, training_metrics, agent_state = (
                 training_epoch_with_timing(
-                    training_state, env_state, epoch_keys
+                    training_state, env_state, epoch_keys, agent_state
                 )
             )
             current_step = int(_utils.unpmap(training_state.env_steps))

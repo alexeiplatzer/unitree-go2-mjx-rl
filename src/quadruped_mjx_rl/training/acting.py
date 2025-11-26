@@ -44,7 +44,7 @@ def generate_unroll(
     unroll_length: int,
     extra_fields: Sequence[str] = (),
     add_vision_obs: bool = False,
-    proprioceptive_steps_per_vision_step: int = 1,
+    proprio_steps_per_vision_step: int = 1,
 ) -> tuple[State, Transition | tuple[Transition, Observation]]:
     """Collect trajectories of the given unroll_length."""
 
@@ -56,7 +56,7 @@ def generate_unroll(
             proprioceptive_step,
             (state, current_key),
             (),
-            length=proprioceptive_steps_per_vision_step,
+            length=proprio_steps_per_vision_step,
         )
         vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
         return (next_state, next_key), (transitions, vision_obs)
@@ -74,12 +74,20 @@ def generate_unroll(
         )
         return (next_state, next_key), transition
 
-    (final_state, _), data = jax.lax.scan(
-        visually_enriched_step,
-        (env_state, key),
-        (),
-        length=unroll_length // proprioceptive_steps_per_vision_step,
-    )
+    if add_vision_obs:
+        (final_state, _), data = jax.lax.scan(
+            visually_enriched_step,
+            (env_state, key),
+            (),
+            length=unroll_length // proprio_steps_per_vision_step,
+        )
+    else:
+        (final_state, _), data = jax.lax.scan(
+            proprioceptive_step,
+            (env_state, key),
+            (),
+            length=unroll_length,
+        )
     return final_state, data
 
 
