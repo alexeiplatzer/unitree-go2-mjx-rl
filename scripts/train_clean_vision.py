@@ -36,8 +36,8 @@ if __name__ == "__main__":
             value=[256, 256, 256, 256],
             encoder_convolutional=[4, 8, 32],
             encoder_dense=[256, 256],
-            adapter_convolutional=[4, 8, 32],
-            adapter_dense=[256, 256],
+            student_convolutional=[4, 8, 32],
+            student_dense=[256, 256],
         ),
         latent_size=256,
     )

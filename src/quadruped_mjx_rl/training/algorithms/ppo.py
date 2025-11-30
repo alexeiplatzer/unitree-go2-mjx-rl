@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticNetworkParams,
-    ActorCriticNetworks,
+    ActorCriticAgent,
     ActorCriticAgentParams,
 )
 from quadruped_mjx_rl.training.configs import HyperparamsPPO
@@ -15,7 +15,7 @@ def compute_ppo_loss(
     preprocessor_params: PreprocessorParams,
     data: Transition,
     rng: PRNGKey,
-    network: ActorCriticNetworks,
+    network: ActorCriticAgent,
     hyperparams: HyperparamsPPO,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes PPO loss.
@@ -46,15 +46,15 @@ def compute_ppo_loss(
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
     policy_logits = network.apply_rollout_policy(agent_params, data.observation)
 
-    baseline = network.value_apply(agent_params, data.observation)
+    baseline = network.apply_rollout_value(agent_params, data.observation)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    bootstrap_value = network.value_apply(agent_params, terminal_obs)
+    bootstrap_value = network.apply_rollout_value(agent_params, terminal_obs)
 
     rewards = data.reward * hyperparams.reward_scaling
     truncation = data.extras["state_extras"]["truncation"]
     termination = (1 - data.discount) * (1 - truncation)
 
-    target_action_log_probs = network.parametric_action_distribution.log_prob(
+    target_action_log_probs = network._parametric_action_distribution.log_prob(
         policy_logits, data.extras["policy_extras"]["raw_action"]
     )
     behaviour_action_log_probs = data.extras["policy_extras"]["log_prob"]
@@ -85,7 +85,7 @@ def compute_ppo_loss(
     v_loss = jnp.mean(v_error * v_error) * 0.5 * 0.5
 
     # Entropy reward
-    entropy = jnp.mean(network.parametric_action_distribution.entropy(policy_logits, rng))
+    entropy = jnp.mean(network._parametric_action_distribution.entropy(policy_logits, rng))
     entropy_loss = hyperparams.entropy_cost * -entropy
 
     total_loss = policy_loss + v_loss + entropy_loss

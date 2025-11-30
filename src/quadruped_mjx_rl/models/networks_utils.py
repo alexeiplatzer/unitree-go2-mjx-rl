@@ -11,7 +11,7 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics
-from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworkArchitecture
+from quadruped_mjx_rl.models.architectures.configs_base import AgentModel
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
     Action,
@@ -107,7 +107,7 @@ class NetworkFactory(Protocol[AgentNetworkParams]):
         observation_size: ObservationSize,
         action_size: int,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
-    ) -> ComponentNetworkArchitecture[AgentNetworkParams]:
+    ) -> AgentModel[AgentNetworkParams]:
         pass
 
 
@@ -227,7 +227,7 @@ def wrap_apply_to_dummy_obs(obs_size: ObservationSize):
             dummy_obs = jax.tree_util.tree_map(
                 lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
                 obs_size,
-                is_leaf=lambda x: isinstance(x, tuple),
+                is_leaf=lambda x: isinstance(x, tuple) and all(isinstance(e, int) for e in x),
             )
             return fun(first_arg, dummy_obs, *args, **kwargs)
 

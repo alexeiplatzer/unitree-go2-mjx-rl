@@ -15,7 +15,7 @@ from quadruped_mjx_rl.models.networks_utils import (
     AgentParams,
     PolicyFactory,
 )
-from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworkArchitecture
+from quadruped_mjx_rl.models.architectures.configs_base import AgentModel
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig
@@ -48,7 +48,7 @@ class LossFn(Protocol[AgentNetworkParams]):
         preprocessor_params: PreprocessorParams,
         data: Transition,
         rng: PRNGKey,
-        network: ComponentNetworkArchitecture[AgentNetworkParams],
+        network: AgentModel[AgentNetworkParams],
         hyperparams: HyperparamsPPO,
     ) -> tuple[jnp.ndarray, Metrics]:
         pass
@@ -69,7 +69,7 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
     def __init__(
         self,
         optimizer_config: OptimizerConfig,
-        network: ComponentNetworkArchitecture[AgentNetworkParams],
+        network: AgentModel[AgentNetworkParams],
         main_loss_fn: LossFn[AgentNetworkParams],
         algorithm_hyperparams: HyperparamsPPO,
     ):

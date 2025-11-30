@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic
+from typing import Generic, Any
 
 import jax
 
@@ -11,7 +11,7 @@ from quadruped_mjx_rl.types import Observation, PRNGKey
 
 @dataclass
 class ModelConfig(Configuration):
-    modules: dict[str, list[int]]
+    modules: dict[str, Any]
 
     @classmethod
     def config_base_class_key(cls) -> str:
@@ -26,8 +26,8 @@ class ModelConfig(Configuration):
         return _model_config_classes
 
     @classmethod
-    def get_model_class(cls) -> type["ComponentNetworkArchitecture"]:
-        return ComponentNetworkArchitecture
+    def get_model_class(cls) -> type["AgentModel"]:
+        return AgentModel
 
 
 register_config_base_class(ModelConfig)
@@ -39,13 +39,16 @@ register_model_config_class = ModelConfig.make_register_config_class()
 register_model_config_class(ModelConfig)
 
 
-class ComponentNetworkArchitecture(ABC, Generic[AgentNetworkParams]):
-    @abstractmethod
-    def agent_params_class(self):
-        pass
-
+class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
     def initialize(self, rng: PRNGKey) -> AgentNetworkParams:
+        pass
+
+
+class AgentModel(ABC, Generic[AgentNetworkParams]):
+    @staticmethod
+    @abstractmethod
+    def agent_params_class() -> type[AgentNetworkParams]:
         pass
 
     @abstractmethod

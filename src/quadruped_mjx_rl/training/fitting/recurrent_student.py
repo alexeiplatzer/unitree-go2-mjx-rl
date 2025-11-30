@@ -12,8 +12,8 @@ from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
-    TeacherStudentNetworks,
-    ActorCriticNetworks,
+    TeacherStudentAgent,
+    ActorCriticAgent,
     FeedForwardNetwork,
 )
 from quadruped_mjx_rl.models.networks_utils import (
@@ -39,12 +39,12 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def __init__(
         self,
         optimizer_config: TeacherStudentOptimizerConfig,
-        network: TeacherStudentNetworks,
+        network: TeacherStudentAgent,
         main_loss_fn: optimization.LossFn[TeacherStudentNetworkParams],
         algorithm_hyperparams: optimization.HyperparamsPPO,
     ):
         self._network = network
-        if not isinstance(network.student_encoder_network, RecurrentNetwork):
+        if not isinstance(network._student_encoder_network, RecurrentNetwork):
             raise ValueError("Student encoder network must be a recurrent network!")
         self.teacher_optimizer = optimization.make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
@@ -129,7 +129,7 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         init_carry_key: PRNGKey,
     ):
         done_anywhere = jnp.any(1 - transitions.discount, axis=-1)
-        preencoded_latents = self.network.student_encoder_network.apply(agent_params, vision_obs, agent_state.recurrent_carry)
+        preencoded_latents = self.network._student_encoder_network.apply(agent_params, vision_obs, agent_state.recurrent_carry)
         return agent_state
 
     def make_evaluation_fn(

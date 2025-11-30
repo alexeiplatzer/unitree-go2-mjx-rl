@@ -13,8 +13,8 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
-    TeacherStudentNetworks,
-    ActorCriticNetworks,
+    TeacherStudentAgent,
+    ActorCriticAgent,
     FeedForwardNetwork,
 )
 from quadruped_mjx_rl.models.networks_utils import (
@@ -37,12 +37,12 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def __init__(
         self,
         optimizer_config: TeacherStudentOptimizerConfig,
-        network: TeacherStudentNetworks,
+        network: TeacherStudentAgent,
         main_loss_fn: optimization.LossFn[TeacherStudentNetworkParams],
         algorithm_hyperparams: optimization.HyperparamsPPO,
     ):
         self._network = network
-        if isinstance(network.student_encoder_network, RecurrentNetwork):
+        if isinstance(network._student_encoder_network, RecurrentNetwork):
             self.recurrent = True
         self.teacher_optimizer = optimization.make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
@@ -172,12 +172,12 @@ def compute_student_loss(
     preprocessor_params: optimization.PreprocessorParams,
     data: Transition,
     minibatch_key: PRNGKey,
-    network: TeacherStudentNetworks,
+    network: TeacherStudentAgent,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = network.teacher_encoder_network.apply
-    adapter_apply = network.student_encoder_network.apply
+    encoder_apply = network._teacher_encoder_network.apply
+    adapter_apply = network._student_encoder_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
@@ -198,13 +198,13 @@ def compute_student_recurrent_loss(
     preprocessor_params: optimization.PreprocessorParams,
     data: Transition,
     minibatch_key: PRNGKey,
-    network: TeacherStudentNetworks,
+    network: TeacherStudentAgent,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = network.teacher_encoder_network.apply
-    adapter_apply = network.student_encoder_network.apply
-    carry_init = network.student_encoder_network.init_carry
+    encoder_apply = network._teacher_encoder_network.apply
+    adapter_apply = network._student_encoder_network.apply
+    carry_init = network._student_encoder_network.init_carry
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)

@@ -10,7 +10,7 @@ import numpy as np
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentNetworks
+from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentAgent
 from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentNetwork
 from quadruped_mjx_rl.training import (
@@ -188,10 +188,10 @@ def train(
     )
 
     if (
-        isinstance(ppo_networks, TeacherStudentNetworks)
-        and isinstance(ppo_networks.student_encoder_network, RecurrentNetwork)
+        isinstance(ppo_networks, TeacherStudentAgent)
+        and isinstance(ppo_networks._student_encoder_network, RecurrentNetwork)
     ):
-        init_carries = ppo_networks.student_encoder_network.init_carry(key_agent_states)
+        init_carries = ppo_networks._student_encoder_network.init_carry(key_agent_states)
         recurrent_buffer_length = 64
         latents_size = 16
         recurrent_buffer = jnp.zeros(
