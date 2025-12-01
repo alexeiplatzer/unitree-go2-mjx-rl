@@ -10,7 +10,7 @@ import jax.numpy as jnp
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
 
-from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.models.architectures.configs_base import AgentModel
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
@@ -24,21 +24,38 @@ from quadruped_mjx_rl.types import (
     PreprocessObservationFn,
     PreprocessorParams,
     PRNGKey,
-    RecurrentHiddenState,
+    RecurrentHiddenState, RecurrentPolicy,
 )
+
+
+@flax_dataclass
+class RecurrentAgentState:
+    recurrent_carry: RecurrentHiddenState
+    recurrent_buffer: jax.Array
+    done_buffer: jax.Array
 
 
 @dataclass
 class FeedForwardNetwork:
-    init: Callable
-    apply: Callable
+    init: Callable[[PRNGKey], Params]
+    apply: Callable[[Params, PreprocessorParams, Observation], jax.Array]
 
 
 @dataclass
 class RecurrentNetwork:
-    init: Callable
-    init_carry: Callable
-    apply: Callable
+    init: Callable[[PRNGKey], Params]
+    init_carry: Callable[[PRNGKey, int], RecurrentHiddenState]
+    apply: Callable[
+        [
+            Params,
+            PreprocessorParams,
+            Observation,
+            jax.Array,
+            RecurrentAgentState,
+            PRNGKey,
+        ],
+        tuple[jax.Array, RecurrentAgentState],
+    ]
 
 
 AgentNetworkParams = TypeVar("AgentNetworkParams")
@@ -72,7 +89,7 @@ def policy_factory(
     params: AgentParams,
     deterministic: bool = False,
     recurrent: bool = False,
-) -> Policy:
+) -> Policy | RecurrentPolicy:
     def process_logits(logits: jax.Array, sample_key: PRNGKey) -> tuple[Action, Extra]:
         if deterministic:
             return parametric_action_distribution.mode(logits), {}
@@ -88,10 +105,11 @@ def policy_factory(
 
     def recurrent_policy(
         observation: Observation,
+        done: jax.Array,
         sample_key: PRNGKey,
-        recurrent_state: RecurrentHiddenState = None,
+        recurrent_state: RecurrentHiddenState,
     ) -> tuple[Action, RecurrentHiddenState, Extra]:
-        policy_logits, next_recurrent_state = policy_apply(params, observation, recurrent_state)
+        policy_logits, next_recurrent_state = policy_apply(params, observation, done, recurrent_state)
         action, extra = process_logits(policy_logits, sample_key)
         return action, next_recurrent_state, extra
 
@@ -219,21 +237,69 @@ def pipeline_first_output(f1, f2):
     return fun
 
 
-def wrap_apply_to_dummy_obs(obs_size: ObservationSize):
+@recurry
+def wrap_apply_to_dummy_obs(
+    apply_fun: Callable[..., WrappedFunOutput], obs_size: ObservationSize
+) -> Callable[..., WrappedFunOutput]:
     logging.info(f"observation size: {obs_size}")
 
-    def decorator(fun):
-        def wrap(first_arg, *args, **kwargs):
-            dummy_obs = jax.tree_util.tree_map(
-                lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
-                obs_size,
-                is_leaf=lambda x: isinstance(x, tuple) and all(isinstance(e, int) for e in x),
-            )
-            return fun(first_arg, dummy_obs, *args, **kwargs)
+    def wrap(first_arg, *args, **kwargs):
+        dummy_obs = jax.tree_util.tree_map(
+            lambda x: jnp.zeros((1,) + x) if isinstance(x, tuple) else jnp.zeros((1, x)),
+            obs_size,
+            is_leaf=lambda x: isinstance(x, tuple) and all(isinstance(e, int) for e in x),
+        )
+        return apply_fun(first_arg, dummy_obs, *args, **kwargs)
 
-        return wrap
+    return wrap
 
-    return decorator
+
+def wrap_apply_recurrent(
+    apply_fun: Callable[
+        [
+            Params,
+            PreprocessorParams,
+            Observation,
+            jax.Array,
+            RecurrentHiddenState,
+            jax.Array,
+            jax.Array,
+            PRNGKey,
+        ],
+        tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array, jax.Array]
+    ],
+) -> Callable[
+        [
+            Params,
+            PreprocessorParams,
+            Observation,
+            jax.Array,
+            RecurrentAgentState,
+            PRNGKey,
+        ],
+        tuple[jax.Array, RecurrentAgentState],
+    ]:
+    def wrap(
+        params: Params,
+        preprocessor_params: PreprocessorParams,
+        obs: Observation,
+        done: jax.Array,
+        recurrent_agent_state: RecurrentAgentState,
+        key: PRNGKey,
+    ) -> tuple[jax.Array, RecurrentAgentState]:
+        output, recurrent_carry, recurrent_buffer, done_buffer = apply_fun(
+            params,
+            preprocessor_params,
+            obs,
+            done,
+            recurrent_agent_state.recurrent_carry,
+            recurrent_agent_state.recurrent_buffer,
+            recurrent_agent_state.done_buffer,
+            key,
+        )
+        return output, RecurrentAgentState(recurrent_carry, recurrent_buffer, done_buffer)
+
+    return wrap
 
 
 def make_network(
@@ -261,11 +327,12 @@ def make_network(
     maybe_squeeze = maybe_squeeze_output(squeeze_output)
 
     if recurrent:
+        apply = wrap_apply_recurrent(apply)
         apply = pipeline_first_output(apply, maybe_squeeze)
-        init_carry = wrap_dummy_obs(
-            wrap_input(lambda k, dummy_in: module.initialize_carry(k, dummy_in.shape))
-        )
+        init_carry = wrap_input(module.initialize_carry)
         return RecurrentNetwork(init=init, apply=apply, init_carry=init_carry)
     else:
         apply = pipeline(apply, maybe_squeeze)
         return FeedForwardNetwork(init=init, apply=apply)
+
+

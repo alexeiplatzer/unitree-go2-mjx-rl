@@ -113,12 +113,14 @@ class MixedModeRNN(linen.RNNCellBase):
         self,
         visual_data: jax.Array,  # Batch x Time x H x W x C
         proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
+        current_done: jax.Array,  # Batch x 1
         first_carry: tuple[jax.Array, jax.Array],  # Batch
         recurrent_buffer: jax.Array,   # Batch x BufferSize x LatentSize
-        done_buffer: jax.Array,  # Batch x BufferSize
-        init_carry_fn: Callable[[jax.Array], tuple[jax.Array, jax.Array]],
+        done_buffer: jax.Array,  # Batch x BufferSize x 1
+        # init_carry_fn: Callable[[jax.Array], tuple[jax.Array, jax.Array]],
         init_carry_key: jax.Array,  # Batch x KeySize
-    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array]:
+    ) -> tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array, jax.Array]:
+
         # Should result in Batch x (Time*Substeps*L)
         proprioceptive_vector = jnp.reshape(
             proprioceptive_data, (proprioceptive_data.shape[:-2], -1)
@@ -135,7 +137,7 @@ class MixedModeRNN(linen.RNNCellBase):
         def apply_one_step(carry, data):
             recurrent_carry, key = carry
             key, init_key = jax.random.split(key)
-            init_carry = init_carry_fn(init_key)
+            init_carry = self.initialize_carry(init_key)
             current_input, current_done = data
             current_output, next_carry = self.recurrent_module(current_input, recurrent_carry)
 
@@ -154,17 +156,21 @@ class MixedModeRNN(linen.RNNCellBase):
         recurrent_buffer = jnp.roll(
             recurrent_buffer, shift=-1, axis=-2
         ).at[-1].set(recurrent_input)
-        done_buffer = jnp.roll(done_buffer, shift=-1, axis=-1).at[-1].set(0)
+        done_buffer = jnp.roll(done_buffer, shift=-1, axis=-1).at[-1].set(current_done)
         _, outputs = jax.lax.scan(
             apply_one_step, (first_carry, init_carry_key), (recurrent_buffer, done_buffer)
         )
 
-        return outputs[-1], first_carry, recurrent_buffer
+        return outputs[-1], first_carry, recurrent_buffer, done_buffer
 
     @linen.nowrap
     def initialize_carry(
-        self, rng: jax.Array, input_shape: tuple[int, ...]
+        self, rng: jax.Array
     ) -> tuple[jax.Array, jax.Array]:
+        input_shape = (
+            self.convolutional_module.dense_layer_sizes[-1]
+            + self.proprioceptive_preprocessing_module.layer_sizes[-1]
+        )
         return self.recurrent_module.initialize_carry(rng, input_shape)
 
     @property

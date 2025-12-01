@@ -1,38 +1,24 @@
 import functools
-from dataclasses import dataclass
 from typing import Callable
-import logging
 
 import jax
-import optax
-from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentAgent,
-    ActorCriticAgent,
-    FeedForwardNetwork,
 )
 from quadruped_mjx_rl.models.networks_utils import (
-    AgentNetworkParams, AgentParams, PolicyFactory, RecurrentNetwork,
+    RecurrentAgentState, PolicyFactory, RecurrentNetwork,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
-from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
+from quadruped_mjx_rl.training.fitting.optimization import EvalFn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition, Observation
 from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerState
-
-
-@flax_dataclass
-class AgentState:
-    recurrent_carry: types.RecurrentHiddenState
-    recurrent_buffer: jax.Array
-    episode_terminations: jax.Array
 
 
 class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
@@ -86,7 +72,7 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def minibatch_step(
         self,
         carry: tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey],
-        data: tuple[tuple[Transition, Observation], AgentState],
+        data: tuple[tuple[Transition, Observation], RecurrentAgentState],
         normalizer_params,
         recurrent_buffer=None,
     ):
@@ -123,7 +109,7 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def update_agent_state(
         self,
         agent_params: TeacherStudentAgentParams,
-        agent_state: AgentState,
+        agent_state: RecurrentAgentState,
         transitions: Transition,
         vision_obs: Observation,
         init_carry_key: PRNGKey,

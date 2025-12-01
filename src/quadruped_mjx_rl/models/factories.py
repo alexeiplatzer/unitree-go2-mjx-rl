@@ -32,14 +32,15 @@ def load_inference_fn(
 ):
     """Utility function to quickly get a policy function from a model config
     and the saved pre-trained params path."""
+    model_class = type(model_config).get_model_class()
     params = io.load_params(model_path)
+    if not isinstance(params, model_class.agent_params_class()):
+        raise ValueError(
+            f"The restored params have the wrong type: {type(params)}"
+            f" - while {model_class.agent_params_class()} were expected!"
+        )
     network_factories = get_networks_factory(model_config)
     if isinstance(model_config, TeacherStudentConfig):
-        if not isinstance(params, TeacherStudentAgentParams):
-            raise ValueError(
-                f"The restored params have the wrong type: {type(params)}"
-                f" - while TeacherStudentAgentParams were expected!"
-            )
         teacher_student_networks = network_factories(
             observation_size={
                 "proprioceptive": 1,

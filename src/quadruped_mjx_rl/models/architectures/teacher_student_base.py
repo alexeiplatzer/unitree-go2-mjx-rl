@@ -254,7 +254,7 @@ class TeacherStudentAgent(
                 parametric_action_distribution=self.parametric_action_distribution,
                 params=params,
                 deterministic=deterministic,
-                recurrent=isinstance(self.networks._student_encoder_network, RecurrentNetwork),
+                recurrent=False,
             )
 
         return make_teacher_policy, make_student_policy

@@ -9,7 +9,7 @@ from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
-from quadruped_mjx_rl.models.networks_utils import AgentParams
+from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentAgentState
 from quadruped_mjx_rl.training import (
     acting,
     pmap,
@@ -17,7 +17,6 @@ from quadruped_mjx_rl.training import (
 )
 from quadruped_mjx_rl.training.configs import TrainingWithRecurrentStudentConfig
 from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState
-from quadruped_mjx_rl.training.fitting.recurrent_student import AgentState
 from quadruped_mjx_rl.types import PRNGKey
 
 
@@ -50,7 +49,7 @@ def train(
     local_key: PRNGKey,
     key_envs: PRNGKey,
     env_state: State,
-    agent_state: AgentState,
+    agent_state: RecurrentAgentState,
 ):
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -126,8 +125,8 @@ def train(
     #     # now do a gradient update of the lstm
 
     def training_step(
-        carry: tuple[TrainingState, State, PRNGKey, AgentState], _
-    ) -> tuple[tuple[TrainingState, State, PRNGKey, AgentState], types.Metrics]:
+        carry: tuple[TrainingState, State, PRNGKey, RecurrentAgentState], _
+    ) -> tuple[tuple[TrainingState, State, PRNGKey, RecurrentAgentState], types.Metrics]:
         training_state, state, key, agent_state = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
@@ -189,8 +188,8 @@ def train(
         return (new_training_state, state, new_key, new_agent_state), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: State, key: PRNGKey, agent_state: AgentState
-    ) -> tuple[TrainingState, State, types.Metrics, AgentState]:
+        training_state: TrainingState, state: State, key: PRNGKey, agent_state: RecurrentAgentState
+    ) -> tuple[TrainingState, State, types.Metrics, RecurrentAgentState]:
         (training_state, state, ignored_key, agent_state), loss_metrics = (
             jax.lax.scan(
                 training_step,
@@ -209,8 +208,8 @@ def train(
         training_state: TrainingState,
         env_state: State,
         key: PRNGKey,
-        agent_state: AgentState,
-    ) -> tuple[TrainingState, State, types.Metrics, AgentState]:
+        agent_state: RecurrentAgentState,
+    ) -> tuple[TrainingState, State, types.Metrics, RecurrentAgentState]:
         nonlocal training_walltime
         t = time.time()
         training_state, env_state, agent_state = _utils.strip_weak_type(

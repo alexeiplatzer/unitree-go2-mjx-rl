@@ -1,7 +1,9 @@
 """Brax training acting functions."""
 
 import time
+import functools
 from collections.abc import Callable, Sequence
+from typing import Any
 
 import jax
 import numpy as np
@@ -10,7 +12,7 @@ from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.types import Observation, RecurrentHiddenState, Transition
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.wrappers import EvalWrapper
-from quadruped_mjx_rl.types import Metrics, Policy, PolicyParams, PRNGKey
+from quadruped_mjx_rl.types import Metrics, Policy, RecurrentPolicy, PolicyParams, PRNGKey
 
 
 def actor_step(
@@ -22,7 +24,7 @@ def actor_step(
     extra_fields: Sequence[str] = (),
 ) -> tuple[State, Transition]:
     """Collect data."""
-    actions, policy_extras = policy(env_state.obs, key)
+    actions, policy_extras = policy(observation=env_state.obs, key=key)
     nstate = env.step(env_state, actions)
     state_extras = {x: nstate.info[x] for x in extra_fields}
     transition = Transition(
@@ -35,7 +37,6 @@ def actor_step(
     )
     return nstate, transition
 
-
 def generate_unroll(
     env: Env | VisionWrapper,
     env_state: State,
@@ -45,24 +46,38 @@ def generate_unroll(
     extra_fields: Sequence[str] = (),
     add_vision_obs: bool = False,
     proprio_steps_per_vision_step: int = 1,
-) -> tuple[State, Transition | tuple[Transition, Observation]]:
+    recurrent_carry: RecurrentHiddenState = None,
+    recurrent: bool = False,
+) -> tuple[State, Transition | tuple[Transition, Observation], RecurrentHiddenState]:
     """Collect trajectories of the given unroll_length."""
 
     @jax.jit
-    def visually_enriched_step(carry, _):
+    def recurrent_superstep(
+        carry, _,
+    ):
+        pass  #TODO
+
+    @jax.jit
+    def visually_enriched_step(
+        carry: tuple[State, PRNGKey], _: Any
+    ) -> tuple[tuple[State, PRNGKey], Transition]:
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
+
         (next_state, _), transitions = jax.lax.scan(
             proprioceptive_step,
             (state, current_key),
             (),
             length=proprio_steps_per_vision_step,
         )
-        vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
-        return (next_state, next_key), (transitions, vision_obs)
+        vision_obs = env.get_vision_obs(state.pipeline_state, state.info)
+        next_state = next_state.replace(obs=next_state.obs | vision_obs)
+        return (next_state, next_key), transitions
 
     @jax.jit
-    def proprioceptive_step(carry, _):
+    def proprioceptive_step(
+        carry: tuple[State, PRNGKey], _: Any
+    ) -> tuple[tuple[State, PRNGKey], Transition]:
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
         next_state, transition = actor_step(
@@ -75,20 +90,20 @@ def generate_unroll(
         return (next_state, next_key), transition
 
     if add_vision_obs:
-        (final_state, _), data = jax.lax.scan(
+        (final_state, _, recurrent_carry), data = jax.lax.scan(
             visually_enriched_step,
-            (env_state, key),
+            (env_state, key, recurrent_carry),
             (),
             length=unroll_length // proprio_steps_per_vision_step,
         )
     else:
-        (final_state, _), data = jax.lax.scan(
+        (final_state, _, recurrent_carry), data = jax.lax.scan(
             proprioceptive_step,
-            (env_state, key),
+            (env_state, key, recurrent_carry),
             (),
             length=unroll_length,
         )
-    return final_state, data
+    return final_state, data, recurrent_carry
 
 
 class Evaluator:
@@ -97,11 +112,15 @@ class Evaluator:
     def __init__(
         self,
         eval_env: Env,
-        eval_policy_fn: Callable[[PolicyParams], Policy],
+        eval_policy_fn: Callable[[PolicyParams], Policy | RecurrentPolicy],
         num_eval_envs: int,
         episode_length: int,
         action_repeat: int,
         key: PRNGKey,
+        vision: bool = False,
+        vision_supersteps: int = 1,
+        recurrent: bool = False,
+        init_carry_fn: Callable[[PRNGKey], RecurrentHiddenState] | None = None,
     ):
         """Init.
 
@@ -118,15 +137,24 @@ class Evaluator:
 
         eval_env = EvalWrapper(eval_env)
 
-        def generate_eval_unroll(policy_params: PolicyParams, key: PRNGKey) -> State:
+        def generate_eval_unroll(
+            policy_params: PolicyParams, key: PRNGKey
+        ) -> State:
+            key, init_carry_key = jax.random.split(key)
             reset_keys = jax.random.split(key, num_eval_envs)
+            init_carry_key = jax.random.split(init_carry_key, num_eval_envs)
             eval_first_state = eval_env.reset(reset_keys)
+            recurrent_carry = init_carry_fn(init_carry_key) if init_carry_fn is not None else None
             return generate_unroll(
-                eval_env,
-                eval_first_state,
-                eval_policy_fn(policy_params),
-                key,
+                env=eval_env,
+                env_state=eval_first_state,
+                policy=eval_policy_fn(policy_params),
+                key=key,
                 unroll_length=episode_length // action_repeat,
+                add_vision_obs=vision,
+                proprio_steps_per_vision_step=vision_supersteps,
+                recurrent_carry=recurrent_carry,
+                recurrent=recurrent,
             )[0]
 
         self._generate_eval_unroll = jax.jit(generate_eval_unroll)

@@ -3,7 +3,7 @@ from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticConfig,
     ActorCriticNetworkParams,
     ActorCriticAgent,
-    make_actor_critic_networks,
+    ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ModelConfig,
@@ -14,13 +14,15 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentConfig,
     TeacherStudentNetworkParams,
     TeacherStudentAgent,
-    make_teacher_student_networks,
+    TeacherStudentNetworks,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
     TeacherStudentRecurrentConfig,
-    make_teacher_student_recurrent_networks,
+    TeacherStudentRecurrentNetworks,
+    TeacherStudentRecurrentAgent,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_vision import (
     TeacherStudentVisionConfig,
-    make_teacher_student_vision_networks,
+    TeacherStudentVisionNetworks,
+    TeacherStudentVisionAgent,
 )

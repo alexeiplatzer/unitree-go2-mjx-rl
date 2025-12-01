@@ -22,6 +22,7 @@ Extra = Mapping[str, Any]
 PreprocessorParams = RunningStatisticsState
 PolicyParams = Tuple[PreprocessorParams, Params]
 NetworkType = TypeVar("NetworkType")
+ArraySize = int | tuple[int, ...]
 
 
 class Transition(NamedTuple):
@@ -41,6 +42,16 @@ class Policy(Protocol):
         observation: Observation,
         key: PRNGKey,
     ) -> Tuple[Action, Extra]:
+        pass
+
+class RecurrentPolicy(Protocol):
+    def __call__(
+        self,
+        observation: Observation,
+        done: ndarray,
+        key: PRNGKey,
+        recurrent_carry: RecurrentHiddenState,
+    ) -> Tuple[Action, RecurrentHiddenState, Extra]:
         pass
 
 

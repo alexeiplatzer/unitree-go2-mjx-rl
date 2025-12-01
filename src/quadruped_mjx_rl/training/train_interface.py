@@ -12,7 +12,7 @@ from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentAgent
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentNetwork
+from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentAgentState, RecurrentNetwork
 from quadruped_mjx_rl.training import (
     acting,
     logger as metric_logger,
@@ -28,7 +28,6 @@ from quadruped_mjx_rl.training.train_backend import train as backed_train, Train
 from quadruped_mjx_rl.training.train_backend_recurrent import (
     train as recurrent_train,
 )
-from quadruped_mjx_rl.training.fitting.recurrent_student import AgentState
 
 
 def validate_args_for_vision(
@@ -203,7 +202,7 @@ def train(
             )
         )
         episode_terminations = jnp.ones(env_state.done.shape + (recurrent_buffer_length,))
-        agent_state = AgentState(init_carries, recurrent_buffer, episode_terminations)
+        agent_state = RecurrentAgentState(init_carries, recurrent_buffer, episode_terminations)
         train_fn = functools.partial(recurrent_train, agent_state=agent_state)
     else:
         train_fn = backed_train
