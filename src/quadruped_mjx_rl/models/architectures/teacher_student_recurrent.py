@@ -75,7 +75,7 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
 
         teacher_encoder_module = CNN(
             num_filters=model_config.modules.encoder_convolutional,
-            dense_layer_sizes=model_config.modules.encoder_dense + [model_config.latent_size],
+            dense_layer_sizes=model_config.modules.encoder_dense + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )
@@ -102,7 +102,7 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
         )
         student_recurrent_cell_module = LSTM(
             recurrent_layer_size=model_config.modules.student_recurrent_size,
-            dense_layer_sizes=model_config.modules.student_dense + [model_config.latent_size],
+            dense_layer_sizes=model_config.modules.student_dense + [model_config.latent_encoding_size],
         )
         self.dummy_agent_state = RecurrentAgentState(
             recurrent_carry=(

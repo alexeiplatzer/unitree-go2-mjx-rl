@@ -14,7 +14,7 @@ from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticAgent,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
-    AgentModel,
+    AgentModel, ModuleConfigMLP,
     ComponentNetworksArchitecture, register_model_config_class,
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn, MLP
@@ -30,17 +30,17 @@ from quadruped_mjx_rl.models.networks_utils import (
 
 @dataclass
 class TeacherStudentConfig(ActorCriticConfig):
-    @dataclass
-    class ModulesConfig(ActorCriticConfig.ModulesConfig):
-        teacher_obs_key: str = "environment_privileged"
-        student_obs_key: str = "proprioceptive_history"
-        common_obs_key: str = "proprioceptive"
-        latent_obs_key: str = "latent"
-        encoder_dense: list[int] = field(default_factory=lambda: [256, 256])
-        student_dense: list[int] = field(default_factory=lambda: [256, 256])
-
-    modules: ModulesConfig = field(default_factory=ModulesConfig)
-    latent_size: int = 16
+    encoder_obs_key: str = "environment_privileged"
+    student_obs_key: str = "proprioceptive_history"
+    common_obs_key: str = "proprioceptive"
+    latent_obs_key: str = "latent"
+    encoder: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256])
+    )
+    student: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256])
+    )
+    latent_encoding_size: int = 16
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -100,7 +100,7 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
         """Make teacher-student network with preprocessor."""
 
         teacher_encoder_module = MLP(
-            layer_sizes=model_config.modules.encoder_dense + [model_config.latent_size],
+            layer_sizes=model_config.encoder.layer_sizes + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )
@@ -108,12 +108,12 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=teacher_encoder_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.teacher_obs_key,),
-            apply_to_obs_keys=(model_config.modules.teacher_obs_key,),
+            preprocess_obs_keys=(model_config.encoder_obs_key,),
+            apply_to_obs_keys=(model_config.encoder_obs_key,),
             squeeze_output=False,
         )
         student_encoder_module = MLP(
-            layer_sizes=model_config.modules.student_dense + [model_config.latent_size],
+            layer_sizes=model_config.student.layer_sizes + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )
@@ -121,14 +121,14 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=student_encoder_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.student_obs_key,),
-            apply_to_obs_keys=(model_config.modules.student_obs_key,),
+            preprocess_obs_keys=(model_config.student_obs_key,),
+            apply_to_obs_keys=(model_config.student_obs_key,),
             squeeze_output=False,
         )
 
-        self._latent_obs_key = model_config.modules.latent_obs_key
+        self._latent_obs_key = model_config.latent_obs_key
         policy_module = MLP(
-            layer_sizes=model_config.modules.policy + [output_size],
+            layer_sizes=model_config.policy.layer_sizes + [output_size],
             activation=activation,
             activate_final=False,
         )
@@ -136,13 +136,13 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=policy_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.common_obs_key,),
-            apply_to_obs_keys=(model_config.modules.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.common_obs_key,),
+            apply_to_obs_keys=(model_config.common_obs_key, self._latent_obs_key),
             squeeze_output=False,
             concatenate_inputs=True,
         )
         value_module = MLP(
-            layer_sizes=model_config.modules.value + [1],
+            layer_sizes=model_config.value.layer_sizes + [1],
             activation=activation,
             activate_final=False,
         )
@@ -150,8 +150,8 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=value_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.common_obs_key,),
-            apply_to_obs_keys=(model_config.modules.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.common_obs_key,),
+            apply_to_obs_keys=(model_config.common_obs_key, self._latent_obs_key),
             squeeze_output=True,
             concatenate_inputs=True,
         )

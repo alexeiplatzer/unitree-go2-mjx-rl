@@ -39,7 +39,7 @@ if __name__ == "__main__":
             student_convolutional=[4, 8, 32],
             student_dense=[256, 256],
         ),
-        latent_size=256,
+        latent_encoding_size=256,
     )
 
     training_config = TrainingWithVisionConfig(

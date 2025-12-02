@@ -1,18 +1,27 @@
 """Brax training acting functions."""
 
-import time
 import functools
+import time
 from collections.abc import Callable, Sequence
 from typing import Any
 
 import jax
 import numpy as np
+from jax import numpy as jnp
 
-from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
-from quadruped_mjx_rl.types import Observation, RecurrentHiddenState, Transition
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
+from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.environments.wrappers import EvalWrapper
-from quadruped_mjx_rl.types import Metrics, Policy, RecurrentPolicy, PolicyParams, PRNGKey
+from quadruped_mjx_rl.types import (
+    Metrics,
+    Policy,
+    PolicyParams,
+    PRNGKey,
+    Observation,
+    RecurrentHiddenState,
+    Transition,
+    RecurrentEncoder,
+)
 
 
 def actor_step(
@@ -46,8 +55,10 @@ def generate_unroll(
     extra_fields: Sequence[str] = (),
     add_vision_obs: bool = False,
     proprio_steps_per_vision_step: int = 1,
-    recurrent_carry: RecurrentHiddenState = None,
     recurrent: bool = False,
+    recurrent_carry: RecurrentHiddenState = None,
+    vis_steps_per_rec_step: int = 1,
+    recurrent_encoder: RecurrentEncoder | None = None,
 ) -> tuple[State, Transition | tuple[Transition, Observation], RecurrentHiddenState]:
     """Collect trajectories of the given unroll_length."""
 
@@ -55,11 +66,25 @@ def generate_unroll(
     def recurrent_superstep(
         carry, _,
     ):
-        pass  #TODO
+        state, current_key, recurrent_encoding, recurrent_carry = carry
+        current_key, next_key, encoder_key = jax.random.split(current_key, 3)
+        current_policy = functools.partial(
+            policy, recurrent_encoding=None
+        )
+        (next_state, _), transitions = jax.lax.scan(
+            functools.partial(visually_enriched_step, policy=current_policy),
+            (state, current_key),
+            (),
+            length=vis_steps_per_rec_step,
+        )
+        recurrent_encoding, recurrent_carry = recurrent_encoder(
+            transitions.observation, transitions.done, encoder_key, recurrent_carry
+        )
+        return (next_state, next_key, recurrent_encoding, recurrent_carry), transitions
 
     @jax.jit
     def visually_enriched_step(
-        carry: tuple[State, PRNGKey], _: Any
+        carry: tuple[State, PRNGKey], _: Any, policy
     ) -> tuple[tuple[State, PRNGKey], Transition]:
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
@@ -76,7 +101,7 @@ def generate_unroll(
 
     @jax.jit
     def proprioceptive_step(
-        carry: tuple[State, PRNGKey], _: Any
+        carry: tuple[State, PRNGKey], _: Any, policy,
     ) -> tuple[tuple[State, PRNGKey], Transition]:
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
@@ -89,6 +114,27 @@ def generate_unroll(
         )
         return (next_state, next_key), transition
 
+    if recurrent:
+        env_steps_per_rec_step = unroll_length // vis_steps_per_rec_step // proprio_steps_per_vision_step
+        vis_steps_per_rec_step = unroll_length // vis_steps_per_rec_step
+        dummy_state_obs = jax.tree.map(
+            lambda x: jnp.zeros((env_steps_per_rec_step,) + x.shape), env_state.obs
+        )
+        example_vision_obs = env.get_vision_obs(env_state.pipeline_state, env_state.info)
+        dummy_vision_obs = jax.tree.map(
+            lambda x: jnp.zeros((vis_steps_per_rec_step,) + x.shape), example_vision_obs
+        )
+        dummy_done = jnp.zeros((env_steps_per_rec_step,) + env_state.done.shape)
+        key, rec_encoder_key = jax.random.split(key)
+        dummy_recurrent_encoding = recurrent_encoder(
+            dummy_state_obs | dummy_vision_obs, dummy_done, rec_encoder_key, recurrent_carry
+        )
+        (final_state, _, recurrent_carry), data = jax.lax.scan(
+            recurrent_superstep,
+            (env_state, key, dummy_recurrent_encoding, recurrent_carry),
+            (),
+            length=unroll_length,
+        )
     if add_vision_obs:
         (final_state, _, recurrent_carry), data = jax.lax.scan(
             visually_enriched_step,
@@ -112,7 +158,7 @@ class Evaluator:
     def __init__(
         self,
         eval_env: Env,
-        eval_policy_fn: Callable[[PolicyParams], Policy | RecurrentPolicy],
+        eval_policy_fn: Callable[[PolicyParams], Policy],
         num_eval_envs: int,
         episode_length: int,
         action_repeat: int,
@@ -121,6 +167,8 @@ class Evaluator:
         vision_supersteps: int = 1,
         recurrent: bool = False,
         init_carry_fn: Callable[[PRNGKey], RecurrentHiddenState] | None = None,
+        vis_steps_per_rec_step: int = 1,
+        recurrent_encoder: RecurrentEncoder | None = None,
     ):
         """Init.
 
@@ -155,6 +203,8 @@ class Evaluator:
                 proprio_steps_per_vision_step=vision_supersteps,
                 recurrent_carry=recurrent_carry,
                 recurrent=recurrent,
+                recurrent_encoder=recurrent_encoder,
+                vis_steps_per_rec_step=vis_steps_per_rec_step,
             )[0]
 
         self._generate_eval_unroll = jax.jit(generate_eval_unroll)

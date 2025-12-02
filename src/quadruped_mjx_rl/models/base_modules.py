@@ -113,7 +113,7 @@ class MixedModeRNN(linen.RNNCellBase):
         self,
         visual_data: jax.Array,  # Batch x Time x H x W x C
         proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
-        current_done: jax.Array,  # Batch x 1
+        current_done: jax.Array,  # Batch x (Time*Substeps) x 1
         first_carry: tuple[jax.Array, jax.Array],  # Batch
         recurrent_buffer: jax.Array,   # Batch x BufferSize x LatentSize
         done_buffer: jax.Array,  # Batch x BufferSize x 1
@@ -133,6 +133,9 @@ class MixedModeRNN(linen.RNNCellBase):
         visual_latent = self.convolutional_module(visual_data)
 
         recurrent_input = jnp.concatenate([proprioceptive_latent, visual_latent], axis=-1)
+
+        # Compress the done values for all the proprioceptive steps
+        current_done = jnp.any(current_done, axis=-2)
 
         def apply_one_step(carry, data):
             recurrent_carry, key = carry

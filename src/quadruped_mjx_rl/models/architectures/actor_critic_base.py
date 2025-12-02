@@ -8,21 +8,21 @@ from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import base_modules, distributions, networks_utils
 from quadruped_mjx_rl.models.architectures.configs_base import (
     AgentModel, ComponentNetworksArchitecture, ModelConfig,
-    register_model_config_class,
+    register_model_config_class, ModuleConfigMLP
 )
 from quadruped_mjx_rl.types import Observation, PRNGKey
 
 
 @dataclass
 class ActorCriticConfig(ModelConfig):
-    @dataclass
-    class ModulesConfig:
-        policy_obs_key: str = "proprioceptive"
-        value_obs_key: str = "proprioceptive"
-        policy: list[int] = field(default_factory=lambda: [256, 256])
-        value: list[int] = field(default_factory=lambda: [256, 256])
-
-    modules: ModulesConfig = field(default_factory=ModulesConfig)
+    policy_obs_key: str = "proprioceptive"
+    policy: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[128, 128, 128, 128])
+    )
+    value_obs_key: str = "proprioceptive"
+    value: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256, 256])
+    )
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -80,7 +80,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
     ):
         policy_module = base_modules.MLP(
             layer_sizes=(
-                model_config.modules.policy + [output_size]),
+                model_config.policy.layer_sizes + [output_size]),
             activation=activation,
             activate_final=False,
         )
@@ -88,12 +88,12 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
             module=policy_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.policy_obs_key,),
-            apply_to_obs_keys=(model_config.modules.policy_obs_key,),
+            preprocess_obs_keys=(model_config.policy_obs_key,),
+            apply_to_obs_keys=(model_config.policy_obs_key,),
             squeeze_output=False,
         )
         value_module = base_modules.MLP(
-            layer_sizes=model_config.modules.value + [1],
+            layer_sizes=model_config.value.layer_sizes + [1],
             activation=activation,
             activate_final=False,
         )
@@ -101,8 +101,8 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
             module=value_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.value_obs_key,),
-            apply_to_obs_keys=(model_config.modules.value_obs_key,),
+            preprocess_obs_keys=(model_config.value_obs_key,),
+            apply_to_obs_keys=(model_config.value_obs_key,),
             squeeze_output=True,
         )
 
@@ -114,7 +114,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         )
 
     def apply_policy_module(
-        self, params: ActorCriticAgentParams, observation: types.Observation, *args, **kwargs
+        self, params: ActorCriticAgentParams, observation: types.Observation
     ) -> jax.Array:
         return self._policy_network.apply(
             params.preprocessor_params, params.network_params.policy, observation

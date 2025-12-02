@@ -55,6 +55,17 @@ class RecurrentPolicy(Protocol):
         pass
 
 
+class RecurrentEncoder(Protocol):
+    def __call__(
+        self,
+        observation: Observation,
+        done: ndarray,
+        key: PRNGKey,
+        recurrent_carry: RecurrentHiddenState,
+    ) -> Tuple[ndarray, RecurrentHiddenState]:
+        pass
+
+
 class PreprocessObservationFn(Protocol):
     def __call__(
         self,

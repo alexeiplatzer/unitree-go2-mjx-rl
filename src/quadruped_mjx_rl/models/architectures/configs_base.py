@@ -8,10 +8,13 @@ from quadruped_mjx_rl.config_utils import Configuration, register_config_base_cl
 from quadruped_mjx_rl.models.networks_utils import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.types import Observation, PRNGKey
 
+@dataclass
+class ModuleConfigMLP:
+    layer_sizes: list[int]
 
 @dataclass
 class ModelConfig(Configuration):
-    modules: dict[str, Any]
+    policy: ModuleConfigMLP
 
     @classmethod
     def config_base_class_key(cls) -> str:
