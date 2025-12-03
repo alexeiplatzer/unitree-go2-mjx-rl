@@ -168,13 +168,11 @@ def train(
     def training_epoch(
         training_state: TrainingState, state: State, key: PRNGKey
     ) -> tuple[TrainingState, State, types.Metrics]:
-        (training_state, state, ignored_key), loss_metrics = (
-            jax.lax.scan(
-                training_step,
-                (training_state, state, key),
-                (),
-                length=num_training_steps_per_epoch,
-            )
+        (training_state, state, ignored_key), loss_metrics = jax.lax.scan(
+            training_step,
+            (training_state, state, key),
+            (),
+            length=num_training_steps_per_epoch,
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
         return training_state, state, loss_metrics
@@ -191,9 +189,7 @@ def train(
         t = time.time()
         training_state, env_state = _utils.strip_weak_type((training_state, env_state))
         result = training_epoch(training_state, env_state, key)
-        training_state, env_state, metrics = _utils.strip_weak_type(
-            result
-        )
+        training_state, env_state, metrics = _utils.strip_weak_type(result)
 
         metrics = jax.tree_util.tree_map(jnp.mean, metrics)
         jax.tree_util.tree_map(lambda x: x.block_until_ready(), metrics)
@@ -230,10 +226,8 @@ def train(
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-            (training_state, env_state, training_metrics) = (
-                training_epoch_with_timing(
-                    training_state, env_state, epoch_keys
-                )
+            (training_state, env_state, training_metrics) = training_epoch_with_timing(
+                training_state, env_state, epoch_keys
             )
             current_step = int(_utils.unpmap(training_state.env_steps))
 

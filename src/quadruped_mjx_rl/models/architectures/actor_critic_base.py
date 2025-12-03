@@ -7,8 +7,11 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import types
 from quadruped_mjx_rl.models import base_modules, distributions, networks_utils
 from quadruped_mjx_rl.models.architectures.configs_base import (
-    AgentModel, ComponentNetworksArchitecture, ModelConfig,
-    register_model_config_class, ModuleConfigMLP
+    AgentModel,
+    ComponentNetworksArchitecture,
+    ModelConfig,
+    register_model_config_class,
+    ModuleConfigMLP,
 )
 from quadruped_mjx_rl.types import Observation, PRNGKey
 
@@ -79,8 +82,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         activation: base_modules.ActivationFn = linen.swish,
     ):
         policy_module = base_modules.MLP(
-            layer_sizes=(
-                model_config.policy.layer_sizes + [output_size]),
+            layer_sizes=(model_config.policy.layer_sizes + [output_size]),
             activation=activation,
             activate_final=False,
         )
@@ -175,7 +177,7 @@ class ActorCriticAgent(AgentModel[ActorCriticNetworkParams]):
         return self.networks.apply_value_module(params, observation)
 
     def policy_metafactory(
-        self
+        self,
     ) -> tuple[networks_utils.PolicyFactory[ActorCriticNetworkParams], ...]:
         """Creates params and inference function for the PPO agent."""
 

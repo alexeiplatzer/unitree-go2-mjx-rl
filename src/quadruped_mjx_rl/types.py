@@ -44,6 +44,7 @@ class Policy(Protocol):
     ) -> Tuple[Action, Extra]:
         pass
 
+
 class RecurrentPolicy(Protocol):
     def __call__(
         self,

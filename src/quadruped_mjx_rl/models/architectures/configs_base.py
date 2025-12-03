@@ -1,16 +1,37 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Generic, Any
 
 import jax
+from flax import linen
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+from quadruped_mjx_rl.models.base_modules import ActivationFn, MLP
 from quadruped_mjx_rl.models.networks_utils import AgentNetworkParams, PolicyFactory
 from quadruped_mjx_rl.types import Observation, PRNGKey
 
+
 @dataclass
 class ModuleConfigMLP:
-    layer_sizes: list[int]
+    layer_sizes: list[int] = field(default_factory=lambda: [256, 256, 256, 256])
+
+    def create(
+        self,
+        activation_fn: ActivationFn = linen.swish,
+        activate_final: bool = False,
+        extra_final_layer_size: int | None = None,
+    ):
+        layer_sizes = (
+            self.layer_sizes + [extra_final_layer_size]
+            if extra_final_layer_size
+            else self.layer_sizes
+        )
+        return MLP(
+            layer_sizes=layer_sizes,
+            activation=activation_fn,
+            activate_final=activate_final,
+        )
+
 
 @dataclass
 class ModelConfig(Configuration):

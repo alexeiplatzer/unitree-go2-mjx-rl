@@ -46,6 +46,7 @@ def actor_step(
     )
     return nstate, transition
 
+
 def generate_unroll(
     env: Env | VisionWrapper,
     env_state: State,
@@ -64,13 +65,12 @@ def generate_unroll(
 
     @jax.jit
     def recurrent_superstep(
-        carry, _,
+        carry,
+        _,
     ):
         state, current_key, recurrent_encoding, recurrent_carry = carry
         current_key, next_key, encoder_key = jax.random.split(current_key, 3)
-        current_policy = functools.partial(
-            policy, recurrent_encoding=None
-        )
+        current_policy = functools.partial(policy, recurrent_encoding=None)
         (next_state, _), transitions = jax.lax.scan(
             functools.partial(visually_enriched_step, policy=current_policy),
             (state, current_key),
@@ -101,7 +101,9 @@ def generate_unroll(
 
     @jax.jit
     def proprioceptive_step(
-        carry: tuple[State, PRNGKey], _: Any, policy,
+        carry: tuple[State, PRNGKey],
+        _: Any,
+        policy,
     ) -> tuple[tuple[State, PRNGKey], Transition]:
         state, current_key = carry
         current_key, next_key = jax.random.split(current_key)
@@ -115,7 +117,9 @@ def generate_unroll(
         return (next_state, next_key), transition
 
     if recurrent:
-        env_steps_per_rec_step = unroll_length // vis_steps_per_rec_step // proprio_steps_per_vision_step
+        env_steps_per_rec_step = (
+            unroll_length // vis_steps_per_rec_step // proprio_steps_per_vision_step
+        )
         vis_steps_per_rec_step = unroll_length // vis_steps_per_rec_step
         dummy_state_obs = jax.tree.map(
             lambda x: jnp.zeros((env_steps_per_rec_step,) + x.shape), env_state.obs
@@ -185,14 +189,14 @@ class Evaluator:
 
         eval_env = EvalWrapper(eval_env)
 
-        def generate_eval_unroll(
-            policy_params: PolicyParams, key: PRNGKey
-        ) -> State:
+        def generate_eval_unroll(policy_params: PolicyParams, key: PRNGKey) -> State:
             key, init_carry_key = jax.random.split(key)
             reset_keys = jax.random.split(key, num_eval_envs)
             init_carry_key = jax.random.split(init_carry_key, num_eval_envs)
             eval_first_state = eval_env.reset(reset_keys)
-            recurrent_carry = init_carry_fn(init_carry_key) if init_carry_fn is not None else None
+            recurrent_carry = (
+                init_carry_fn(init_carry_key) if init_carry_fn is not None else None
+            )
             return generate_unroll(
                 env=eval_env,
                 env_state=eval_first_state,

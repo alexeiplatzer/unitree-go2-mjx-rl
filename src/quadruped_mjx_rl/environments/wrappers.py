@@ -9,9 +9,7 @@ from quadruped_mjx_rl.domain_randomization import (
     DomainRandomizationFn,
     TerrainMapRandomizationFn,
 )
-from quadruped_mjx_rl.environments.physics_pipeline.base import (
-    PipelineModel, EnvModel
-)
+from quadruped_mjx_rl.environments.physics_pipeline.base import PipelineModel, EnvModel
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 from quadruped_mjx_rl.types import InitCarryFn, PRNGKey
 
@@ -315,7 +313,6 @@ class DomainRandomizationVmapWrapper(Wrapper):
 
         res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(self._sys_v, state, action)
         return res
-
 
 
 def _identity_vision_randomization_fn(

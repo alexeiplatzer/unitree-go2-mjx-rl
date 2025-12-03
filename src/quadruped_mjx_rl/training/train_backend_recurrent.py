@@ -101,9 +101,7 @@ def train(
                 length=num_minibatches,
             )
         )
-        agent_state_updated = jax.tree_util.tree_map(
-            restore_data, agent_state_batched_updated
-        )
+        agent_state_updated = jax.tree_util.tree_map(restore_data, agent_state_batched_updated)
         return (opt_state, network_params, key, agent_state_updated), metrics
 
     # def recurrent_student_step(opt_state, network_params, key, data, normalizer_params):
@@ -188,15 +186,16 @@ def train(
         return (new_training_state, state, new_key, new_agent_state), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: State, key: PRNGKey, agent_state: RecurrentAgentState
+        training_state: TrainingState,
+        state: State,
+        key: PRNGKey,
+        agent_state: RecurrentAgentState,
     ) -> tuple[TrainingState, State, types.Metrics, RecurrentAgentState]:
-        (training_state, state, ignored_key, agent_state), loss_metrics = (
-            jax.lax.scan(
-                training_step,
-                (training_state, state, key, agent_state),
-                (),
-                length=num_training_steps_per_epoch,
-            )
+        (training_state, state, ignored_key, agent_state), loss_metrics = jax.lax.scan(
+            training_step,
+            (training_state, state, key, agent_state),
+            (),
+            length=num_training_steps_per_epoch,
         )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
         return training_state, state, loss_metrics, agent_state
@@ -216,9 +215,7 @@ def train(
             (training_state, env_state, agent_state)
         )
         result = training_epoch(training_state, env_state, key, agent_state)
-        training_state, env_state, metrics, agent_state = _utils.strip_weak_type(
-            result
-        )
+        training_state, env_state, metrics, agent_state = _utils.strip_weak_type(result)
 
         metrics = jax.tree_util.tree_map(jnp.mean, metrics)
         jax.tree_util.tree_map(lambda x: x.block_until_ready(), metrics)
@@ -256,9 +253,7 @@ def train(
             epoch_key, local_key = jax.random.split(local_key)
             epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
             training_state, env_state, training_metrics, agent_state = (
-                training_epoch_with_timing(
-                    training_state, env_state, epoch_keys, agent_state
-                )
+                training_epoch_with_timing(training_state, env_state, epoch_keys, agent_state)
             )
             current_step = int(_utils.unpmap(training_state.env_steps))
 

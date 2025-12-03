@@ -10,7 +10,9 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgent,
 )
 from quadruped_mjx_rl.models.networks_utils import (
-    RecurrentAgentState, PolicyFactory, RecurrentNetwork,
+    RecurrentAgentState,
+    PolicyFactory,
+    RecurrentNetwork,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
@@ -43,9 +45,7 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             network=network,
             hyperparams=algorithm_hyperparams,
         )
-        student_loss_fn = functools.partial(
-            compute_student_recurrent_loss, network=network
-        )
+        student_loss_fn = functools.partial(compute_student_recurrent_loss, network=network)
         self.teacher_gradient_update_fn = gradients.gradient_update_fn(
             loss_fn=teacher_loss_fn,
             optimizer=self.teacher_optimizer,
@@ -115,7 +115,9 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         init_carry_key: PRNGKey,
     ):
         done_anywhere = jnp.any(1 - transitions.discount, axis=-1)
-        preencoded_latents = self.network._student_encoder_network.apply(agent_params, vision_obs, agent_state.recurrent_carry)
+        preencoded_latents = self.network._student_encoder_network.apply(
+            agent_params, vision_obs, agent_state.recurrent_carry
+        )
         return agent_state
 
     def make_evaluation_fn(
@@ -132,6 +134,3 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
 def compute_student_recurrent_loss(*args, **kwargs):
     # TODO
     pass
-
-
-

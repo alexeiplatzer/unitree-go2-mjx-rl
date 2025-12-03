@@ -24,7 +24,6 @@ class VisionEnvConfig:
     vision_config: VisionConfig = field(default_factory=VisionConfig)
     brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
-
     @dataclass
     class CameraInputConfig:
         name: str = "default"
@@ -37,15 +36,14 @@ class VisionEnvConfig:
             VisionEnvConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionEnvConfig.CameraInputConfig(
-                name="terrain", use_depth=True
-            ),
+            VisionEnvConfig.CameraInputConfig(name="terrain", use_depth=True),
         ]
     )
 
 
 class VisionWrapper(Wrapper):
     """A wrapper for an arbitrary MJX Environment that renders visual observations for it."""
+
     def __init__(
         self,
         env: Env,

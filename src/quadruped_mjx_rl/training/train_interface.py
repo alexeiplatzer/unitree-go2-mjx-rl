@@ -12,7 +12,11 @@ from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentAgent
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models.networks_utils import AgentParams, RecurrentAgentState, RecurrentNetwork
+from quadruped_mjx_rl.models.networks_utils import (
+    AgentParams,
+    RecurrentAgentState,
+    RecurrentNetwork,
+)
 from quadruped_mjx_rl.training import (
     acting,
     logger as metric_logger,
@@ -143,16 +147,20 @@ def train(
             f"({device_count})."
         )
 
-    env = wrap_for_training(
-        env=training_env,
-        num_envs=num_envs,
-        device_count=device_count,
-        episode_length=training_config.episode_length,
-        action_repeat=action_repeat,
-        randomization_fn=randomization_fn,
-        rng_key=key_env,
-        vision=training_config.use_vision,
-    ) if wrap_env else training_env
+    env = (
+        wrap_for_training(
+            env=training_env,
+            num_envs=num_envs,
+            device_count=device_count,
+            episode_length=training_config.episode_length,
+            action_repeat=action_repeat,
+            randomization_fn=randomization_fn,
+            rng_key=key_env,
+            vision=training_config.use_vision,
+        )
+        if wrap_env
+        else training_env
+    )
 
     reset_fn = jax.jit(jax.vmap(env.reset))
     key_envs = jax.random.split(key_env, num_envs // process_count)
@@ -186,9 +194,8 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
-    if (
-        isinstance(ppo_networks, TeacherStudentAgent)
-        and isinstance(ppo_networks._student_encoder_network, RecurrentNetwork)
+    if isinstance(ppo_networks, TeacherStudentAgent) and isinstance(
+        ppo_networks._student_encoder_network, RecurrentNetwork
     ):
         init_carries = ppo_networks._student_encoder_network.init_carry(key_agent_states)
         recurrent_buffer_length = 64

@@ -21,7 +21,8 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentConfig,
     TeacherStudentAgent,
     TeacherStudentNetworkParams,
-    TeacherStudentAgentParams, TeacherStudentNetworks,
+    TeacherStudentAgentParams,
+    TeacherStudentNetworks,
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn, CNN, MLP
 from quadruped_mjx_rl.models.networks_utils import make_network
@@ -29,8 +30,26 @@ from quadruped_mjx_rl.models.networks_utils import make_network
 
 @dataclass
 class ModuleConfigCNN:
-    filter_sizes: list[int]
-    dense: ModuleConfigMLP
+    filter_sizes: list[int] = field(default_factory=lambda: [32, 64, 128])
+    dense: ModuleConfigMLP = field(default_factory=lambda: ModuleConfigMLP)
+
+    def create(
+        self,
+        activation_fn: ActivationFn = linen.swish,
+        activate_final: bool = False,
+        extra_final_layer_size: int | None = None,
+    ):
+        dense_layer_sizes = (
+            self.dense.layer_sizes + [extra_final_layer_size]
+            if extra_final_layer_size
+            else self.dense.layer_sizes
+        )
+        return CNN(
+            num_filters=self.filter_sizes,
+            dense_layer_sizes=dense_layer_sizes,
+            activation=activation_fn,
+            activate_final=activate_final,
+        )
 
 
 @dataclass
@@ -79,7 +98,8 @@ class TeacherStudentVisionNetworks(ComponentNetworksArchitecture[TeacherStudentN
         student_preprocess_keys = ()
         teacher_encoder_module = CNN(
             num_filters=model_config.encoder.filter_sizes,
-            dense_layer_sizes=model_config.encoder.dense.layer_sizes + [model_config.latent_encoding_size],
+            dense_layer_sizes=model_config.encoder.dense.layer_sizes
+            + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )
@@ -93,7 +113,8 @@ class TeacherStudentVisionNetworks(ComponentNetworksArchitecture[TeacherStudentN
         )
         student_encoder_module = CNN(
             num_filters=model_config.student.filter_sizes,
-            dense_layer_sizes=model_config.student.dense.layer_sizes + [model_config.latent_encoding_size],
+            dense_layer_sizes=model_config.student.dense.layer_sizes
+            + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )

@@ -6,6 +6,8 @@ import jax
 import jax.numpy as jnp
 from flax import linen
 
+from quadruped_mjx_rl.training.acting import actor_step
+
 ActivationFn = Callable[[jnp.ndarray], jnp.ndarray]
 Initializer = Callable
 
@@ -76,6 +78,8 @@ class LSTM(linen.RNNCellBase):
     recurrent_layer_size: int
     dense_layer_sizes: Sequence[int]
     carry_init: Initializer = jax.nn.initializers.zeros
+    activation: ActivationFn = linen.relu
+    activate_final: bool = False
 
     @linen.compact
     def __call__(
@@ -84,7 +88,11 @@ class LSTM(linen.RNNCellBase):
         carry: tuple[jax.Array, jax.Array],
     ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
         carry, hidden = linen.OptimizedLSTMCell(features=self.recurrent_layer_size)(carry, data)
-        hidden = MLP(layer_sizes=self.dense_layer_sizes)(hidden)
+        hidden = MLP(
+            layer_sizes=self.dense_layer_sizes,
+            activation=self.activation,
+            activate_final=self.activate_final,
+        )(hidden)
         return hidden, carry
 
     @linen.nowrap
@@ -115,7 +123,7 @@ class MixedModeRNN(linen.RNNCellBase):
         proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
         current_done: jax.Array,  # Batch x (Time*Substeps) x 1
         first_carry: tuple[jax.Array, jax.Array],  # Batch
-        recurrent_buffer: jax.Array,   # Batch x BufferSize x LatentSize
+        recurrent_buffer: jax.Array,  # Batch x BufferSize x LatentSize
         done_buffer: jax.Array,  # Batch x BufferSize x 1
         # init_carry_fn: Callable[[jax.Array], tuple[jax.Array, jax.Array]],
         init_carry_key: jax.Array,  # Batch x KeySize
@@ -156,9 +164,9 @@ class MixedModeRNN(linen.RNNCellBase):
         (first_carry, init_carry_key), _ = apply_one_step(
             (first_carry, init_carry_key), (recurrent_buffer[0], done_buffer[0])
         )
-        recurrent_buffer = jnp.roll(
-            recurrent_buffer, shift=-1, axis=-2
-        ).at[-1].set(recurrent_input)
+        recurrent_buffer = (
+            jnp.roll(recurrent_buffer, shift=-1, axis=-2).at[-1].set(recurrent_input)
+        )
         done_buffer = jnp.roll(done_buffer, shift=-1, axis=-1).at[-1].set(current_done)
         _, outputs = jax.lax.scan(
             apply_one_step, (first_carry, init_carry_key), (recurrent_buffer, done_buffer)
@@ -167,9 +175,7 @@ class MixedModeRNN(linen.RNNCellBase):
         return outputs[-1], first_carry, recurrent_buffer, done_buffer
 
     @linen.nowrap
-    def initialize_carry(
-        self, rng: jax.Array
-    ) -> tuple[jax.Array, jax.Array]:
+    def initialize_carry(self, rng: jax.Array) -> tuple[jax.Array, jax.Array]:
         input_shape = (
             self.convolutional_module.dense_layer_sizes[-1]
             + self.proprioceptive_preprocessing_module.layer_sizes[-1]

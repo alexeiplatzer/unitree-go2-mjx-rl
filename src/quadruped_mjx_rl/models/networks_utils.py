@@ -24,7 +24,8 @@ from quadruped_mjx_rl.types import (
     PreprocessObservationFn,
     PreprocessorParams,
     PRNGKey,
-    RecurrentHiddenState, RecurrentPolicy,
+    RecurrentHiddenState,
+    RecurrentPolicy,
 )
 
 
@@ -109,7 +110,9 @@ def policy_factory(
         sample_key: PRNGKey,
         recurrent_state: RecurrentHiddenState,
     ) -> tuple[Action, RecurrentHiddenState, Extra]:
-        policy_logits, next_recurrent_state = policy_apply(params, observation, done, recurrent_state)
+        policy_logits, next_recurrent_state = policy_apply(
+            params, observation, done, recurrent_state
+        )
         action, extra = process_logits(policy_logits, sample_key)
         return action, next_recurrent_state, extra
 
@@ -266,19 +269,19 @@ def wrap_apply_recurrent(
             jax.Array,
             PRNGKey,
         ],
-        tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array, jax.Array]
+        tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array, jax.Array],
     ],
 ) -> Callable[
-        [
-            Params,
-            PreprocessorParams,
-            Observation,
-            jax.Array,
-            RecurrentAgentState,
-            PRNGKey,
-        ],
-        tuple[jax.Array, RecurrentAgentState],
-    ]:
+    [
+        Params,
+        PreprocessorParams,
+        Observation,
+        jax.Array,
+        RecurrentAgentState,
+        PRNGKey,
+    ],
+    tuple[jax.Array, RecurrentAgentState],
+]:
     def wrap(
         params: Params,
         preprocessor_params: PreprocessorParams,
@@ -334,5 +337,3 @@ def make_network(
     else:
         apply = pipeline(apply, maybe_squeeze)
         return FeedForwardNetwork(init=init, apply=apply)
-
-

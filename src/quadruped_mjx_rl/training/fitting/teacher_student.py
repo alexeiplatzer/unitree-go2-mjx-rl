@@ -18,7 +18,9 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     FeedForwardNetwork,
 )
 from quadruped_mjx_rl.models.networks_utils import (
-    AgentNetworkParams, PolicyFactory, RecurrentNetwork
+    AgentNetworkParams,
+    PolicyFactory,
+    RecurrentNetwork,
 )
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.acting import Evaluator
@@ -56,13 +58,9 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             hyperparams=algorithm_hyperparams,
         )
         if self.recurrent:
-            student_loss_fn = functools.partial(
-                compute_student_recurrent_loss, network=network
-            )
+            student_loss_fn = functools.partial(compute_student_recurrent_loss, network=network)
         else:
-            student_loss_fn = functools.partial(
-                compute_student_loss, network=network
-            )
+            student_loss_fn = functools.partial(compute_student_loss, network=network)
         self.teacher_gradient_update_fn = gradients.gradient_update_fn(
             loss_fn=teacher_loss_fn,
             optimizer=self.teacher_optimizer,

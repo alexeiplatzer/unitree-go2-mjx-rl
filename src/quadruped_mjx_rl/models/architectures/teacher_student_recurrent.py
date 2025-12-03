@@ -12,40 +12,85 @@ from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticConfig,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
-    AgentModel, ComponentNetworksArchitecture,
+    AgentModel,
+    ComponentNetworksArchitecture,
     register_model_config_class,
+    ModuleConfigMLP,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
-    TeacherStudentAgentParams, TeacherStudentConfig,
-    TeacherStudentAgent, TeacherStudentNetworkParams,
+    TeacherStudentAgentParams,
+    TeacherStudentConfig,
+    TeacherStudentAgent,
+    TeacherStudentNetworkParams,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_vision import (
-    TeacherStudentVisionConfig, TeacherStudentVisionNetworks,
+    TeacherStudentVisionConfig,
+    TeacherStudentVisionNetworks,
+    ModuleConfigCNN,
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn, CNN, MLP, LSTM, MixedModeRNN
-from quadruped_mjx_rl.models.networks_utils import make_network, RecurrentAgentState, policy_factory
+from quadruped_mjx_rl.models.networks_utils import (
+    make_network,
+    RecurrentAgentState,
+    policy_factory,
+)
 from quadruped_mjx_rl.types import RecurrentHiddenState
 
 
 @dataclass
-class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
-    @dataclass
-    class ModulesConfig(TeacherStudentVisionConfig.ModulesConfig):
-        teacher_obs_key: str = "privileged_terrain_map"
-        student_visual_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
-        student_proprioceptive_obs_key: str = "proprioceptive"
-        common_obs_key: str = "proprioceptive"
-        latent_obs_key: str = "latent"
-        encoder_convolutional: list[int] = field(default_factory=lambda: [16, 16, 16])
-        student_convolutional: list[int] = field(default_factory=lambda: [32, 32, 32])
-        student_vision_dense: list[int] = field(default_factory=lambda: [128, 128])
-        student_vision_latent_size: int = 64
-        student_proprio_dense: list[int] = field(default_factory=lambda: [64, 32])
-        student_recurrent_size: int = 16
-        student_recurrent_backpropagation_steps: int = 64,
-        student_dense: list[int] = field(default_factory=lambda: [16])
+class ModuleConfigLSTM:
+    recurrent_size: int
+    dense: ModuleConfigMLP
 
-    modules: ModulesConfig = field(default_factory=ModulesConfig)
+    def create(
+        self,
+        activation_fn: ActivationFn = linen.swish,
+        activate_final: bool = False,
+        extra_final_layer_size: int | None = None,
+    ):
+        dense_layer_sizes = (
+            self.dense.layer_sizes + [extra_final_layer_size]
+            if extra_final_layer_size
+            else self.dense.layer_sizes
+        )
+        return LSTM(
+            recurrent_layer_size=self.recurrent_size,
+            dense_layer_sizes=dense_layer_sizes,
+            activation=activation_fn,
+            activate_final=activate_final,
+        )
+
+
+@dataclass
+class ModuleConfigMixedModeRNN:
+    convolutional: ModuleConfigCNN
+    proprioceptive_preprocessing: ModuleConfigMLP
+    recurrent: ModuleConfigLSTM
+
+
+@dataclass
+class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
+
+    encoder_obs_key: str = "privileged_terrain_map"
+    student_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
+    student_proprio_obs_key: str = "proprioceptive"
+    encoder: ModuleConfigCNN = field(
+        default_factory=lambda: ModuleConfigCNN(
+            filter_sizes=[16, 16, 16], dense=ModuleConfigMLP(layer_sizes=[256, 256])
+        )
+    )
+    student: ModuleConfigMixedModeRNN = field(
+        default_factory=lambda: ModuleConfigMixedModeRNN(
+            convolutional=ModuleConfigCNN(
+                filter_sizes=[32, 32, 32], dense=ModuleConfigMLP(layer_sizes=[128, 128, 64])
+            ),
+            proprioceptive_preprocessing=ModuleConfigMLP(layer_sizes=[64, 64]),
+            recurrent=ModuleConfigLSTM(
+                recurrent_size=16, dense=ModuleConfigMLP(layer_sizes=[16])
+            ),
+        )
+    )
+    student_recurrent_backpropagation_steps: int = 64
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -59,7 +104,9 @@ class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
 register_model_config_class(TeacherStudentRecurrentConfig)
 
 
-class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStudentNetworkParams]):
+class TeacherStudentRecurrentNetworks(
+    ComponentNetworksArchitecture[TeacherStudentNetworkParams]
+):
     def __init__(
         self,
         *,
@@ -74,8 +121,9 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
         """Make teacher-student network with preprocessor."""
 
         teacher_encoder_module = CNN(
-            num_filters=model_config.modules.encoder_convolutional,
-            dense_layer_sizes=model_config.modules.encoder_dense + [model_config.latent_encoding_size],
+            num_filters=model_config.encoder.filter_sizes,
+            dense_layer_sizes=model_config.encoder.dense.layer_sizes
+            + [model_config.latent_encoding_size],
             activation=activation,
             activate_final=True,
         )
@@ -84,41 +132,39 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
             preprocess_obs_keys=(),
-            apply_to_obs_keys=(model_config.modules.teacher_obs_key,),
+            apply_to_obs_keys=(model_config.encoder_obs_key,),
             squeeze_output=False,
         )
 
         student_vision_encoder_module = CNN(
-            num_filters=model_config.modules.student_convolutional,
-            dense_layer_sizes=model_config.modules.student_vision_dense + [
-                model_config.modules.student_vision_latent_size],
+            num_filters=model_config.student.convolutional.filter_sizes,
+            dense_layer_sizes=model_config.student.convolutional.dense.layer_sizes,
             activation=activation,
             activate_final=True,
         )
         student_proprioceptive_encoder_module = MLP(
-            layer_sizes=model_config.modules.student_proprio_dense,
+            layer_sizes=model_config.student.proprioceptive_preprocessing.layer_sizes,
             activation=activation,
             activate_final=True,
         )
         student_recurrent_cell_module = LSTM(
-            recurrent_layer_size=model_config.modules.student_recurrent_size,
-            dense_layer_sizes=model_config.modules.student_dense + [model_config.latent_encoding_size],
+            recurrent_layer_size=model_config.student.recurrent.recurrent_size,
+            dense_layer_sizes=model_config.student.recurrent.dense.layer_sizes
+            + [model_config.latent_encoding_size],
         )
         self.dummy_agent_state = RecurrentAgentState(
             recurrent_carry=(
-                jnp.zeros((1, model_config.modules.student_recurrent_size)),
-                jnp.zeros((1, model_config.modules.student_recurrent_size)),
+                jnp.zeros((1, model_config.student.recurrent.recurrent_size)),
+                jnp.zeros((1, model_config.student.recurrent.recurrent_size)),
             ),
             recurrent_buffer=jnp.zeros(
                 (
                     1,
-                    model_config.modules.student_recurrent_backpropagation_steps,
-                    model_config.modules.student_recurrent_size,
+                    model_config.student_recurrent_backpropagation_steps,
+                    model_config.student.recurrent.recurrent_size,
                 )
             ),
-            done_buffer=jnp.ones(
-                (1, model_config.modules.student_recurrent_backpropagation_steps, 1)
-            ),
+            done_buffer=jnp.ones((1, model_config.student_recurrent_backpropagation_steps, 1)),
         )
         student_encoder_module = MixedModeRNN(
             convolutional_module=student_vision_encoder_module,
@@ -129,17 +175,19 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
             module=student_encoder_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.student_proprioceptive_obs_key,),
-            apply_to_obs_keys=(model_config.modules.student_visual_obs_key,
-                model_config.modules.student_proprioceptive_obs_key),
+            preprocess_obs_keys=(model_config.student_proprio_obs_key,),
+            apply_to_obs_keys=(
+                model_config.student_obs_key,
+                model_config.student_proprio_obs_key,
+            ),
             squeeze_output=False,
             concatenate_inputs=False,
             recurrent=True,
         )
 
-        self._latent_obs_key = model_config.modules.latent_obs_key
+        self._latent_obs_key = model_config.latent_obs_key
         policy_module = MLP(
-            layer_sizes=model_config.modules.policy + [output_size],
+            layer_sizes=model_config.policy.layer_sizes + [output_size],
             activation=activation,
             activate_final=False,
         )
@@ -147,13 +195,13 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
             module=policy_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.common_obs_key,),
-            apply_to_obs_keys=(model_config.modules.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.policy_obs_key,),
+            apply_to_obs_keys=(model_config.policy_obs_key, self._latent_obs_key),
             squeeze_output=False,
             concatenate_inputs=True,
         )
         value_module = MLP(
-            layer_sizes=model_config.modules.value + [1],
+            layer_sizes=model_config.value.layer_sizes + [1],
             activation=activation,
             activate_final=False,
         )
@@ -161,8 +209,8 @@ class TeacherStudentRecurrentNetworks(ComponentNetworksArchitecture[TeacherStude
             module=value_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.modules.common_obs_key,),
-            apply_to_obs_keys=(model_config.modules.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.value_obs_key,),
+            apply_to_obs_keys=(model_config.value_obs_key, self._latent_obs_key),
             squeeze_output=True,
             concatenate_inputs=True,
         )

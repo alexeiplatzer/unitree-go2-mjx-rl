@@ -14,8 +14,10 @@ from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticAgent,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
-    AgentModel, ModuleConfigMLP,
-    ComponentNetworksArchitecture, register_model_config_class,
+    AgentModel,
+    ModuleConfigMLP,
+    ComponentNetworksArchitecture,
+    register_model_config_class,
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn, MLP
 from quadruped_mjx_rl.models.networks_utils import (
@@ -32,7 +34,6 @@ from quadruped_mjx_rl.models.networks_utils import (
 class TeacherStudentConfig(ActorCriticConfig):
     encoder_obs_key: str = "environment_privileged"
     student_obs_key: str = "proprioceptive_history"
-    common_obs_key: str = "proprioceptive"
     latent_obs_key: str = "latent"
     encoder: ModuleConfigMLP = field(
         default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256])
@@ -136,8 +137,8 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=policy_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.common_obs_key,),
-            apply_to_obs_keys=(model_config.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.policy_obs_key,),
+            apply_to_obs_keys=(model_config.policy_obs_key, self._latent_obs_key),
             squeeze_output=False,
             concatenate_inputs=True,
         )
@@ -150,8 +151,8 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
             module=value_module,
             obs_size=observation_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.common_obs_key,),
-            apply_to_obs_keys=(model_config.common_obs_key, self._latent_obs_key),
+            preprocess_obs_keys=(model_config.value_obs_key,),
+            apply_to_obs_keys=(model_config.value_obs_key, self._latent_obs_key),
             squeeze_output=True,
             concatenate_inputs=True,
         )
@@ -202,9 +203,7 @@ class TeacherStudentNetworks(ComponentNetworksArchitecture[TeacherStudentNetwork
         )
 
 
-class TeacherStudentAgent(
-    ActorCriticAgent, AgentModel[TeacherStudentNetworkParams]
-):
+class TeacherStudentAgent(ActorCriticAgent, AgentModel[TeacherStudentNetworkParams]):
 
     @staticmethod
     def agent_params_class() -> type[TeacherStudentAgentParams]:
@@ -236,7 +235,6 @@ class TeacherStudentAgent(
         latent_encoding = self.networks.apply_student_encoder_module(params, observation)
         return self.networks.apply_policy_module(params, observation, latent_encoding)
 
-
     def policy_metafactory(self):
         """Creates params and inference function for the Teacher and Student agents."""
 
@@ -258,4 +256,3 @@ class TeacherStudentAgent(
             )
 
         return make_teacher_policy, make_student_policy
-
