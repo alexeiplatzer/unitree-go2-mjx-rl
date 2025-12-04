@@ -56,15 +56,3 @@ class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
     def get_acting_policy_factory(self) -> PolicyFactory[AgentNetworkParams]:
         pass
-
-    @abstractmethod
-    def generate_training_unroll(
-        self,
-        params: AgentParams,
-        env: Env | VisionWrapper,
-        env_state: State,
-        key: PRNGKey,
-        unroll_length: int,
-        extra_fields: Sequence[str] = (),
-    ) -> tuple[State, Transition]:
-        pass
