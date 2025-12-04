@@ -1,28 +1,24 @@
 """Brax training types."""
 
 from collections.abc import Mapping
-from typing import Any, NamedTuple, Protocol, Tuple, TypeVar, Union
+from typing import Any, NamedTuple
 
-from jax.numpy import ndarray
+import jax
 
 from quadruped_mjx_rl.running_statistics import (
     NestedArray,
-    NestedTensor,
-    RunningStatisticsState,
 )
 
-Params = Any
-PRNGKey = ndarray
-Metrics = Mapping[str, ndarray]
-Observation = ndarray | Mapping[str, ndarray]
+# Reinforcement learning types
+Observation = jax.Array | Mapping[str, jax.Array]
 ObservationSize = int | Mapping[str, tuple[int, ...] | int]
-RecurrentHiddenState = tuple[ndarray, ndarray] | None
-Action = ndarray
-Extra = Mapping[str, Any]
-PreprocessorParams = RunningStatisticsState
-PolicyParams = Tuple[PreprocessorParams, Params]
-NetworkType = TypeVar("NetworkType")
+Action = jax.Array
+Metrics = Mapping[str, jax.Array]
+
+# Utility types
+PRNGKey = jax.Array
 ArraySize = int | tuple[int, ...]
+Extra = Mapping[str, Any]
 
 
 class Transition(NamedTuple):
@@ -34,65 +30,3 @@ class Transition(NamedTuple):
     discount: NestedArray
     next_observation: NestedArray
     extras: NestedArray = ()
-
-
-class Policy(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        key: PRNGKey,
-    ) -> Tuple[Action, Extra]:
-        pass
-
-
-class RecurrentPolicy(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        done: ndarray,
-        key: PRNGKey,
-        recurrent_carry: RecurrentHiddenState,
-    ) -> Tuple[Action, RecurrentHiddenState, Extra]:
-        pass
-
-
-class RecurrentEncoder(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        done: ndarray,
-        key: PRNGKey,
-        recurrent_carry: RecurrentHiddenState,
-    ) -> Tuple[ndarray, RecurrentHiddenState]:
-        pass
-
-
-class PreprocessObservationFn(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        preprocessor_params: PreprocessorParams,
-    ) -> ndarray:
-        pass
-
-
-def identity_observation_preprocessor(
-    observation: Observation, preprocessor_params: PreprocessorParams
-):
-    del preprocessor_params
-    return observation
-
-
-class NetworkFactory(Protocol[NetworkType]):
-    def __call__(
-        self,
-        observation_size: ObservationSize,
-        action_size: int,
-        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
-    ) -> NetworkType:
-        pass
-
-
-class InitCarryFn(Protocol):
-    def __call__(self, rng: PRNGKey) -> RecurrentHiddenState:
-        pass

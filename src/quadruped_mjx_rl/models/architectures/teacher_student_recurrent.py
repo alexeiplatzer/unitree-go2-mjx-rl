@@ -1,71 +1,35 @@
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 import jax
 from jax import numpy as jnp
 from flax import linen
 
+import quadruped_mjx_rl.models.types
 from quadruped_mjx_rl import types
-from quadruped_mjx_rl.models import distributions
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
-    ActorCriticAgent,
-    ActorCriticConfig,
+    ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
-    AgentModel,
     ComponentNetworksArchitecture,
     register_model_config_class,
-    ModuleConfigMLP,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
-    TeacherStudentConfig,
-    TeacherStudentAgent,
     TeacherStudentNetworkParams,
+    TeacherStudentVisionConfig
 )
-from quadruped_mjx_rl.models.architectures.teacher_student_vision import (
-    TeacherStudentVisionConfig,
-    TeacherStudentVisionNetworks,
+from quadruped_mjx_rl.models.base_modules import (
+    ActivationFn,
     ModuleConfigCNN,
+    ModuleConfigLSTM,
+    ModuleConfigMixedModeRNN,
+    ModuleConfigMLP,
 )
-from quadruped_mjx_rl.models.base_modules import ActivationFn, CNN, MLP, LSTM, MixedModeRNN
 from quadruped_mjx_rl.models.networks_utils import (
     make_network,
-    RecurrentAgentState,
     policy_factory,
 )
-from quadruped_mjx_rl.types import RecurrentHiddenState
-
-
-@dataclass
-class ModuleConfigLSTM:
-    recurrent_size: int
-    dense: ModuleConfigMLP
-
-    def create(
-        self,
-        activation_fn: ActivationFn = linen.swish,
-        activate_final: bool = False,
-        extra_final_layer_size: int | None = None,
-    ):
-        dense_layer_sizes = (
-            self.dense.layer_sizes + [extra_final_layer_size]
-            if extra_final_layer_size
-            else self.dense.layer_sizes
-        )
-        return LSTM(
-            recurrent_layer_size=self.recurrent_size,
-            dense_layer_sizes=dense_layer_sizes,
-            activation=activation_fn,
-            activate_final=activate_final,
-        )
-
-
-@dataclass
-class ModuleConfigMixedModeRNN:
-    convolutional: ModuleConfigCNN
-    proprioceptive_preprocessing: ModuleConfigMLP
-    recurrent: ModuleConfigLSTM
+from quadruped_mjx_rl.models.types import RecurrentAgentState, RecurrentCarry
 
 
 @dataclass
@@ -113,19 +77,17 @@ class TeacherStudentRecurrentNetworks(
         model_config: TeacherStudentRecurrentConfig,
         observation_size: types.ObservationSize,
         output_size: int,
-        preprocess_observations_fn: types.PreprocessObservationFn = (
-            types.identity_observation_preprocessor
+        preprocess_observations_fn: quadruped_mjx_rl.models.types.PreprocessObservationFn = (
+            quadruped_mjx_rl.models.types.identity_observation_preprocessor
         ),
         activation: ActivationFn = linen.swish,
     ):
         """Make teacher-student network with preprocessor."""
 
-        teacher_encoder_module = CNN(
-            num_filters=model_config.encoder.filter_sizes,
-            dense_layer_sizes=model_config.encoder.dense.layer_sizes
-            + [model_config.latent_encoding_size],
-            activation=activation,
+        teacher_encoder_module = model_config.encoder.create(
+            activation_fn=activation,
             activate_final=True,
+            extra_final_layer_size=model_config.latent_encoding_size,
         )
         self._teacher_encoder_network = make_network(
             module=teacher_encoder_module,
@@ -133,25 +95,8 @@ class TeacherStudentRecurrentNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             preprocess_obs_keys=(),
             apply_to_obs_keys=(model_config.encoder_obs_key,),
-            squeeze_output=False,
         )
 
-        student_vision_encoder_module = CNN(
-            num_filters=model_config.student.convolutional.filter_sizes,
-            dense_layer_sizes=model_config.student.convolutional.dense.layer_sizes,
-            activation=activation,
-            activate_final=True,
-        )
-        student_proprioceptive_encoder_module = MLP(
-            layer_sizes=model_config.student.proprioceptive_preprocessing.layer_sizes,
-            activation=activation,
-            activate_final=True,
-        )
-        student_recurrent_cell_module = LSTM(
-            recurrent_layer_size=model_config.student.recurrent.recurrent_size,
-            dense_layer_sizes=model_config.student.recurrent.dense.layer_sizes
-            + [model_config.latent_encoding_size],
-        )
         self.dummy_agent_state = RecurrentAgentState(
             recurrent_carry=(
                 jnp.zeros((1, model_config.student.recurrent.recurrent_size)),
@@ -166,10 +111,10 @@ class TeacherStudentRecurrentNetworks(
             ),
             done_buffer=jnp.ones((1, model_config.student_recurrent_backpropagation_steps, 1)),
         )
-        student_encoder_module = MixedModeRNN(
-            convolutional_module=student_vision_encoder_module,
-            proprioceptive_preprocessing_module=student_proprioceptive_encoder_module,
-            recurrent_module=student_recurrent_cell_module,
+        student_encoder_module = model_config.student.create(
+            activation_fn=activation,
+            activate_final=True,
+            extra_final_layer_size=model_config.latent_encoding_size,
         )
         self._student_encoder_network = make_network(
             module=student_encoder_module,
@@ -180,39 +125,18 @@ class TeacherStudentRecurrentNetworks(
                 model_config.student_obs_key,
                 model_config.student_proprio_obs_key,
             ),
-            squeeze_output=False,
             concatenate_inputs=False,
             recurrent=True,
         )
 
         self._latent_obs_key = model_config.latent_obs_key
-        policy_module = MLP(
-            layer_sizes=model_config.policy.layer_sizes + [output_size],
-            activation=activation,
-            activate_final=False,
-        )
-        self._policy_network = make_network(
-            module=policy_module,
-            obs_size=observation_size,
+        self.actor_critic = ActorCriticNetworks(
+            model_config=model_config,
+            observation_size=observation_size,
+            action_size=output_size,
             preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.policy_obs_key,),
-            apply_to_obs_keys=(model_config.policy_obs_key, self._latent_obs_key),
-            squeeze_output=False,
-            concatenate_inputs=True,
-        )
-        value_module = MLP(
-            layer_sizes=model_config.value.layer_sizes + [1],
             activation=activation,
-            activate_final=False,
-        )
-        self._value_network = make_network(
-            module=value_module,
-            obs_size=observation_size,
-            preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_obs_keys=(model_config.value_obs_key,),
-            apply_to_obs_keys=(model_config.value_obs_key, self._latent_obs_key),
-            squeeze_output=True,
-            concatenate_inputs=True,
+            extra_input_keys=(self._latent_obs_key,),
         )
 
     def initialize(self, rng: types.PRNGKey) -> TeacherStudentNetworkParams:
@@ -220,8 +144,8 @@ class TeacherStudentRecurrentNetworks(
         student_params_key, student_dummy_key = jax.random.split(student_key, 2)
         dummy_done = jnp.zeros(())
         return TeacherStudentNetworkParams(
-            policy=self._policy_network.init(policy_key),
-            value=self._value_network.init(value_key),
+            policy=self.actor_critic.policy_network.init(policy_key),
+            value=self.actor_critic.value_network.init(value_key),
             teacher_encoder=self._teacher_encoder_network.init(teacher_key),
             student_encoder=self._student_encoder_network.init(
                 student_params_key, dummy_done, self.dummy_agent_state, student_dummy_key
@@ -246,7 +170,7 @@ class TeacherStudentRecurrentNetworks(
         recurrent_agent_state: RecurrentAgentState,
         reinitialization_key: types.PRNGKey,
     ) -> tuple[jax.Array, RecurrentAgentState]:
-        return self._student_encoder_network.apply(
+        return self._student_encoder_network.apply_differentiable(
             params.preprocessor_params,
             params.network_params.student_encoder,
             observation,
@@ -262,7 +186,7 @@ class TeacherStudentRecurrentNetworks(
         latent_encoding: jax.Array,
     ) -> jax.Array:
         observation = observation | {self._latent_obs_key: latent_encoding}
-        return self._policy_network.apply(
+        return self.actor_critic.policy_network.apply(
             params.preprocessor_params, params.network_params.policy, observation
         )
 
@@ -273,7 +197,7 @@ class TeacherStudentRecurrentNetworks(
         latent_encoding: jax.Array,
     ) -> jax.Array:
         observation = observation | {self._latent_obs_key: latent_encoding}
-        return self._value_network.apply(
+        return self.actor_critic.value_network.apply(
             params.preprocessor_params, params.network_params.value, observation
         )
 
@@ -300,15 +224,15 @@ class TeacherStudentRecurrentAgent(TeacherStudentAgent):
         params: TeacherStudentAgentParams,
         observation: types.Observation,
         done: jax.Array,
-        recurrent_carry: RecurrentHiddenState,
+        recurrent_carry: RecurrentCarry,
         key: types.PRNGKey,
-    ) -> tuple[jax.Array, RecurrentHiddenState]:
+    ) -> tuple[jax.Array, RecurrentCarry]:
         recurrent_agent_state = RecurrentAgentState(
             recurrent_carry=recurrent_carry,
             recurrent_buffer=self.networks.dummy_agent_state.recurrent_buffer,
             done_buffer=self.networks.dummy_agent_state.done_buffer,
         )
-        latent_encoding, recurrent_agent_state = self.networks.apply_student_encoder_module(
+        latent_encoding, recurrent_agent_state = self.networks.apply_student_encoder(
             params=params,
             observation=observation,
             done=done,

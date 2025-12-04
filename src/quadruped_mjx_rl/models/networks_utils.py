@@ -1,142 +1,33 @@
 """Utility functions for instantiating neural networks."""
 
+import functools
 import logging
 from collections.abc import Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass
-from typing import Generic, Protocol, TypeVar
+from typing import TypeVar
 
 import jax
 import jax.numpy as jnp
 from flax import linen
-from flax.struct import dataclass as flax_dataclass
 
-from quadruped_mjx_rl import running_statistics, types
-from quadruped_mjx_rl.models.architectures.configs_base import AgentModel
+from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.models import AgentParams, FeedForwardNetwork, RecurrentNetwork
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.types import (
     Action,
     Extra,
-    identity_observation_preprocessor,
     Observation,
     ObservationSize,
+    PRNGKey,
+)
+from quadruped_mjx_rl.models.types import (
+    identity_observation_preprocessor,
     Params,
     Policy,
     PreprocessObservationFn,
     PreprocessorParams,
-    PRNGKey,
-    RecurrentHiddenState,
-    RecurrentPolicy,
+    RecurrentAgentState,
+    RecurrentCarry,
 )
-
-
-@flax_dataclass
-class RecurrentAgentState:
-    recurrent_carry: RecurrentHiddenState
-    recurrent_buffer: jax.Array
-    done_buffer: jax.Array
-
-
-@dataclass
-class FeedForwardNetwork:
-    init: Callable[[PRNGKey], Params]
-    apply: Callable[[Params, PreprocessorParams, Observation], jax.Array]
-
-
-@dataclass
-class RecurrentNetwork:
-    init: Callable[[PRNGKey], Params]
-    init_carry: Callable[[PRNGKey, int], RecurrentHiddenState]
-    apply: Callable[
-        [
-            Params,
-            PreprocessorParams,
-            Observation,
-            jax.Array,
-            RecurrentAgentState,
-            PRNGKey,
-        ],
-        tuple[jax.Array, RecurrentAgentState],
-    ]
-
-
-AgentNetworkParams = TypeVar("AgentNetworkParams")
-
-
-@flax_dataclass
-class AgentParams(Generic[AgentNetworkParams]):
-    preprocessor_params: PreprocessorParams
-    network_params: AgentNetworkParams
-
-    def restore_params(
-        self,
-        restore_params: "AgentParams[AgentNetworkParams]",
-        restore_value: bool = False,
-    ) -> "AgentParams[AgentNetworkParams]":
-        pass
-
-
-class PolicyFactory(Protocol[AgentNetworkParams]):
-    def __call__(
-        self,
-        params: AgentParams[AgentNetworkParams],
-        deterministic: bool,
-    ) -> Policy:
-        pass
-
-
-def policy_factory(
-    policy_apply: Callable,
-    parametric_action_distribution: ParametricDistribution,
-    params: AgentParams,
-    deterministic: bool = False,
-    recurrent: bool = False,
-) -> Policy | RecurrentPolicy:
-    def process_logits(logits: jax.Array, sample_key: PRNGKey) -> tuple[Action, Extra]:
-        if deterministic:
-            return parametric_action_distribution.mode(logits), {}
-        raw_actions = parametric_action_distribution.sample_no_postprocessing(
-            logits, sample_key
-        )
-        log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
-        postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
-        return postprocessed_actions, {
-            "log_prob": log_prob,
-            "raw_action": raw_actions,
-        }
-
-    def recurrent_policy(
-        observation: Observation,
-        done: jax.Array,
-        sample_key: PRNGKey,
-        recurrent_state: RecurrentHiddenState,
-    ) -> tuple[Action, RecurrentHiddenState, Extra]:
-        policy_logits, next_recurrent_state = policy_apply(
-            params, observation, done, recurrent_state
-        )
-        action, extra = process_logits(policy_logits, sample_key)
-        return action, next_recurrent_state, extra
-
-    if recurrent:
-        return recurrent_policy
-    else:
-        return lambda obs, rng: process_logits(policy_apply(params, obs), rng)
-
-
-class NetworkFactory(Protocol[AgentNetworkParams]):
-    def __call__(
-        self,
-        observation_size: ObservationSize,
-        action_size: int,
-        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
-    ) -> AgentModel[AgentNetworkParams]:
-        pass
-
-
-WrappedFunOutput = TypeVar("WrappedFunOutput")
-
-
-def recurry(fun: Callable[..., WrappedFunOutput]) -> Callable[..., WrappedFunOutput]:
-    return lambda *args, **kwargs: lambda first_arg: fun(first_arg, *args, **kwargs)
 
 
 def normalizer_select(
@@ -170,7 +61,9 @@ def preprocess_obs_by_key(
     }
 
 
-@recurry
+WrappedFunOutput = TypeVar("WrappedFunOutput")
+
+
 def wrap_network_input(
     fun: Callable[..., WrappedFunOutput],
     apply_to_obs_keys: Sequence[str] = ("proprioceptive",),
@@ -193,11 +86,11 @@ def wrap_network_input(
     return wrap
 
 
-@recurry
-def wrap_apply_with_preprocessor(
+def wrap_apply(
     apply_fun: Callable[..., WrappedFunOutput],
     preprocess_observation_fn: PreprocessObservationFn = identity_observation_preprocessor,
     preprocess_obs_keys: Collection[str] = (),
+    squeeze_output: bool = False,
 ) -> Callable[..., WrappedFunOutput]:
     def wrap(
         preprocessor_params: PreprocessorParams,
@@ -212,36 +105,21 @@ def wrap_apply_with_preprocessor(
             obs=obs,
             preprocess_obs_keys=preprocess_obs_keys,
         )
-        return apply_fun(params, obs, *args, **kwargs)
+
+        output = apply_fun(params, obs, *args, **kwargs)
+
+        if squeeze_output:
+            if not isinstance(output, tuple):
+                return jnp.squeeze(output, axis=-1)
+            else:
+                first_output, *rest = output
+                return jnp.squeeze(first_output, axis=-1), *rest
+        return output
 
     return wrap
 
 
-@recurry
-def maybe_squeeze_output(output, squeeze_output: bool = False):
-    if squeeze_output:
-        return jnp.squeeze(output, axis=-1)
-    else:
-        return output
-
-
-def pipeline(f1, f2):
-    def fun(*args, **kwargs):
-        return f2(f1(*args, **kwargs))
-
-    return fun
-
-
-def pipeline_first_output(f1, f2):
-    def fun(*args, **kwargs):
-        first, *rest = f1(*args, **kwargs)
-        return f2(first), *rest
-
-    return fun
-
-
-@recurry
-def wrap_apply_to_dummy_obs(
+def wrap_init(
     apply_fun: Callable[..., WrappedFunOutput], obs_size: ObservationSize
 ) -> Callable[..., WrappedFunOutput]:
     logging.info(f"observation size: {obs_size}")
@@ -257,14 +135,14 @@ def wrap_apply_to_dummy_obs(
     return wrap
 
 
-def wrap_apply_recurrent(
+def wrap_apply_recurrent_buffers(
     apply_fun: Callable[
         [
             Params,
             PreprocessorParams,
             Observation,
             jax.Array,
-            RecurrentHiddenState,
+            RecurrentCarry,
             jax.Array,
             jax.Array,
             PRNGKey,
@@ -318,22 +196,57 @@ def make_network(
     """
     Creates a network that selects and preprocesses the specified observations.
     """
-    wrap_input = wrap_network_input(apply_to_obs_keys, concatenate_inputs)
-
-    apply = wrap_apply_with_preprocessor(preprocess_observations_fn, preprocess_obs_keys)(
-        wrap_input(module.apply)
+    wrap_input = functools.partial(
+        wrap_network_input,
+        apply_to_obs_keys=apply_to_obs_keys,
+        concatenate_inputs=concatenate_inputs,
     )
 
-    wrap_dummy_obs = wrap_apply_to_dummy_obs(obs_size)
-    init = wrap_dummy_obs(wrap_input(module.init))
+    apply = wrap_apply(
+        wrap_input(module.apply),
+        preprocess_observation_fn=preprocess_observations_fn,
+        preprocess_obs_keys=preprocess_obs_keys,
+        squeeze_output=squeeze_output,
+    )
 
-    maybe_squeeze = maybe_squeeze_output(squeeze_output)
+    init = wrap_init(wrap_input(module.init), obs_size=obs_size)
 
     if recurrent:
-        apply = wrap_apply_recurrent(apply)
-        apply = pipeline_first_output(apply, maybe_squeeze)
+        apply_differentiable = wrap_apply_recurrent_buffers(apply)
+        apply_encode = wrap_apply(
+            wrap_input(functools.partial(module.apply, method=module.encode)),
+            preprocess_observation_fn=preprocess_observations_fn,
+            preprocess_obs_keys=preprocess_obs_keys,
+            squeeze_output=squeeze_output,
+        )
         init_carry = wrap_input(module.initialize_carry)
-        return RecurrentNetwork(init=init, apply=apply, init_carry=init_carry)
+        return RecurrentNetwork(
+            init=init,
+            init_carry=init_carry,
+            apply_differentiable=apply_differentiable,
+            apply=apply_encode,
+        )
     else:
-        apply = pipeline(apply, maybe_squeeze)
         return FeedForwardNetwork(init=init, apply=apply)
+
+
+def policy_factory(
+    policy_apply: Callable,
+    parametric_action_distribution: ParametricDistribution,
+    params: AgentParams,
+    deterministic: bool = False,
+) -> Policy:
+    def process_logits(logits: jax.Array, sample_key: PRNGKey) -> tuple[Action, Extra]:
+        if deterministic:
+            return parametric_action_distribution.mode(logits), {}
+        raw_actions = parametric_action_distribution.sample_no_postprocessing(
+            logits, sample_key
+        )
+        log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
+        postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
+        return postprocessed_actions, {
+            "log_prob": log_prob,
+            "raw_action": raw_actions,
+        }
+
+    return lambda obs, rng: process_logits(policy_apply(params, obs), rng)

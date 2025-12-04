@@ -1,6 +1,5 @@
 import functools
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Generic, Protocol, Any
 from collections.abc import Callable
 import logging
@@ -10,18 +9,15 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models.networks_utils import (
-    AgentNetworkParams,
-    AgentParams,
-    PolicyFactory,
-)
+from quadruped_mjx_rl.models import AgentParams
 from quadruped_mjx_rl.models.architectures.configs_base import AgentModel
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
 from quadruped_mjx_rl.training.configs import HyperparamsPPO, OptimizerConfig
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
-from quadruped_mjx_rl.training.acting import Evaluator
-from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
+from quadruped_mjx_rl.training.evaluator import Evaluator
+from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
+from quadruped_mjx_rl.models.types import AgentNetworkParams, PolicyFactory, PreprocessorParams
 
 
 @flax_dataclass

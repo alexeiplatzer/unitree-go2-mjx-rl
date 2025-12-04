@@ -7,7 +7,8 @@ from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticAgentParams,
 )
 from quadruped_mjx_rl.training.configs import HyperparamsPPO
-from quadruped_mjx_rl.types import Metrics, PreprocessorParams, PRNGKey, Transition
+from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
+from quadruped_mjx_rl.models.types import PreprocessorParams
 
 
 def compute_ppo_loss(

@@ -5,7 +5,8 @@ from collections.abc import Mapping
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.types import Params, PRNGKey
+from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.models.types import Params
 
 PMAP_AXIS_NAME = "i"
 

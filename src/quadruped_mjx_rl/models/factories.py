@@ -12,9 +12,7 @@ from quadruped_mjx_rl.models.architectures import (
     TeacherStudentVisionConfig,
     TeacherStudentRecurrentConfig,
 )
-from quadruped_mjx_rl.models.networks_utils import (
-    NetworkFactory,
-)
+from quadruped_mjx_rl.models.types import NetworkFactory
 
 
 def get_networks_factory(

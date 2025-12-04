@@ -6,8 +6,4 @@ from quadruped_mjx_rl.models.architectures import (
     TeacherStudentRecurrentConfig,
 )
 from quadruped_mjx_rl.models.factories import get_networks_factory, load_inference_fn
-from quadruped_mjx_rl.models.networks_utils import (
-    AgentParams,
-    FeedForwardNetwork,
-    RecurrentNetwork,
-)
+from quadruped_mjx_rl.models.types import AgentParams, FeedForwardNetwork, RecurrentNetwork

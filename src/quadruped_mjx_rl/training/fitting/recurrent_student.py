@@ -9,13 +9,10 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentNetworkParams,
     TeacherStudentAgent,
 )
-from quadruped_mjx_rl.models.networks_utils import (
-    RecurrentAgentState,
-    PolicyFactory,
-    RecurrentNetwork,
-)
+from quadruped_mjx_rl.models import RecurrentNetwork
+from quadruped_mjx_rl.models.types import PolicyFactory, RecurrentAgentState
 from quadruped_mjx_rl.training import gradients, training_utils
-from quadruped_mjx_rl.training.acting import Evaluator
+from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition, Observation
@@ -115,7 +112,7 @@ class RecurrentStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         init_carry_key: PRNGKey,
     ):
         done_anywhere = jnp.any(1 - transitions.discount, axis=-1)
-        preencoded_latents = self.network._student_encoder_network.apply(
+        preencoded_latents = self.network._student_encoder_network.apply_differentiable(
             agent_params, vision_obs, agent_state.recurrent_carry
         )
         return agent_state

@@ -11,7 +11,8 @@ from quadruped_mjx_rl.domain_randomization import (
 )
 from quadruped_mjx_rl.environments.physics_pipeline.base import PipelineModel, EnvModel
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
-from quadruped_mjx_rl.types import InitCarryFn, PRNGKey
+from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.models.types import InitCarryFn
 
 
 def wrap_for_training(

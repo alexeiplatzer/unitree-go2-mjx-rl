@@ -7,19 +7,15 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from quadruped_mjx_rl import running_statistics, types
+import quadruped_mjx_rl.training.evaluator
+from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentAgent
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models.networks_utils import (
-    AgentParams,
-    RecurrentAgentState,
-    RecurrentNetwork,
-)
+from quadruped_mjx_rl.models import acting, AgentParams, RecurrentNetwork
+from quadruped_mjx_rl.models.types import RecurrentAgentState
 from quadruped_mjx_rl.training import (
-    acting,
-    logger as metric_logger,
     training_utils as _utils,
 )
 from quadruped_mjx_rl.training.algorithms.ppo import (
@@ -260,7 +256,7 @@ def train(
         )
     )
 
-    evaluator_factory = lambda k, policy_factory: acting.Evaluator(
+    evaluator_factory = lambda k, policy_factory: quadruped_mjx_rl.training.evaluator.Evaluator(
         eval_env,
         functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
         num_eval_envs=num_eval_envs,

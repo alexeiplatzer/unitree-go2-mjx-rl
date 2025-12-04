@@ -1,7 +1,6 @@
 """Custom fitter for the teacher-student actor-critic architecture"""
 
 import functools
-from dataclasses import dataclass
 from typing import Callable
 import logging
 
@@ -10,20 +9,16 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
+import quadruped_mjx_rl.models.types
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentAgent,
-    ActorCriticAgent,
-    FeedForwardNetwork,
 )
-from quadruped_mjx_rl.models.networks_utils import (
-    AgentNetworkParams,
-    PolicyFactory,
-    RecurrentNetwork,
-)
+from quadruped_mjx_rl.models import RecurrentNetwork
+from quadruped_mjx_rl.models.types import PolicyFactory
 from quadruped_mjx_rl.training import gradients, training_utils
-from quadruped_mjx_rl.training.acting import Evaluator
+from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.fitting import optimization
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
@@ -167,7 +162,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
 
 def compute_student_loss(
     network_params: TeacherStudentNetworkParams,
-    preprocessor_params: optimization.PreprocessorParams,
+    preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
     data: Transition,
     minibatch_key: PRNGKey,
     network: TeacherStudentAgent,
@@ -193,15 +188,15 @@ def compute_student_loss(
 
 def compute_student_recurrent_loss(
     network_params: TeacherStudentNetworkParams,
-    preprocessor_params: optimization.PreprocessorParams,
+    preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
     data: Transition,
     minibatch_key: PRNGKey,
     network: TeacherStudentAgent,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes Adaptation module loss."""
 
-    encoder_apply = network._teacher_encoder_network.apply
-    adapter_apply = network._student_encoder_network.apply
+    encoder_apply = network._teacher_encoder_network.apply_differentiable
+    adapter_apply = network._student_encoder_network.apply_differentiable
     carry_init = network._student_encoder_network.init_carry
 
     # Put the time dimension first.

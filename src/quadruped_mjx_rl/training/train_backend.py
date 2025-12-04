@@ -9,10 +9,8 @@ from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
-from quadruped_mjx_rl.models.networks_utils import AgentParams
+from quadruped_mjx_rl.models import acting, AgentParams
 from quadruped_mjx_rl.training import (
-    acting,
-    logger as metric_logger,
     pmap,
     training_utils as _utils,
 )

@@ -7,6 +7,8 @@ from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     load_to_model,
+    Env,
+    State,
 )
 from quadruped_mjx_rl.environments.quadruped import (
     EnvironmentConfig,
@@ -62,3 +64,8 @@ def get_env_factory(
         env_model=env_model,
         **env_kwargs,
     )
+
+
+def is_obs_key_vision(obs_key: str) -> bool:
+    """Checks if the observation key corresponds to a vision observation."""
+    return obs_key.startswith("pixels/") or obs_key.endswith("_map")
