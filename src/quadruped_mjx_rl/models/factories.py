@@ -28,6 +28,7 @@ def load_inference_fn(
     model_config: ModelConfig,
     action_size: int,
 ):
+    # TODO: not implemented, used for visualisations of trained policies
     """Utility function to quickly get a policy function from a model config
     and the saved pre-trained params path."""
     model_class = type(model_config).get_model_class()

@@ -7,7 +7,12 @@ import numpy as np
 from quadruped_mjx_rl.environments import Env, State
 from quadruped_mjx_rl.environments.wrappers import EvalWrapper
 from quadruped_mjx_rl.models.acting import generate_unroll
-from quadruped_mjx_rl.models.types import Policy, PolicyParams, RecurrentCarry, RecurrentPolicyMaker
+from quadruped_mjx_rl.models.types import (
+    Policy,
+    PolicyParams,
+    RecurrentCarry,
+    RecurrentEncoder,
+)
 from quadruped_mjx_rl.types import Metrics, PRNGKey
 
 
@@ -27,7 +32,7 @@ class Evaluator:
         recurrent: bool = False,
         init_carry_fn: Callable[[PRNGKey], RecurrentCarry] | None = None,
         vis_steps_per_rec_step: int = 1,
-        recurrent_encoder: RecurrentPolicyMaker | None = None,
+        recurrent_encoder: RecurrentEncoder | None = None,
     ):
         """Init.
 

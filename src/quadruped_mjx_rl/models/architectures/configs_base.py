@@ -1,16 +1,11 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Generic
 
-import jax
-
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import Env, State
-from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
-from quadruped_mjx_rl.models.types import AgentNetworkParams, PolicyFactory, AgentParams
-from quadruped_mjx_rl.types import Observation, PRNGKey, Transition
+from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory
+from quadruped_mjx_rl.types import PRNGKey
 
 
 @dataclass

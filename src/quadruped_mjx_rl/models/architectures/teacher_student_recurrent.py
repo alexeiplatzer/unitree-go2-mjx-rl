@@ -17,7 +17,11 @@ from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentVisionConfig,
 )
 from quadruped_mjx_rl.models.base_modules import (
-    ActivationFn, ModuleConfigCNN, ModuleConfigLSTM, ModuleConfigMixedModeRNN, ModuleConfigMLP,
+    ActivationFn,
+    ModuleConfigCNN,
+    ModuleConfigLSTM,
+    ModuleConfigMixedModeRNN,
+    ModuleConfigMLP,
 )
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
@@ -125,13 +129,13 @@ class TeacherStudentRecurrentNetworks(
                 policy_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.policy_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             value=self.value_module.init(
                 value_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.value_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             acting_encoder=self.acting_encoder_module.init(
                 teacher_key, self.dummy_obs[self.acting_encoder_obs_key]
@@ -160,14 +164,16 @@ class TeacherStudentRecurrentNetworks(
         reinitialization_key: PRNGKey,
     ) -> tuple[jax.Array, RecurrentAgentState]:
         observation = self.preprocess_obs(params.preprocessor_params, observation)
-        encoding, recurrent_carry, recurrent_buffer, done_buffer = self.student_encoder_module.apply(
-            params.network_params.student_encoder,
-            observation[self.student_encoder_obs_key],
-            observation[self.student_proprio_obs_key],
-            done,
-            recurrent_agent_state.recurrent_carry,
-            recurrent_agent_state.recurrent_buffer,
-            recurrent_agent_state.done_buffer,
-            reinitialization_key,
+        encoding, recurrent_carry, recurrent_buffer, done_buffer = (
+            self.student_encoder_module.apply(
+                params.network_params.student_encoder,
+                observation[self.student_encoder_obs_key],
+                observation[self.student_proprio_obs_key],
+                done,
+                recurrent_agent_state.recurrent_carry,
+                recurrent_agent_state.recurrent_buffer,
+                recurrent_agent_state.done_buffer,
+                reinitialization_key,
+            )
         )
         return encoding, RecurrentAgentState(recurrent_carry, recurrent_buffer, done_buffer)

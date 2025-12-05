@@ -17,7 +17,10 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 from quadruped_mjx_rl.models.base_modules import ActivationFn
 from quadruped_mjx_rl.models.base_modules import ModuleConfigCNN, ModuleConfigMLP
 from quadruped_mjx_rl.models.types import (
-    AgentParams, identity_observation_preprocessor, Params, PreprocessObservationFn,
+    AgentParams,
+    identity_observation_preprocessor,
+    Params,
+    PreprocessObservationFn,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
@@ -72,7 +75,8 @@ class ActorCriticEnrichedAgentParams(AgentParams[ActorCriticEnrichedNetworkParam
 
 
 class ActorCriticEnrichedNetworks(
-    ActorCriticNetworks, ComponentNetworksArchitecture[ActorCriticEnrichedNetworkParams],
+    ActorCriticNetworks,
+    ComponentNetworksArchitecture[ActorCriticEnrichedNetworkParams],
 ):
     """An actor-critic architecture with an additional common encoder."""
 
@@ -112,13 +116,13 @@ class ActorCriticEnrichedNetworks(
                 policy_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.policy_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             value=self.value_module.init(
                 value_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.value_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             acting_encoder=self.acting_encoder_module.init(
                 encoder_key, self.dummy_obs[self.acting_encoder_obs_key]

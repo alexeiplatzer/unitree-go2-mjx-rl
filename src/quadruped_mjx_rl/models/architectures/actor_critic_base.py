@@ -1,33 +1,25 @@
 import functools
-from abc import abstractmethod
 from dataclasses import dataclass, field
-from collections.abc import Sequence
 
 import jax
-from jax import numpy as jnp
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
+from jax import numpy as jnp
 
-from quadruped_mjx_rl.environments import Env, State
-from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
-from quadruped_mjx_rl.models.types import (
-    AgentNetworkParams,
-    Params,
-    AgentParams,
-    PolicyFactory,
-    PreprocessObservationFn,
-    identity_observation_preprocessor,
-)
-from quadruped_mjx_rl.models.base_modules import ActivationFn
 from quadruped_mjx_rl.models import distributions, networks_utils
+from quadruped_mjx_rl.models.acting import generate_unroll
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
     ModelConfig,
     register_model_config_class,
 )
+from quadruped_mjx_rl.models.base_modules import ActivationFn
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
-from quadruped_mjx_rl.types import Observation, PRNGKey, ObservationSize, Transition
-from quadruped_mjx_rl.models.acting import generate_unroll
+from quadruped_mjx_rl.models.types import (
+    AgentParams, identity_observation_preprocessor, Params, PolicyFactory,
+    PreprocessObservationFn,
+)
+from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
 
 @dataclass
@@ -139,7 +131,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
             self.value_module.apply(
                 params.network_params.value, observation[self.value_obs_key]
             ),
-            axis=-1
+            axis=-1,
         )
 
     def get_acting_policy_factory(self) -> PolicyFactory[ActorCriticNetworkParams]:

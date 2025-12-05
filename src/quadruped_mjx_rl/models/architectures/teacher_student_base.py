@@ -9,7 +9,9 @@ from quadruped_mjx_rl.models import (
     AgentParams,
 )
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
-    ActorCriticEnrichedConfig, ActorCriticEnrichedNetworkParams, ActorCriticEnrichedNetworks,
+    ActorCriticEnrichedConfig,
+    ActorCriticEnrichedNetworkParams,
+    ActorCriticEnrichedNetworks,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
@@ -17,7 +19,9 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn, ModuleConfigCNN, ModuleConfigMLP
 from quadruped_mjx_rl.models.types import (
-    identity_observation_preprocessor, Params, PreprocessObservationFn,
+    identity_observation_preprocessor,
+    Params,
+    PreprocessObservationFn,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
@@ -40,6 +44,7 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
     @classmethod
     def get_model_class(cls) -> type["TeacherStudentNetworks"]:
         return TeacherStudentNetworks
+
 
 @dataclass
 class TeacherStudentVisionConfig(TeacherStudentConfig):
@@ -138,13 +143,13 @@ class TeacherStudentNetworks(
                 policy_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.policy_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             value=self.value_module.init(
                 value_key,
                 jnp.concatenate(
                     (self.dummy_obs[self.value_obs_key], self.dummy_latent), axis=-1
-                )
+                ),
             ),
             acting_encoder=self.acting_encoder_module.init(
                 teacher_key, self.dummy_obs[self.acting_encoder_obs_key]
