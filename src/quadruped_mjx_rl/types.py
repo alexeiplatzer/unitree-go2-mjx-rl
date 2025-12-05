@@ -13,7 +13,7 @@ from quadruped_mjx_rl.running_statistics import (
 Observation = jax.Array | Mapping[str, jax.Array]
 ObservationSize = int | Mapping[str, tuple[int, ...] | int]
 Action = jax.Array
-Metrics = Mapping[str, jax.Array]
+Metrics = Mapping[str, jax.Array] | Mapping[str, float]
 
 # Utility types
 PRNGKey = jax.Array

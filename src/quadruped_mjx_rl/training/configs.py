@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 
 @dataclass
@@ -12,16 +13,6 @@ class OptimizerConfig:
 @dataclass
 class TeacherStudentOptimizerConfig(OptimizerConfig):
     student_learning_rate: float = 0.0004
-
-
-@dataclass
-class HyperparamsPPO:
-    discounting: float = 0.97
-    entropy_cost: float = 0.01
-    clipping_epsilon: float = 0.3
-    gae_lambda: float = 0.95
-    normalize_advantage: bool = True
-    reward_scaling: int = 1
 
 
 @dataclass
@@ -65,10 +56,11 @@ register_config_base_class(TrainingConfig)
 
 @dataclass
 class TrainingWithVisionConfig(TrainingConfig):
+    proprio_steps_per_vision_step: int = 1
     use_vision: bool = True
     augment_pixels: bool = False
-    num_envs: int = 256
-    num_eval_envs: int = 256
+    num_envs: int = 256  # Most of these int args are reduced because vision is heavier
+    num_eval_envs: int = 256  # Should be the same as above as we reuse them
     num_timesteps: int = 1_000_000
     batch_size: int = 256
     num_updates_per_batch: int = 8
@@ -85,9 +77,9 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
-    recurrent_buffer_length: int = 64
     unroll_length: int = 25
-    proprio_obs_per_vision_obs: int = 5
+    proprio_steps_per_vision_step: int = 5
+    vision_steps_per_recurrent_step: int = 5
 
     @classmethod
     def config_class_key(cls) -> str:

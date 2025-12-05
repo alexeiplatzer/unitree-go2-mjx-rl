@@ -1,15 +1,18 @@
 # Todo list
 
 ## Short term
-- [X] implement a rendering parallelising wrapper
+- [ ] implement training fronted for recurrent support
+- [ ] implement correct evaluation for recurrent support
+- [ ] implement visualisation rollouts for recurrent support
 - [X] adapt training utils and wrap for training for new domain rand architectures
 - [X] add a more varied color palette to color randomization
 - [X] normalize the position and location of grid tiles in color rand envs
 - [X] figure out how to pass privileged terrain info into the environment
 - [ ] finish setting up RNN training
 - [ ] verify the RNN architecture with examples
-- [ ] figure out how to merge the FFN and RNN approach with minimal duplication
+- [X] figure out how to merge the FFN and RNN approach with minimal duplication
 - [ ] develop a simplified environment for testing the RNN setup
+- [ ] try out a very simple training procedure on chair GPUs
 
 ## Mid term
 - [ ] check how multiple GPUs can be used for vision setups

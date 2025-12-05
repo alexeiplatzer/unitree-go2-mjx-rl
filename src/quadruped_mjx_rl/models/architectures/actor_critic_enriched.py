@@ -21,6 +21,7 @@ from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     Params,
     PreprocessObservationFn,
+    PreprocessorParams,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
@@ -130,31 +131,40 @@ class ActorCriticEnrichedNetworks(
         )
 
     def apply_acting_encoder(
-        self, params: ActorCriticEnrichedAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: ActorCriticEnrichedNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         return self.acting_encoder_module.apply(
-            params.network_params.acting_encoder, observation[self.acting_encoder_obs_key]
+            network_params.acting_encoder, observation[self.acting_encoder_obs_key]
         )
 
     def apply_policy(
-        self, params: ActorCriticEnrichedAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: ActorCriticEnrichedNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         latent_encoding = self.acting_encoder_module.apply(
-            params.network_params.acting_encoder, observation[self.acting_encoder_obs_key]
+            network_params.acting_encoder, observation[self.acting_encoder_obs_key]
         )
         return self.policy_module.apply(
-            params.network_params.policy, observation[self.policy_obs_key], latent_encoding
+            network_params.policy, observation[self.policy_obs_key], latent_encoding
         )
 
     def apply_value(
-        self, params: ActorCriticEnrichedAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: ActorCriticEnrichedNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         latent_encoding = self.acting_encoder_module.apply(
-            params.network_params.acting_encoder, observation[self.acting_encoder_obs_key]
+            network_params.acting_encoder, observation[self.acting_encoder_obs_key]
         )
         return self.policy_module.apply(
-            params.network_params.value, observation[self.value_obs_key], latent_encoding
+            network_params.value, observation[self.value_obs_key], latent_encoding
         )

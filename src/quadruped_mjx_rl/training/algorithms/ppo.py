@@ -1,14 +1,34 @@
+from dataclasses import dataclass
+
 import jax
 import jax.numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticNetworkParams,
-    ActorCriticAgent,
     ActorCriticAgentParams,
+    ActorCriticNetworks,
 )
-from quadruped_mjx_rl.training.configs import HyperparamsPPO
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 from quadruped_mjx_rl.models.types import PreprocessorParams
+
+
+@dataclass
+class HyperparamsPPO:
+    """Hyperparameters for Proximal Policy Optimization. Nicely packed into a dataclass.
+    - entropy_cost: entropy cost.
+    - discounting: discounting,
+    - reward_scaling: reward multiplier.
+    - gae_lambda: General advantage estimation lambda.
+    - clipping_epsilon: Policy loss clipping epsilon
+    - normalize_advantage: whether to normalize advantage estimate
+    """
+
+    discounting: float = 0.97
+    entropy_cost: float = 0.01
+    clipping_epsilon: float = 0.3
+    gae_lambda: float = 0.95
+    normalize_advantage: bool = True
+    reward_scaling: int = 1
 
 
 def compute_ppo_loss(
@@ -16,46 +36,41 @@ def compute_ppo_loss(
     preprocessor_params: PreprocessorParams,
     data: Transition,
     rng: PRNGKey,
-    network: ActorCriticAgent,
+    network: ActorCriticNetworks,
     hyperparams: HyperparamsPPO,
 ) -> tuple[jnp.ndarray, Metrics]:
     """Computes PPO loss.
 
     Args:
-      params: Network parameters,
+      network_params: Network parameters,
       preprocessor_params: Parameters of the normalizer.
       data: Transition that with leading dimension [B, T]. Extra fields required
         are ['state_extras']['truncation'] ['policy_extras']['raw_action']
         ['policy_extras']['log_prob']
       rng: Random key
-      ppo_network: PPO networks.
-      entropy_cost: entropy cost.
-      discounting: discounting,
-      reward_scaling: reward multiplier.
-      gae_lambda: General advantage estimation lambda.
-      clipping_epsilon: Policy loss clipping epsilon
-      normalize_advantage: whether to normalize advantage estimate
+      network: PPO networks.
+      hyperparams: Hyperparameters.
 
     Returns:
       A tuple (loss, metrics)
     """
-    agent_params = ActorCriticAgentParams(
-        network_params=network_params, preprocessor_params=preprocessor_params
-    )
+    # The gradient update relies on the first loss function argument being the network params,
+    # so we pass the network params and preprocessor params as separate arguments,
+    # but we still define the networks to operate on their combination for simplicity
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    policy_logits = network.apply_rollout_policy(agent_params, data.observation)
+    policy_logits = network.apply_policy(preprocessor_params, network_params, data.observation)
 
-    baseline = network.apply_rollout_value(agent_params, data.observation)
+    baseline = network.apply_value(preprocessor_params, network_params, data.observation)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    bootstrap_value = network.apply_rollout_value(agent_params, terminal_obs)
+    bootstrap_value = network.apply_value(preprocessor_params, network_params, terminal_obs)
 
     rewards = data.reward * hyperparams.reward_scaling
     truncation = data.extras["state_extras"]["truncation"]
     termination = (1 - data.discount) * (1 - truncation)
 
-    target_action_log_probs = network._parametric_action_distribution.log_prob(
+    target_action_log_probs = network.parametric_action_distribution.log_prob(
         policy_logits, data.extras["policy_extras"]["raw_action"]
     )
     behaviour_action_log_probs = data.extras["policy_extras"]["log_prob"]
@@ -86,7 +101,7 @@ def compute_ppo_loss(
     v_loss = jnp.mean(v_error * v_error) * 0.5 * 0.5
 
     # Entropy reward
-    entropy = jnp.mean(network._parametric_action_distribution.entropy(policy_logits, rng))
+    entropy = jnp.mean(network.parametric_action_distribution.entropy(policy_logits, rng))
     entropy_loss = hyperparams.entropy_cost * -entropy
 
     total_loss = policy_loss + v_loss + entropy_loss

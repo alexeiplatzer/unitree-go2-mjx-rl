@@ -13,6 +13,7 @@ from quadruped_mjx_rl.models.types import (
     Policy,
     PreprocessObservationFn,
     PreprocessorParams,
+    AgentNetworkParams,
 )
 from quadruped_mjx_rl.types import (
     Action,
@@ -62,7 +63,7 @@ def make_dummy_obs(obs_size: ObservationSize) -> Observation:
 
 
 def policy_factory(
-    policy_apply: Callable,
+    policy_apply: Callable[[PreprocessorParams, AgentNetworkParams, Observation], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
@@ -80,4 +81,6 @@ def policy_factory(
             "raw_action": raw_actions,
         }
 
-    return lambda obs, rng: process_logits(policy_apply(params, obs), rng)
+    return lambda obs, rng: process_logits(
+        policy_apply(params.preprocessor_params, params.network_params, obs), rng
+    )

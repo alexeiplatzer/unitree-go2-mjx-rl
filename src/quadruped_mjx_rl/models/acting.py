@@ -2,18 +2,34 @@
 
 import functools
 from collections.abc import Callable, Sequence
+from typing import Protocol, Any
 
 import jax
 
 from quadruped_mjx_rl.environments.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.models.types import (
-    Policy, PolicyWithLatents, RecurrentCarry, RecurrentEncoder,
+    Policy,
+    PolicyWithLatents,
+    RecurrentCarry,
+    RecurrentEncoder,
 )
 from quadruped_mjx_rl.types import (
     PRNGKey,
     Transition,
 )
+
+
+class GenerateUnrollFn(Protocol):
+    def __call__(
+        self,
+        env_state: State,
+        key: PRNGKey,
+        env: Env,
+        unroll_length: int,
+        extra_keys: Sequence[str] = (),
+    ) -> tuple[State, Transition]:
+        pass
 
 
 def wrap_roll(fun: Callable[..., tuple]) -> Callable[..., tuple]:

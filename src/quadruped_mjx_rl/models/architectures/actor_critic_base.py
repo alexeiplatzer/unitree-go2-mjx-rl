@@ -1,4 +1,5 @@
 import functools
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import jax
@@ -7,7 +8,6 @@ from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.models import distributions, networks_utils
-from quadruped_mjx_rl.models.acting import generate_unroll
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
     ModelConfig,
@@ -16,8 +16,13 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 from quadruped_mjx_rl.models.base_modules import ActivationFn
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.models.types import (
-    AgentParams, identity_observation_preprocessor, Params, PolicyFactory,
+    AgentParams,
+    identity_observation_preprocessor,
+    Params,
+    PolicyFactory,
     PreprocessObservationFn,
+    PreprocessorParams,
+    AgentNetworkParams,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
@@ -116,34 +121,43 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         )
 
     def apply_policy(
-        self, params: ActorCriticAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: ActorCriticNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
-        return self.policy_module.apply(
-            params.network_params.policy, observation[self.policy_obs_key]
-        )
+        observation = self.preprocess_obs(preprocessor_params, observation)
+        return self.policy_module.apply(network_params.policy, observation[self.policy_obs_key])
 
     def apply_value(
-        self, params: ActorCriticAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: ActorCriticNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         return jnp.squeeze(
-            self.value_module.apply(
-                params.network_params.value, observation[self.value_obs_key]
-            ),
+            self.value_module.apply(network_params.value, observation[self.value_obs_key]),
             axis=-1,
         )
 
-    def get_acting_policy_factory(self) -> PolicyFactory[ActorCriticNetworkParams]:
-
+    def policy_metafactory(
+        self,
+        policy_apply_fn: Callable[
+            [PreprocessorParams, AgentNetworkParams, Observation], jax.Array
+        ],
+    ) -> PolicyFactory[AgentNetworkParams]:
         def make_policy(
             params: AgentParams[ActorCriticNetworkParams], deterministic: bool = False
         ):
             return networks_utils.policy_factory(
-                policy_apply=self.apply_policy,
+                policy_apply=policy_apply_fn,
                 parametric_action_distribution=self.parametric_action_distribution,
                 params=params,
                 deterministic=deterministic,
             )
 
         return make_policy
+
+    def get_acting_policy_factory(self) -> PolicyFactory[AgentNetworkParams]:
+        return self.policy_metafactory(self.apply_policy)

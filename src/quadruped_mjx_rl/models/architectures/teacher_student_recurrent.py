@@ -4,6 +4,7 @@ import jax
 from flax import linen
 from jax import numpy as jnp
 
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedNetworks,
 )
@@ -26,6 +27,7 @@ from quadruped_mjx_rl.models.base_modules import (
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     PreprocessObservationFn,
+    PreprocessorParams,
 )
 from quadruped_mjx_rl.models.types import RecurrentAgentState
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
@@ -157,16 +159,17 @@ class TeacherStudentRecurrentNetworks(
 
     def apply_student_encoder(
         self,
-        params: TeacherStudentAgentParams,
+        preprocessor_params: PreprocessorParams,
+        network_params: TeacherStudentNetworkParams,
         observation: Observation,
         done: jax.Array,
         recurrent_agent_state: RecurrentAgentState,
         reinitialization_key: PRNGKey,
     ) -> tuple[jax.Array, RecurrentAgentState]:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         encoding, recurrent_carry, recurrent_buffer, done_buffer = (
             self.student_encoder_module.apply(
-                params.network_params.student_encoder,
+                network_params.student_encoder,
                 observation[self.student_encoder_obs_key],
                 observation[self.student_proprio_obs_key],
                 done,
@@ -177,3 +180,10 @@ class TeacherStudentRecurrentNetworks(
             )
         )
         return encoding, RecurrentAgentState(recurrent_carry, recurrent_buffer, done_buffer)
+
+    def recurrent_unroll_factory(
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: TeacherStudentNetworkParams,
+    ) -> GenerateUnrollFn:
+        pass  # TODO

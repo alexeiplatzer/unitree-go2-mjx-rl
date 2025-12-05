@@ -1,7 +1,7 @@
 """Custom fitter for the teacher-student actor-critic architecture"""
 
 import functools
-from typing import Callable
+from typing import Any, Callable
 import logging
 
 import jax
@@ -9,42 +9,47 @@ import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-import quadruped_mjx_rl.models.types
+import quadruped_mjx_rl.training.algorithms.ppo
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
-    TeacherStudentAgent,
+    TeacherStudentNetworks,
 )
-from quadruped_mjx_rl.models import RecurrentNetwork
 from quadruped_mjx_rl.models.types import PolicyFactory
+from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.evaluator import Evaluator
-from quadruped_mjx_rl.training.fitting import optimization
-from quadruped_mjx_rl.training.fitting.optimization import EvalFn, SimpleFitter
+from quadruped_mjx_rl.training.fitting.optimization import (
+    LossFn,
+    Fitter,
+    EvalFn,
+    SimpleFitter,
+    OptimizerState,
+    make_optimizer,
+)
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
+from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 
 @flax_dataclass
-class TeacherStudentOptimizerState(optimization.OptimizerState):
+class TeacherStudentOptimizerState(OptimizerState):
     student_optimizer_state: optax.OptState
 
 
-class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
+class TeacherStudentFitter(Fitter[TeacherStudentNetworkParams]):
     def __init__(
         self,
         optimizer_config: TeacherStudentOptimizerConfig,
-        network: TeacherStudentAgent,
-        main_loss_fn: optimization.LossFn[TeacherStudentNetworkParams],
-        algorithm_hyperparams: optimization.HyperparamsPPO,
+        network: TeacherStudentNetworks,
+        main_loss_fn: LossFn[TeacherStudentNetworkParams],
+        algorithm_hyperparams: HyperparamsPPO,
     ):
         self._network = network
-        if isinstance(network._student_encoder_network, RecurrentNetwork):
-            self.recurrent = True
-        self.teacher_optimizer = optimization.make_optimizer(
+        self.teacher_optimizer = make_optimizer(
             optimizer_config.learning_rate, optimizer_config.max_grad_norm
         )
-        self.student_optimizer = optimization.make_optimizer(
+        self.student_optimizer = make_optimizer(
             optimizer_config.student_learning_rate, optimizer_config.max_grad_norm
         )
         teacher_loss_fn = functools.partial(
@@ -52,10 +57,7 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
             network=network,
             hyperparams=algorithm_hyperparams,
         )
-        if self.recurrent:
-            student_loss_fn = functools.partial(compute_student_recurrent_loss, network=network)
-        else:
-            student_loss_fn = functools.partial(compute_student_loss, network=network)
+        student_loss_fn = functools.partial(compute_student_loss, network=network)
         self.teacher_gradient_update_fn = gradients.gradient_update_fn(
             loss_fn=teacher_loss_fn,
             optimizer=self.teacher_optimizer,
@@ -70,10 +72,12 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         )
 
     @property
-    def network(self):
+    def network(self) -> TeacherStudentNetworks:
         return self._network
 
-    def optimizer_init(self, network_params):
+    def optimizer_init(
+        self, network_params: TeacherStudentNetworkParams
+    ) -> TeacherStudentOptimizerState:
         return TeacherStudentOptimizerState(
             optimizer_state=self.teacher_optimizer.init(network_params),
             student_optimizer_state=self.student_optimizer.init(network_params),
@@ -82,11 +86,13 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
     def minibatch_step(
         self,
         carry: tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey],
-        data,
-        normalizer_params,
-    ):
+        data: Transition,
+        normalizer_params: RunningStatisticsState,
+    ) -> tuple[
+        tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey], dict[str, Any]
+    ]:
         optimizer_state, network_params, key = carry
-        key, teacher_key, student_key = jax.random.split(key, 3)
+        key, teacher_key = jax.random.split(key, 2)
         ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
             self.teacher_gradient_update_fn(
                 network_params,
@@ -101,7 +107,6 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
                 network_params,
                 normalizer_params,
                 data,
-                student_key,
                 optimizer_state=optimizer_state.student_optimizer_state,
             )
         )
@@ -119,7 +124,8 @@ class TeacherStudentFitter(optimization.Fitter[TeacherStudentNetworkParams]):
         progress_fn_factory: Callable[..., Callable[[int, Metrics], None]],
         deterministic_eval: bool = True,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
-        teacher_policy_factory, student_policy_factory = self.network.policy_metafactory()
+        teacher_policy_factory = self.network.get_acting_policy_factory()
+        student_policy_factory = self.network.get_student_policy_factory()
         teacher_eval_key, student_eval_key = jax.random.split(rng, 2)
         teacher_progress_fn = functools.partial(
             progress_fn_factory, title="Teacher policy evaluation results"
@@ -164,61 +170,17 @@ def compute_student_loss(
     network_params: TeacherStudentNetworkParams,
     preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
     data: Transition,
-    minibatch_key: PRNGKey,
-    network: TeacherStudentAgent,
-) -> tuple[jnp.ndarray, Metrics]:
+    network: TeacherStudentNetworks,
+) -> tuple[jax.Array, Metrics]:
     """Computes Adaptation module loss."""
-
-    encoder_apply = network._teacher_encoder_network.apply
-    adapter_apply = network._student_encoder_network.apply
 
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-    teacher_latent_vector = encoder_apply(
-        preprocessor_params, network_params.teacher_encoder, data.observation
+    teacher_latent_vector = network.apply_acting_encoder(
+        preprocessor_params, network_params.acting_encoder, data.observation
     )
-    student_latent_vector = adapter_apply(
+    student_latent_vector = network.apply_student_encoder(
         preprocessor_params, network_params.student_encoder, data.observation
-    )
-    teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
-    total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
-
-    return total_loss, {"student_total_loss": total_loss}
-
-
-def compute_student_recurrent_loss(
-    network_params: TeacherStudentNetworkParams,
-    preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
-    data: Transition,
-    minibatch_key: PRNGKey,
-    network: TeacherStudentAgent,
-) -> tuple[jnp.ndarray, Metrics]:
-    """Computes Adaptation module loss."""
-
-    encoder_apply = network._teacher_encoder_network.apply_differentiable
-    adapter_apply = network._student_encoder_network.apply_differentiable
-    carry_init = network._student_encoder_network.init_carry
-
-    # Put the time dimension first.
-    data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-
-    done = 1 - data.discount
-
-    initial_carry = carry_init(jax.random.split(minibatch_key, done.shape[1]))
-
-    teacher_latent_vector = encoder_apply(
-        preprocessor_params, network_params.teacher_encoder, data.observation
-    )
-
-    def student_recurrent_step(carry, transition):
-        carry = jnp.where(done, initial_carry, carry)
-        student_encoding = adapter_apply(
-            preprocessor_params, network_params.student_encoder, transition.observation, carry
-        )
-        return carry, student_encoding
-
-    final_carry, student_latent_vector = jax.lax.scan(
-        student_recurrent_step, initial_carry, data
     )
     teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()

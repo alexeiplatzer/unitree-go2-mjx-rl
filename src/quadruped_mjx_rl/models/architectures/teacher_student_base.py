@@ -5,9 +5,7 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models import (
-    AgentParams,
-)
+from quadruped_mjx_rl.models import networks_utils
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedConfig,
     ActorCriticEnrichedNetworkParams,
@@ -21,7 +19,10 @@ from quadruped_mjx_rl.models.base_modules import ActivationFn, ModuleConfigCNN, 
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     Params,
+    AgentParams,
+    PolicyFactory,
     PreprocessObservationFn,
+    PreprocessorParams,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
@@ -160,9 +161,29 @@ class TeacherStudentNetworks(
         )
 
     def apply_student_encoder(
-        self, params: TeacherStudentAgentParams, observation: Observation
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: TeacherStudentNetworkParams,
+        observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(params.preprocessor_params, observation)
+        observation = self.preprocess_obs(preprocessor_params, observation)
         return self.student_encoder_module.apply(
-            params.network_params.student_encoder, observation[self.student_encoder_obs_key]
+            network_params.student_encoder, observation[self.student_encoder_obs_key]
         )
+
+    def apply_student_policy(
+        self,
+        preprocessor_params: PreprocessorParams,
+        network_params: TeacherStudentNetworkParams,
+        observation: Observation,
+    ) -> jax.Array:
+        observation = self.preprocess_obs(preprocessor_params, observation)
+        latent_encoding = self.student_encoder_module.apply(
+            network_params.student_encoder, observation[self.student_encoder_obs_key]
+        )
+        return self.policy_module.apply(
+            network_params.policy, observation[self.policy_obs_key], latent_encoding
+        )
+
+    def get_student_policy_factory(self) -> PolicyFactory:
+        return self.policy_metafactory(self.apply_student_policy)
