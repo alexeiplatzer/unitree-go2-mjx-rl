@@ -157,6 +157,10 @@ class TeacherStudentRecurrentNetworks(
     def init_student_carry(self, init_carry_key: PRNGKey) -> jax.Array:
         return self.student_encoder_module.initialize_carry(init_carry_key)
 
+    def init_agent_state(self, shape: tuple[int, ...], key: PRNGKey) -> RecurrentAgentState:
+        # TODO implement: shape is leading shape
+        pass
+
     def apply_student_encoder(
         self,
         preprocessor_params: PreprocessorParams,

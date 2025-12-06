@@ -53,10 +53,11 @@ def train(
     local_key: PRNGKey,
     key_envs: PRNGKey,
     env_state: State,
-    recurrent_agent_state: RecurrentAgentState,
+    recurrent_agent_state: RecurrentAgentState | None,
+    recurrent: bool,
 ):
     # Unpack hyperparams
-    recurrent = True  # TODO: add to args/configs
+    log_training_metrics = False  # TODO: add to args/configs
     num_envs = training_config.num_envs
     num_evals = training_config.num_evals
     num_timesteps = training_config.num_timesteps
@@ -175,6 +176,14 @@ def train(
             ),
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
+
+        if log_training_metrics:  # log unroll metrics
+            jax.debug.callback(
+                metrics_aggregator.update_episode_metrics,
+                data.extras['state_extras']['episode_metrics'],
+                data.extras['state_extras']['episode_done'],
+            )
+
         return (new_training_state, state, new_key, new_agent_state), metrics
 
     def training_epoch(

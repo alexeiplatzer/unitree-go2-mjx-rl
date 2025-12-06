@@ -11,8 +11,9 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.environments import PipelineEnv
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
-from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
+# from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
+# TODO this all probably outdated, see todos
 
 @dataclass
 class RenderConfig(Configuration):
@@ -67,8 +68,9 @@ def render_policy_rollout(
         episode_length=render_config.episode_length,
         action_repeat=1,
     )
-    if vision:
-        demo_env = MadronaWrapper(demo_env, num_worlds=1)
+    # TODO update
+    # if vision:
+    #     demo_env = MadronaWrapper(demo_env, num_worlds=1)
 
     render_fn = functools.partial(
         render_rollout,

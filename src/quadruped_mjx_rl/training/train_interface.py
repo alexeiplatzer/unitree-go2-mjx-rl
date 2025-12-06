@@ -7,27 +7,31 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-import quadruped_mjx_rl.training.evaluator
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.models.architectures import ModelConfig, TeacherStudentAgent
 from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.models import acting, AgentParams, RecurrentNetwork
-from quadruped_mjx_rl.models.types import RecurrentAgentState
+from quadruped_mjx_rl.models.architectures import (
+    ActorCriticConfig, ActorCriticNetworkParams, ActorCriticNetworks,
+    TeacherStudentRecurrentNetworks,
+)
+from quadruped_mjx_rl.models.types import (
+    RecurrentAgentState, ComponentNetworksArchitecture, AgentParams
+)
 from quadruped_mjx_rl.training import (
     training_utils as _utils,
 )
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
 )
-from quadruped_mjx_rl.training.configs import TrainingConfig
+from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithRecurrentStudentConfig
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
-from quadruped_mjx_rl.training.fitting import get_fitter
-from quadruped_mjx_rl.training.train_backend import train as backed_train, TrainingState
+from quadruped_mjx_rl.training.fitting import get_fitter, Fitter
+from quadruped_mjx_rl.training.fitting.optimization import LossFn
 from quadruped_mjx_rl.training.train_backend_recurrent import (
-    train as recurrent_train,
+    train as recurrent_train, TrainingState
 )
+from quadruped_mjx_rl.training.evaluator import Evaluator
 
 
 def validate_args_for_vision(
@@ -58,7 +62,7 @@ def validate_args_for_vision(
 
 def train(
     training_config: TrainingConfig,
-    model_config: ModelConfig,
+    model_config: ActorCriticConfig,
     training_env: Env,
     evaluation_env: Env | None = None,
     max_devices_per_host: int | None = None,
@@ -77,7 +81,7 @@ def train(
     num_eval_envs = training_config.num_eval_envs
     num_evals = training_config.num_evals
     num_timesteps = training_config.num_timesteps
-    num_updates_per_batch = training_config.num_updates_per_batch
+    # num_updates_per_batch = training_config.num_updates_per_batch
     num_minibatches = training_config.num_minibatches
     batch_size = training_config.batch_size
     unroll_length = training_config.unroll_length
@@ -135,7 +139,7 @@ def train(
     global_key, local_key = jax.random.split(key)
     del key
     local_key = jax.random.fold_in(local_key, process_id)
-    local_key, key_env, eval_key = jax.random.split(local_key, 3)
+    local_key, key_env, wrapping_key, eval_key, agent_key = jax.random.split(local_key, 5)
 
     if num_envs % device_count != 0:
         raise ValueError(
@@ -151,7 +155,7 @@ def train(
             episode_length=training_config.episode_length,
             action_repeat=action_repeat,
             randomization_fn=randomization_fn,
-            rng_key=key_env,
+            rng_key=wrapping_key,
             vision=training_config.use_vision,
         )
         if wrap_env
@@ -159,14 +163,19 @@ def train(
     )
 
     reset_fn = jax.jit(jax.vmap(env.reset))
+    # TODO deal with the reusage of these key envs in backend
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
-    key_envs, key_agent_states = jax.random.split(key_envs)
+    # key_envs, key_agent_states = jax.random.split(key_envs)
     env_state = reset_fn(key_envs)
+
+    num_device_envs = num_envs // process_count // local_devices_to_use
+    state_shape = (local_devices_to_use, num_device_envs)
 
     # Shapes of different observation tensors
     # Discard the batch axes over devices and envs.
     obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], env_state.obs)
+    # TODO: the recurrent network expects currently rarer vision obs
 
     preprocess_fn = (
         running_statistics.normalize
@@ -190,25 +199,12 @@ def train(
         algorithm_hyperparams=training_config.rl_hyperparams,
     )
 
-    if isinstance(ppo_networks, TeacherStudentAgent) and isinstance(
-        ppo_networks._student_encoder_network, RecurrentNetwork
-    ):
-        init_carries = ppo_networks._student_encoder_network.init_carry(key_agent_states)
-        recurrent_buffer_length = 64
-        latents_size = 16
-        recurrent_buffer = jnp.zeros(
-            (
-                local_devices_to_use,
-                num_envs // process_count,
-                latents_size,
-                recurrent_buffer_length,
-            )
-        )
-        episode_terminations = jnp.ones(env_state.done.shape + (recurrent_buffer_length,))
-        agent_state = RecurrentAgentState(init_carries, recurrent_buffer, episode_terminations)
-        train_fn = functools.partial(recurrent_train, agent_state=agent_state)
-    else:
-        train_fn = backed_train
+    agent_state = None
+    recurrent = isinstance(training_config, TrainingWithRecurrentStudentConfig)
+
+    if recurrent:
+        assert isinstance(ppo_networks, TeacherStudentRecurrentNetworks)
+        agent_state = ppo_networks.init_agent_state(shape=state_shape, key=agent_key)
 
     # Initialize model params and training state.
     network_init_params = ppo_networks.initialize(global_key)
@@ -256,7 +252,8 @@ def train(
         )
     )
 
-    evaluator_factory = lambda k, policy_factory: quadruped_mjx_rl.training.evaluator.Evaluator(
+    # TODO: we need correct evaluators
+    evaluator_factory = lambda k, policy_factory: Evaluator(
         eval_env,
         functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
         num_eval_envs=num_eval_envs,
@@ -278,11 +275,10 @@ def train(
 
     logging.info("Setup took %s", time.time() - xt)
 
-    final_params = train_fn(
+    final_params = recurrent_train(
         training_config=training_config,
         env=env,
         fitter=fitter,
-        acting_policy_factory=ppo_networks.policy_metafactory()[0],
         policy_params_fn=policy_params_fn,
         run_evaluations=run_evaluations,
         env_step_per_training_step=env_step_per_training_step,
@@ -295,6 +291,10 @@ def train(
         local_key=local_key,
         key_envs=key_envs,
         env_state=env_state,
+        metrics_aggregator=None,  # TODO implmenent
+        recurrent_agent_state=agent_state,
+        recurrent=recurrent,
+        generate_unroll_factory=None,  #TODO implement
     )
 
     logging.info("Time to jit: %s", eval_times[1] - eval_times[0])

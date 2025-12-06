@@ -1,6 +1,6 @@
 import functools
 from abc import ABC, abstractmethod
-from typing import Generic, Protocol, Any
+from typing import Generic, Protocol, Any, TypeVar
 from collections.abc import Callable
 import logging
 
@@ -38,14 +38,17 @@ def make_optimizer(learning_rate: float, max_grad_norm: float | None = None):
     )
 
 
-class LossFn(Protocol[AgentNetworkParams]):
+NetworkArchitecture = TypeVar("NetworkArchitecture", bound=ComponentNetworksArchitecture)
+
+
+class LossFn(Protocol[AgentNetworkParams, NetworkArchitecture]):
     def __call__(
         self,
         network_params: AgentNetworkParams,
         preprocessor_params: PreprocessorParams,
         data: Transition,
         rng: PRNGKey,
-        network: ComponentNetworksArchitecture[AgentNetworkParams],
+        network: NetworkArchitecture,
         hyperparams: HyperparamsPPO,
     ) -> tuple[jax.Array, Metrics]:
         pass
@@ -62,6 +65,16 @@ class EvalFn(Protocol[AgentNetworkParams]):
 
 
 class Fitter(ABC, Generic[AgentNetworkParams]):
+    @abstractmethod
+    def __init__(
+        self,
+        optimizer_config: OptimizerConfig,
+        network: ComponentNetworksArchitecture[AgentNetworkParams],
+        main_loss_fn: LossFn[AgentNetworkParams],
+        algorithm_hyperparams: HyperparamsPPO,
+    ):
+        pass
+
     @abstractmethod
     @property
     def network(self) -> ComponentNetworksArchitecture[AgentNetworkParams]:
