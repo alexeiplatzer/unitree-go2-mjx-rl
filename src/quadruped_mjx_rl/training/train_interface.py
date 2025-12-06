@@ -253,9 +253,9 @@ def train(
     )
 
     # TODO: we need correct evaluators
-    evaluator_factory = lambda k, policy_factory: Evaluator(
-        eval_env,
-        functools.partial(policy_factory, deterministic=training_config.deterministic_eval),
+    evaluator_factory = lambda k, unroll_factory: Evaluator(
+        eval_env=eval_env,
+        unroll_factory=unroll_factory,
         num_eval_envs=num_eval_envs,
         episode_length=training_config.episode_length,
         action_repeat=action_repeat,
@@ -271,6 +271,7 @@ def train(
         evaluator_factory=evaluator_factory,
         progress_fn_factory=progress_fn_factory,
         deterministic_eval=training_config.deterministic_eval,
+        vision=training_config.use_vision,
     )
 
     logging.info("Setup took %s", time.time() - xt)
