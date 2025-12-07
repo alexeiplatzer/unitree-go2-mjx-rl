@@ -1,10 +1,13 @@
+import functools
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import jax
 from flax import linen
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn
+from quadruped_mjx_rl.environments import Env, State
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn, recurrent_actor_step
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedNetworks,
 )
@@ -27,10 +30,11 @@ from quadruped_mjx_rl.models.base_modules import (
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     PreprocessObservationFn,
-    PreprocessorParams,
+    PreprocessorParams, RecurrentCarry,
 )
 from quadruped_mjx_rl.models.types import RecurrentAgentState
-from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
+from quadruped_mjx_rl.models.networks_utils import policy_with_latents_factory
+from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transition
 
 
 @dataclass
@@ -185,9 +189,68 @@ class TeacherStudentRecurrentNetworks(
         )
         return encoding, RecurrentAgentState(recurrent_carry, recurrent_buffer, done_buffer)
 
-    def recurrent_unroll_factory(
+    def apply_student_acting_encoder(
         self,
         preprocessor_params: PreprocessorParams,
         network_params: TeacherStudentNetworkParams,
+        observation: Observation,
+        done: jax.Array,
+        recurrent_carry: RecurrentCarry,
+        reinitialization_key: PRNGKey,
+    ) -> tuple[jax.Array, RecurrentAgentState]:
+        observation = self.preprocess_obs(preprocessor_params, observation)
+        encoding, recurrent_carry = (
+            self.student_encoder_module.apply(
+                network_params.student_encoder,
+                observation[self.student_encoder_obs_key],
+                observation[self.student_proprio_obs_key],
+                done,
+                recurrent_carry,
+                reinitialization_key,
+                method="encode",
+            )
+        )
+        return encoding, recurrent_carry
+
+    def recurrent_unroll_factory(
+        self,
+        params: TeacherStudentAgentParams,
+        deterministic: bool = False,
+        vision: bool = True,
+        vision_substeps: int = 1,
+        proprio_substeps: int = 1,
     ) -> GenerateUnrollFn:
-        pass  # TODO
+        policy = policy_with_latents_factory(
+            policy_apply=self.apply_policy_with_latents,
+            parametric_action_distribution=self.parametric_action_distribution,
+            params=params,
+            deterministic=deterministic,
+        )
+        if not vision:
+            vision_substeps = 0
+
+        def generate_unroll(
+            env_state: State,
+            key: PRNGKey,
+            env: Env,
+            unroll_length: int,
+            extra_fields: Sequence[str] = (),
+        ) -> tuple[State, Transition]:
+            key, init_carry_key = jax.random.split(key)
+            init_carry = self.init_student_carry(init_carry_key)
+            (env_state, _, _, _), transitions = jax.lax.scan(
+                functools.partial(
+                    recurrent_actor_step,
+                    env=env,
+                    policy=policy,
+                    extra_fields=extra_fields,
+                    vision_substeps=vision_substeps,
+                    proprio_substeps=proprio_substeps,
+                ),
+                (env_state, init_carry, self.dummy_latent, key),
+                (),
+                length=unroll_length,
+            )
+            return env_state, transitions
+
+        return generate_unroll

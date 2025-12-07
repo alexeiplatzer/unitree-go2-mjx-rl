@@ -17,7 +17,7 @@ from quadruped_mjx_rl.training import (
     training_utils as _utils,
     logger as metric_logger,
 )
-from quadruped_mjx_rl.training.configs import TrainingWithRecurrentStudentConfig
+from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithRecurrentStudentConfig
 from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState
 from quadruped_mjx_rl.types import PRNGKey
 
@@ -33,7 +33,7 @@ class TrainingState:
 
 def train(
     *,
-    training_config: TrainingWithRecurrentStudentConfig,
+    training_config: TrainingConfig,
     env: Env,
     fitter: Fitter,
     # acting_policy_factory,
@@ -57,12 +57,11 @@ def train(
     recurrent: bool,
 ):
     # Unpack hyperparams
-    log_training_metrics = False  # TODO: add to args/configs
+    log_training_metrics = training_config.log_training_metrics
     num_envs = training_config.num_envs
     num_evals = training_config.num_evals
     num_timesteps = training_config.num_timesteps
-    # TODO: buffers should not be updated multiple times
-    num_updates_per_batch = 1 if recurrent else training_config.num_updates_per_batch
+    num_updates_per_batch = training_config.num_updates_per_batch
     num_minibatches = training_config.num_minibatches
     batch_size = training_config.batch_size
     unroll_length = training_config.unroll_length
@@ -107,13 +106,11 @@ def train(
             minibatch_carry = (opt_state, network_params, agent_state_batched, key_grad)
         else:
             minibatch_carry = (opt_state, network_params, key_grad)
-        minibatch_carry, metrics = (
-            jax.lax.scan(
-                functools.partial(fitter.minibatch_step, normalizer_params=normalizer_params),
-                minibatch_carry,
-                converted_data,
-                length=num_minibatches,
-            )
+        minibatch_carry, metrics = jax.lax.scan(
+            functools.partial(fitter.minibatch_step, normalizer_params=normalizer_params),
+            minibatch_carry,
+            converted_data,
+            length=num_minibatches,
         )
         if recurrent:
             opt_state, network_params, agent_state_batched, _ = minibatch_carry
@@ -180,8 +177,8 @@ def train(
         if log_training_metrics:  # log unroll metrics
             jax.debug.callback(
                 metrics_aggregator.update_episode_metrics,
-                data.extras['state_extras']['episode_metrics'],
-                data.extras['state_extras']['episode_done'],
+                data.extras["state_extras"]["episode_metrics"],
+                data.extras["state_extras"]["episode_done"],
             )
 
         return (new_training_state, state, new_key, new_agent_state), metrics

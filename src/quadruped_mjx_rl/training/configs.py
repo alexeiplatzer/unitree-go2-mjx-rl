@@ -38,6 +38,14 @@ class TrainingConfig(Configuration):
     optimizer: OptimizerConfig = field(default_factory=OptimizerConfig)
     rl_hyperparams: HyperparamsPPO = field(default_factory=HyperparamsPPO)
 
+    def check_validity(self):
+        if self.batch_size * self.num_minibatches % self.num_envs != 0:
+            raise ValueError(
+                f"Batch size ({self.batch_size}) times number of minibatches "
+                f"({self.num_minibatches}) must be divisible by number of environments "
+                f"({self.num_envs})."
+            )
+
     @classmethod
     def config_base_class_key(cls) -> str:
         return "training"
@@ -60,7 +68,7 @@ class TrainingWithVisionConfig(TrainingConfig):
     use_vision: bool = True
     augment_pixels: bool = False
     num_envs: int = 256  # Most of these int args are reduced because vision is heavier
-    num_eval_envs: int = 256  # Should be the same as above as we reuse them
+    num_eval_envs: int = 256
     num_timesteps: int = 1_000_000
     batch_size: int = 256
     num_updates_per_batch: int = 8
@@ -71,6 +79,23 @@ class TrainingWithVisionConfig(TrainingConfig):
         )
     )
 
+    def check_validity(self):
+        super().check_validity()
+        """Validates arguments for Madrona-MJX."""
+        if self.use_vision:
+            if self.num_eval_envs != self.num_envs:
+                raise ValueError(
+                    "Number of eval envs != number of training envs. The Madrona-MJX vision "
+                    "backend requires a fixed batch size, the number of environments must be "
+                    "consistent."
+                )
+            if self.action_repeat != 1:
+                raise ValueError(
+                    "Implement action_repeat using PipelineEnv's _n_frames to avoid unnecessary"
+                    " rendering!"
+                )
+
+
     @classmethod
     def config_class_key(cls) -> str:
         return "PPO_Vision"
@@ -80,6 +105,20 @@ class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
     unroll_length: int = 25
     proprio_steps_per_vision_step: int = 5
     vision_steps_per_recurrent_step: int = 5
+    num_updates_per_batch = 1
+
+    def check_validity(self):
+        super().check_validity()
+        if self.num_updates_per_batch != 1:
+            raise ValueError(
+                "Recurrent training must have num_updates_per_batch == 1. Repeated updates on "
+                "the same batch will break the recurrent buffers."
+            )
+        if self.unroll_length % (self.vision_steps_per_recurrent_step * self.proprio_steps_per_vision_step) != 0:
+            raise ValueError(
+                "Unroll length must be divisible by the product of vision steps per recurrent "
+                "step and proprio steps per vision step."
+            )
 
     @classmethod
     def config_class_key(cls) -> str:

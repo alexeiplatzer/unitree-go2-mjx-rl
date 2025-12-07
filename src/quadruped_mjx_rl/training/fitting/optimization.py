@@ -14,10 +14,14 @@ from quadruped_mjx_rl.models.acting import GenerateUnrollFn, actor_step, vision_
 from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
-from quadruped_mjx_rl.training.configs import OptimizerConfig
+from quadruped_mjx_rl.training.configs import (
+    OptimizerConfig, TrainingConfig,
+    TrainingWithVisionConfig,
+)
 from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
+from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.environments import Env, State
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 from quadruped_mjx_rl.models.types import AgentNetworkParams, PolicyFactory, PreprocessorParams
@@ -72,7 +76,9 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         self,
         optimizer_config: OptimizerConfig,
         network: ComponentNetworksArchitecture[AgentNetworkParams],
-        main_loss_fn: LossFn[AgentNetworkParams],
+        main_loss_fn: LossFn[
+            AgentNetworkParams, ComponentNetworksArchitecture[AgentNetworkParams]
+        ],
         algorithm_hyperparams: HyperparamsPPO,
     ):
         pass
@@ -98,13 +104,10 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
     def make_evaluation_fn(
         self,
-        rng: PRNGKey,
-        evaluator_factory: Callable[
-            [PRNGKey, Callable[[AgentParams, PRNGKey], GenerateUnrollFn]], Evaluator
-        ],
-        progress_fn_factory: Callable[[], tuple[Callable[[int, Metrics], None], list[float]]],
-        deterministic_eval: bool = True,
-        vision: bool = False,
+        eval_env: Env,
+        eval_key: PRNGKey,
+        training_config: TrainingConfig,
+        run_in_cell: bool = True,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
         pass
 
@@ -114,7 +117,9 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         self,
         optimizer_config: OptimizerConfig,
         network: ComponentNetworksArchitecture[AgentNetworkParams],
-        main_loss_fn: LossFn[AgentNetworkParams],
+        main_loss_fn: LossFn[
+            AgentNetworkParams, ComponentNetworksArchitecture[AgentNetworkParams]
+        ],
         algorithm_hyperparams: HyperparamsPPO,
     ):
         self._network = network
@@ -158,50 +163,66 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         optimizer_state = OptimizerState(optimizer_state=raw_optimizer_state)
         return (optimizer_state, params, key), metrics
 
-    def make_unroll_fn(
-        self,
-        agent_params: AgentParams[AgentNetworkParams],
-        deterministic: bool = False,
-        vision: bool = False,
-    ) -> GenerateUnrollFn:
-        acting_policy_factory = self.network.get_acting_policy_factory()
-        acting_policy = acting_policy_factory(agent_params, deterministic)
-        step_fn = vision_actor_step if vision else actor_step
-
-        def generate_unroll(
-            env_state: State,
-            key: PRNGKey,
-            env: Env,
-            unroll_length: int,
-            extra_fields: Sequence[str] = (),
-        ) -> tuple[State, Transition]:
-            (env_state, _), transitions = jax.lax.scan(
-                functools.partial(
-                    step_fn, env=env, policy=acting_policy, extra_fields=extra_fields
-                ),
-                (env_state, key),
-                (),
-                length=unroll_length,
-            )
-            return env_state, transitions
-
-        return generate_unroll
-
     def make_evaluation_fn(
         self,
-        rng: PRNGKey,
-        evaluator_factory: Callable[
-            [PRNGKey, Callable[[AgentParams, PRNGKey], GenerateUnrollFn]], Evaluator
-        ],
-        progress_fn_factory: Callable[[], tuple[Callable[[int, Metrics], None], list[float]]],
-        deterministic_eval: bool = True,
-        vision: bool = False,
+        eval_env: Env,
+        eval_key: PRNGKey,
+        training_config: TrainingConfig,
+        run_in_cell: bool = True,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
-        evaluator = evaluator_factory(
-            rng, lambda _, params: self.make_unroll_fn(params, deterministic_eval, vision)
+        proprio_steps_per_vision_step = (
+            training_config.proprio_steps_per_vision_step
+            if isinstance(training_config, TrainingWithVisionConfig) else 1
         )
-        progress_fn, times = progress_fn_factory()
+        evaluator = Evaluator(
+            eval_env=eval_env,
+            key=eval_key,
+            num_eval_envs=training_config.num_eval_envs,
+            episode_length=training_config.episode_length,
+            action_repeat=training_config.action_repeat,
+            unroll_factory=lambda params: self.network.make_unroll_fn(
+                agent_params=params,
+                deterministic=training_config.deterministic_eval,
+                vision=training_config.use_vision,
+                proprio_steps_per_vision_step=proprio_steps_per_vision_step
+            )
+        )
 
+        data_key = "eval/episode_reward"
+        data_err_key = "eval/episode_reward_std"
+        progress_fn, times = make_progress_fn(
+            run_in_cell=run_in_cell,
+            num_timesteps=training_config.num_timesteps,
+            title="Evaluation results",
+            color="blue",
+            label_key="episode reward",
+            data_key=data_key,
+            data_err_key=data_err_key,
+            data_max=40,
+            data_min=-10,
+        )
+        acting_policy_eval_fn = self._evaluation_factory(
+            data_key, data_err_key, evaluator, progress_fn
+        )
+
+        def evaluation_fn(
+            current_step: int,
+            params: AgentParams[AgentNetworkParams],
+            training_metrics: Metrics,
+        ) -> None:
+            logging.info(f"current_step: {current_step}")
+            acting_policy_eval_fn(current_step, params, training_metrics)
+
+        return evaluation_fn, times
+
+    @staticmethod
+    def _evaluation_factory(
+        data_key: str,
+        data_err_key: str,
+        evaluator: Evaluator,
+        progress_fn: Callable[[int, Metrics], None],
+        name: str = "",
+    ):
         def evaluation_fn(
             current_step: int,
             params: AgentParams[AgentNetworkParams],
@@ -210,11 +231,9 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             evaluator_metrics = evaluator.run_evaluation(
                 params, training_metrics=training_metrics
             )
-            logging.info("eval/episode_reward: %s" % evaluator_metrics["eval/episode_reward"])
-            logging.info(
-                "eval/episode_reward_std: %s" % evaluator_metrics["eval/episode_reward_std"]
-            )
-            logging.info("current_step: %s" % current_step)
+            logging.info(f"{name} {data_key}: {evaluator_metrics[data_key]}")
+            logging.info(f"{name} {data_err_key}: {evaluator_metrics[data_err_key]}")
+            logging.info(f"current_step: {current_step}")
             progress_fn(current_step, evaluator_metrics)
 
-        return evaluation_fn, times
+        return evaluation_fn

@@ -1,11 +1,14 @@
 import functools
 from typing import Any, Callable
+import logging
 
 import jax
 import optax
 from jax import numpy as jnp
 
 import quadruped_mjx_rl.training.algorithms.ppo
+from quadruped_mjx_rl.environments import Env
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
@@ -14,41 +17,36 @@ from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
 from quadruped_mjx_rl.models.types import PolicyFactory, RecurrentAgentState
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import gradients, training_utils
+from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
-from quadruped_mjx_rl.training.fitting.optimization import Fitter, LossFn, make_optimizer
+from quadruped_mjx_rl.training.fitting.optimization import Fitter, LossFn, make_optimizer, SimpleFitter
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition, Observation
-from quadruped_mjx_rl.training.configs import TeacherStudentOptimizerConfig
+from quadruped_mjx_rl.training.configs import (
+    TeacherStudentOptimizerConfig, TrainingConfig,
+    TrainingWithRecurrentStudentConfig, TrainingWithVisionConfig,
+)
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerState
 
 
-class RecurrentStudentFitter(Fitter[TeacherStudentNetworkParams]):
+class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
     def __init__(
         self,
         optimizer_config: TeacherStudentOptimizerConfig,
         network: TeacherStudentRecurrentNetworks,
-        main_loss_fn: LossFn[TeacherStudentNetworkParams],
+        main_loss_fn: LossFn[TeacherStudentNetworkParams, TeacherStudentRecurrentNetworks],
         algorithm_hyperparams: quadruped_mjx_rl.training.algorithms.ppo.HyperparamsPPO,
     ):
-        self._network = network
-        self.teacher_optimizer = make_optimizer(
-            optimizer_config.learning_rate, optimizer_config.max_grad_norm
+        super().__init__(
+            optimizer_config=optimizer_config,
+            network=network,
+            main_loss_fn=main_loss_fn,
+            algorithm_hyperparams=algorithm_hyperparams,
         )
         self.student_optimizer = make_optimizer(
             optimizer_config.student_learning_rate, optimizer_config.max_grad_norm
         )
-        teacher_loss_fn = functools.partial(
-            main_loss_fn,
-            network=network,
-            hyperparams=algorithm_hyperparams,
-        )
         student_loss_fn = functools.partial(compute_student_recurrent_loss, network=network)
-        self.teacher_gradient_update_fn = gradients.gradient_update_fn(
-            loss_fn=teacher_loss_fn,
-            optimizer=self.teacher_optimizer,
-            pmap_axis_name=training_utils.PMAP_AXIS_NAME,
-            has_aux=True,
-        )
         self.student_gradient_update_fn = gradients.gradient_update_fn(
             loss_fn=student_loss_fn,
             optimizer=self.student_optimizer,
@@ -64,7 +62,7 @@ class RecurrentStudentFitter(Fitter[TeacherStudentNetworkParams]):
         self, network_params: TeacherStudentNetworkParams
     ) -> TeacherStudentOptimizerState:
         return TeacherStudentOptimizerState(
-            optimizer_state=self.teacher_optimizer.init(network_params),
+            optimizer_state=self.optimizer.init(network_params),
             student_optimizer_state=self.student_optimizer.init(network_params),
         )
 
@@ -91,7 +89,7 @@ class RecurrentStudentFitter(Fitter[TeacherStudentNetworkParams]):
         key, teacher_key, student_key = jax.random.split(key, 3)
         transitions, agent_state = data
         ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
-            self.teacher_gradient_update_fn(
+            self.gradient_update_fn(
                 network_params,
                 normalizer_params,
                 transitions,
@@ -120,13 +118,104 @@ class RecurrentStudentFitter(Fitter[TeacherStudentNetworkParams]):
 
     def make_evaluation_fn(
         self,
-        rng: PRNGKey,
-        evaluator_factory: Callable[[PRNGKey, PolicyFactory], Evaluator],
-        progress_fn_factory: Callable[..., Callable[[int, Metrics], None]],
-        deterministic_eval: bool = True,
+        eval_env: Env,
+        eval_key: PRNGKey,
+        training_config: TrainingWithRecurrentStudentConfig,
+        run_in_cell: bool = True,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
-        # TODO
-        pass
+        teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
+        proprio_steps_per_vision_step = (
+            training_config.proprio_steps_per_vision_step
+            if isinstance(training_config, TrainingWithVisionConfig) else 1
+        )
+        teacher_evaluator = Evaluator(
+            eval_env=eval_env,
+            key=teacher_eval_key,
+            num_eval_envs=training_config.num_eval_envs,
+            episode_length=training_config.episode_length,
+            action_repeat=training_config.action_repeat,
+            unroll_factory=lambda params: self.network.make_unroll_fn(
+                agent_params=params,
+                deterministic=training_config.deterministic_eval,
+                vision=training_config.use_vision,
+                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
+                policy_factory=self.network.get_acting_policy_factory(),
+            )
+        )
+        student_evaluator = Evaluator(
+            eval_env=eval_env,
+            key=student_eval_key,
+            num_eval_envs=training_config.num_eval_envs,
+            episode_length=training_config.episode_length,
+            action_repeat=training_config.action_repeat,
+            unroll_factory=lambda params: self.network.recurrent_unroll_factory(
+                params=params,
+                deterministic=training_config.deterministic_eval,
+                vision=training_config.use_vision,
+                vision_substeps=training_config.vision_steps_per_recurrent_step,
+                proprio_substeps=proprio_steps_per_vision_step,
+            )
+        )
+
+        data_key = "eval/episode_reward"
+        data_err_key = "eval/episode_reward_std"
+
+        teacher_progress_fn, times = make_progress_fn(
+            run_in_cell=run_in_cell,
+            num_timesteps=training_config.num_timesteps,
+            title="Teacher evaluation results",
+            color="blue",
+            label_key="episode reward",
+            data_key=data_key,
+            data_err_key=data_err_key,
+            data_max=40,
+            data_min=-10,
+        )
+
+        student_progress_fn, _ = make_progress_fn(
+            run_in_cell=run_in_cell,
+            num_timesteps=training_config.num_timesteps,
+            title="Student evaluation results",
+            color="green",
+            label_key="episode reward",
+            data_key=data_key,
+            data_err_key=data_err_key,
+            data_max=40,
+            data_min=-10,
+        )
+
+        convergence_key = "student_total_loss"
+        convergence_err_key = ""
+        convergence_progress_fn, _ = make_progress_fn(
+            run_in_cell=run_in_cell,
+            num_timesteps=training_config.num_timesteps,
+            title="Student encoder convergence",
+            color="red",
+            label_key="episode MSE",
+            data_key=convergence_key,
+            data_err_key=convergence_err_key,
+            data_max=100,
+            data_min=-100,  # TODO no idea what are appropriate values here, check in practice
+        )
+
+        teacher_eval_fn = self._evaluation_factory(
+            data_key, data_err_key, teacher_evaluator, teacher_progress_fn, "Teacher"
+        )
+        student_eval_fn = self._evaluation_factory(
+            data_key, data_err_key, student_evaluator, student_progress_fn, "Student"
+        )
+
+        def evaluation_fn(current_step, params, training_metrics):
+            logging.info(f"current_step: {current_step}")
+            teacher_eval_fn(current_step, params, training_metrics)
+            student_eval_fn(current_step, params, training_metrics)
+            logging.info(
+                f"student absolute loss: "
+                f"{training_metrics.get("training/student_total_loss", "not known yet")}",
+
+            )
+
+        return evaluation_fn, times
 
 
 def compute_student_recurrent_loss(

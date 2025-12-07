@@ -177,12 +177,11 @@ class TeacherStudentNetworks(
         network_params: TeacherStudentNetworkParams,
         observation: Observation,
     ) -> jax.Array:
-        observation = self.preprocess_obs(preprocessor_params, observation)
-        latent_encoding = self.student_encoder_module.apply(
-            network_params.student_encoder, observation[self.student_encoder_obs_key]
+        latent_encoding = self.apply_student_encoder(
+            preprocessor_params, network_params, observation
         )
-        return self.policy_module.apply(
-            network_params.policy, observation[self.policy_obs_key], latent_encoding
+        return self.apply_policy_with_latents(
+            preprocessor_params, network_params, observation, latent_encoding
         )
 
     def get_student_policy_factory(self) -> PolicyFactory:

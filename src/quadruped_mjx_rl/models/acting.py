@@ -75,7 +75,7 @@ def vision_actor_step(
     policy: Policy,
     extra_fields: Sequence[str] = (),
     proprio_substeps: int = 1,
-) -> tuple[tuple[State], Transition]:
+) -> tuple[State, Transition]:
     (next_state, _), transitions = jax.lax.scan(
         functools.partial(actor_step, env=env, policy=policy, extra_fields=extra_fields),
         (env_state, key),
@@ -84,7 +84,7 @@ def vision_actor_step(
     )
     vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
     next_state = next_state.replace(obs=next_state.obs | vision_obs)
-    return (next_state,), transitions
+    return next_state, transitions
 
 
 @wrap_roll

@@ -11,12 +11,17 @@ from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
 from quadruped_mjx_rl.models.factories import get_networks_factory
+from quadruped_mjx_rl.training import logger as metric_logger
 from quadruped_mjx_rl.models.architectures import (
-    ActorCriticConfig, ActorCriticNetworkParams, ActorCriticNetworks,
+    ActorCriticConfig,
+    ActorCriticNetworkParams,
+    ActorCriticNetworks,
     TeacherStudentRecurrentNetworks,
 )
 from quadruped_mjx_rl.models.types import (
-    RecurrentAgentState, ComponentNetworksArchitecture, AgentParams
+    RecurrentAgentState,
+    ComponentNetworksArchitecture,
+    AgentParams,
 )
 from quadruped_mjx_rl.training import (
     training_utils as _utils,
@@ -24,40 +29,18 @@ from quadruped_mjx_rl.training import (
 from quadruped_mjx_rl.training.algorithms.ppo import (
     compute_ppo_loss,
 )
-from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithRecurrentStudentConfig
+from quadruped_mjx_rl.training.configs import (
+    TrainingConfig,
+    TrainingWithRecurrentStudentConfig, TrainingWithVisionConfig,
+)
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.fitting import get_fitter, Fitter
 from quadruped_mjx_rl.training.fitting.optimization import LossFn
 from quadruped_mjx_rl.training.train_backend_recurrent import (
-    train as recurrent_train, TrainingState
+    train as recurrent_train,
+    TrainingState,
 )
 from quadruped_mjx_rl.training.evaluator import Evaluator
-
-
-def validate_args_for_vision(
-    vision: bool,
-    num_envs: int,
-    num_eval_envs: int,
-    action_repeat: int,
-    eval_env: Env | None = None,
-):
-    """Validates arguments for Madrona-MJX."""
-    if vision:
-        if eval_env:
-            raise ValueError(
-                "Evaluation env is not None. The Madrona-MJX vision backend doesn't support "
-                "multiple env instances, one env must be used for both training and evaluation."
-            )
-        if num_eval_envs != num_envs:
-            raise ValueError(
-                "Number of eval envs != number of training envs. The Madrona-MJX vision backend"
-                " requires a fixed batch size, the number of environments must be consistent."
-            )
-        if action_repeat != 1:
-            raise ValueError(
-                "Implement action_repeat using PipelineEnv's _n_frames to avoid"
-                " unnecessary rendering!"
-            )
 
 
 def train(
@@ -88,14 +71,12 @@ def train(
     action_repeat = training_config.action_repeat
 
     # Check arguments
-    if batch_size * num_minibatches % num_envs != 0:
+    training_config.check_validity()
+    if training_config.use_vision and evaluation_env is not None:
         raise ValueError(
-            f"Batch size ({batch_size}) times number of minibatches ({num_minibatches}) "
-            f"must be divisible by number of environments ({num_envs})."
+            "Evaluation env is not None. The Madrona-MJX vision backend doesn't support "
+            "multiple env instances, one env must be used for both training and evaluation."
         )
-    validate_args_for_vision(
-        training_config.use_vision, num_envs, num_eval_envs, action_repeat, evaluation_env
-    )
 
     xt = time.time()
 
@@ -252,26 +233,16 @@ def train(
         )
     )
 
-    # TODO: we need correct evaluators
-    evaluator_factory = lambda k, unroll_factory: Evaluator(
+    run_evaluations, eval_times = fitter.make_evaluation_fn(
         eval_env=eval_env,
-        unroll_factory=unroll_factory,
-        num_eval_envs=num_eval_envs,
-        episode_length=training_config.episode_length,
-        action_repeat=action_repeat,
-        key=k,
-    )
-    progress_fn_factory = functools.partial(
-        make_progress_fn,
-        num_timesteps=training_config.num_timesteps,
+        eval_key=eval_key,
+        training_config=training_config,
         run_in_cell=run_in_cell,
     )
-    run_evaluations, eval_times = fitter.make_evaluation_fn(
-        rng=eval_key,
-        evaluator_factory=evaluator_factory,
-        progress_fn_factory=progress_fn_factory,
-        deterministic_eval=training_config.deterministic_eval,
-        vision=training_config.use_vision,
+
+    metrics_aggregator = metric_logger.EpisodeMetricsLogger(
+        steps_between_logging=training_config.training_metrics_steps or env_step_per_training_step,
+        progress_fn=None,  # TODO: think how to pass it
     )
 
     logging.info("Setup took %s", time.time() - xt)
@@ -292,10 +263,15 @@ def train(
         local_key=local_key,
         key_envs=key_envs,
         env_state=env_state,
-        metrics_aggregator=None,  # TODO implmenent
+        metrics_aggregator=metrics_aggregator,
         recurrent_agent_state=agent_state,
         recurrent=recurrent,
-        generate_unroll_factory=None,  #TODO implement
+        generate_unroll_factory=functools.partial(
+            ppo_networks.recurrent_unroll_factory,
+            deterministic=training_config.deterministic_eval,
+            vision=training_config.use_vision,
+            proprio_steps_per_vision_step=training_config.proprio_steps_per_vision_step if isinstance(training_config, TrainingWithVisionConfig) else 1
+        ),
     )
 
     logging.info("Time to jit: %s", eval_times[1] - eval_times[0])

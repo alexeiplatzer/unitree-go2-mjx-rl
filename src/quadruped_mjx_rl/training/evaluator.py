@@ -17,7 +17,7 @@ class Evaluator:
     def __init__(
         self,
         eval_env: Env,
-        unroll_factory: Callable[[AgentParams, PRNGKey], GenerateUnrollFn],
+        unroll_factory: Callable[[AgentParams], GenerateUnrollFn],
         num_eval_envs: int,
         episode_length: int,
         action_repeat: int,
@@ -39,10 +39,10 @@ class Evaluator:
         eval_env = EvalWrapper(eval_env)
 
         def generate_eval_unroll(policy_params: AgentParams, key: PRNGKey) -> State:
-            agent_key, unroll_key, env_key = jax.random.split(key)
+            unroll_key, env_key = jax.random.split(key)
             reset_keys = jax.random.split(env_key, num_eval_envs)
             eval_first_state = eval_env.reset(reset_keys)
-            generate_unroll = unroll_factory(policy_params, agent_key)
+            generate_unroll = unroll_factory(policy_params)
             return generate_unroll(
                 env=eval_env,
                 env_state=eval_first_state,

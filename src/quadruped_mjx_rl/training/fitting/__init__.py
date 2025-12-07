@@ -1,5 +1,7 @@
 from quadruped_mjx_rl.models import (
-    ActorCriticConfig, ModelConfig, TeacherStudentConfig,
+    ActorCriticConfig,
+    ModelConfig,
+    TeacherStudentConfig,
     TeacherStudentRecurrentConfig,
 )
 from quadruped_mjx_rl.models.architectures import ActorCriticNetworkParams
@@ -16,7 +18,7 @@ from quadruped_mjx_rl.training.fitting.recurrent_student import RecurrentStudent
 def get_fitter(model_config: ModelConfig) -> type[Fitter[ActorCriticNetworkParams]]:
     if isinstance(model_config, TeacherStudentRecurrentConfig):
         return RecurrentStudentFitter
-    if isinstance(model_config, TeacherStudentConfig):
+    elif isinstance(model_config, TeacherStudentConfig):
         return TeacherStudentFitter
     elif isinstance(model_config, ActorCriticConfig):
         return SimpleFitter

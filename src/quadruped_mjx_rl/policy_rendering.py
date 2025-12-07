@@ -11,9 +11,11 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.environments import PipelineEnv
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
+
 # from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
 # TODO this all probably outdated, see todos
+
 
 @dataclass
 class RenderConfig(Configuration):
