@@ -47,14 +47,12 @@ if __name__ == "__main__":
     vision_ppo_env_config = environments.QuadrupedJoystickVisionEnvConfig()
     vision_ppo_model_config = models.TeacherStudentVisionConfig()
     vision_ppo_training_config = TrainingWithVisionConfig()
-    vision_config = robotic_vision.VisionConfig()
 
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "vision_ppo_example.yaml",
         vision_ppo_env_config,
         vision_ppo_model_config,
         vision_ppo_training_config,
-        vision_config,
     )
 
     # --- Example rendering config ---

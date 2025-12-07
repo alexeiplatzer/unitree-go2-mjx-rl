@@ -1,16 +1,13 @@
-from dataclasses import dataclass
-from typing import Any, Callable, Generic, Protocol, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 import jax
 from flax.struct import dataclass as flax_dataclass
 
-from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.types import (
     Action,
     Extra,
     Observation,
-    ObservationSize,
     PRNGKey,
 )
 
@@ -100,14 +97,4 @@ class PolicyFactory(Protocol[AgentNetworkParams]):
         params: AgentParams[AgentNetworkParams],
         deterministic: bool,
     ) -> Policy:
-        pass
-
-
-class NetworkFactory(Protocol[AgentNetworkParams]):
-    def __call__(
-        self,
-        observation_size: ObservationSize,
-        action_size: int,
-        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
-    ) -> ComponentNetworksArchitecture[AgentNetworkParams]:
         pass

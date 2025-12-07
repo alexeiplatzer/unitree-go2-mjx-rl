@@ -8,7 +8,8 @@
 - [X] figure out how to merge the FFN and RNN approach with minimal duplication
 - [X] implement training fronted for recurrent support
 - [X] implement correct evaluation for recurrent support
-- [ ] finish setting up RNN training
+- [X] finish setting up RNN training
+- [ ] update randomization functions interfacing with other subpackages
 - [ ] verify the RNN architecture with examples
 - [ ] develop a simplified environment for testing the RNN setup
 - [ ] try out a very simple training procedure on chair GPUs

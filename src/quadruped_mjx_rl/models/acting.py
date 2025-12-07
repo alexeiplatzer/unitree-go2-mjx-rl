@@ -2,7 +2,7 @@
 
 import functools
 from collections.abc import Callable, Sequence
-from typing import Protocol, Any
+from typing import Protocol
 
 import jax
 

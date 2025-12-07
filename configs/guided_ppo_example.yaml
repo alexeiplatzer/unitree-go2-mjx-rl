@@ -11,12 +11,17 @@ environment:
   control:
     action_scale: 0.3
   domain_rand:
+    apply_kicks: true
     kick_interval: 10
     kick_vel: 0.05
   environment_class: TeacherStudent
   observation_noise:
+    clip: 100.0
     general_noise: 0.05
+    history_length: 15
   rewards:
+    reward_clip_max: 10000.0
+    reward_clip_min: -100.0
     scales:
       action_rate: -0.01
       ang_vel_xy: -0.05
@@ -37,22 +42,57 @@ environment:
       Kd: 0.5
       Kp: 35.0
     sim_dt: 0.004
+  vision_env_config:
+    brightness:
+    - 0.75
+    - 2.0
+    camera_inputs:
+    - name: frontal_ego
+      use_actual_rgb: false
+      use_brightness_randomized_rgb: true
+      use_depth: false
+    - name: terrain
+      use_actual_rgb: false
+      use_brightness_randomized_rgb: false
+      use_depth: true
+    vision_config:
+      enabled_cameras:
+      - 1
+      - 2
+      enabled_geom_groups:
+      - 0
+      gpu_id: 0
+      render_batch_size: 512
+      render_height: 64
+      render_width: 128
+      use_rasterizer: false
 model:
-  latent_size: 16
+  encoder:
+    layer_sizes:
+    - 256
+    - 256
+  encoder_obs_key: environment_privileged
+  latent_encoding_size: 16
   model_class: TeacherStudent
-  modules:
-    adapter:
+  policy:
+    layer_sizes:
+    - 128
+    - 128
+    - 128
+    - 128
+  policy_obs_key: proprioceptive
+  student:
+    layer_sizes:
     - 256
     - 256
-    encoder:
+  student_obs_key: proprioceptive_history
+  value:
+    layer_sizes:
     - 256
     - 256
-    policy:
     - 256
     - 256
-    value:
-    - 256
-    - 256
+  value_obs_key: proprioceptive
 training:
   action_repeat: 1
   augment_pixels: false

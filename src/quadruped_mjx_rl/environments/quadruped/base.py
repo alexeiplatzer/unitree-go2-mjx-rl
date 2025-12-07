@@ -99,7 +99,7 @@ class EnvironmentConfig(Configuration):
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
 
-    vision_env_config: VisionEnvConfig = field(default_factory=VisionEnvConfig)
+    vision_env_config: VisionEnvConfig | None = field(default_factory=VisionEnvConfig)
 
     @classmethod
     def config_base_class_key(cls) -> str:

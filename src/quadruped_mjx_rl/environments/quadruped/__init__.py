@@ -1,6 +1,5 @@
 from quadruped_mjx_rl.environments.quadruped.base import EnvironmentConfig, QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.color_guided import (
-    QuadrupedColorGuidedEnv,
     QuadrupedColorGuidedEnvConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.gait_tracking import (
@@ -26,10 +25,6 @@ from quadruped_mjx_rl.environments.quadruped.obstacle_avoiding import (
 from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnv,
     QuadrupedVisionTargetEnvConfig,
-)
-from quadruped_mjx_rl.environments.quadruped.vision_base import (
-    QuadrupedVisionBaseEnv,
-    QuadrupedVisionBaseEnvConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.obstacle_avoiding import (
     QuadrupedObstacleAvoidingEnv,

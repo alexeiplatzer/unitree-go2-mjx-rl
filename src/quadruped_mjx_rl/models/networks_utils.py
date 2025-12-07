@@ -7,13 +7,13 @@ import jax.numpy as jnp
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments import is_obs_key_vision
-from quadruped_mjx_rl.models import AgentParams
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.models.types import (
     Policy,
     PolicyWithLatents, PreprocessObservationFn,
     PreprocessorParams,
     AgentNetworkParams,
+    AgentParams,
 )
 from quadruped_mjx_rl.types import (
     Action,

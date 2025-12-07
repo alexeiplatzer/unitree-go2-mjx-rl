@@ -30,9 +30,8 @@ from quadruped_mjx_rl.models.base_modules import (
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     PreprocessObservationFn,
-    PreprocessorParams, RecurrentCarry,
+    PreprocessorParams, RecurrentCarry, RecurrentAgentState
 )
-from quadruped_mjx_rl.models.types import RecurrentAgentState
 from quadruped_mjx_rl.models.networks_utils import policy_with_latents_factory
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transition
 

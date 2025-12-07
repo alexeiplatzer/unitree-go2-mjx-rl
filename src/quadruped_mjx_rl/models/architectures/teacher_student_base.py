@@ -5,7 +5,6 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models import networks_utils
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedConfig,
     ActorCriticEnrichedNetworkParams,

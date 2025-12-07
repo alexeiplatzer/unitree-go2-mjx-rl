@@ -1,4 +1,5 @@
 import functools
+from typing import Protocol
 
 from etils.epath import PathLike
 
@@ -12,7 +13,22 @@ from quadruped_mjx_rl.models.architectures import (
     TeacherStudentVisionConfig,
     TeacherStudentRecurrentConfig,
 )
-from quadruped_mjx_rl.models.types import NetworkFactory
+from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
+from quadruped_mjx_rl.models.types import (
+    AgentNetworkParams, identity_observation_preprocessor,
+    PreprocessObservationFn,
+)
+from quadruped_mjx_rl.types import ObservationSize
+
+
+class NetworkFactory(Protocol[AgentNetworkParams]):
+    def __call__(
+        self,
+        observation_size: ObservationSize,
+        action_size: int,
+        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
+    ) -> ComponentNetworksArchitecture[AgentNetworkParams]:
+        pass
 
 
 def get_networks_factory(

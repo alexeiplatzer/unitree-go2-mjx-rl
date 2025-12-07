@@ -7,9 +7,9 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.models import ActorCriticConfig
-from quadruped_mjx_rl.models.architectures import ActorCriticNetworkParams
-from quadruped_mjx_rl.models.architectures.actor_critic_base import ActorCriticNetworks
+from quadruped_mjx_rl.models.architectures.actor_critic_base import (
+    ActorCriticConfig, ActorCriticNetworks, ActorCriticNetworkParams
+)
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
     register_model_config_class,

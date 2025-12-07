@@ -1,5 +1,6 @@
 import numpy as np
 import paths
+from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.robots import predefined_robot_configs
 from quadruped_mjx_rl.environments import JoystickBaseEnvConfig
 from quadruped_mjx_rl.models import ActorCriticConfig
@@ -24,10 +25,8 @@ if __name__ == "__main__":
     env_config = JoystickBaseEnvConfig()
 
     model_config = ActorCriticConfig(
-        modules=ActorCriticConfig.ModulesConfig(
-            policy=[128, 128, 128, 128, 128],
-            value=[256, 256, 256, 256, 256],
-        ),
+        policy=ModuleConfigMLP(layer_sizes=[128, 128, 128, 128, 128]),
+        value=ModuleConfigMLP(layer_sizes=[256, 256, 256, 256, 256]),
     )
 
     training_config = TrainingConfig(num_timesteps=1_000_000, num_envs=256, num_eval_envs=256)
@@ -36,13 +35,11 @@ if __name__ == "__main__":
 
     env_model = spec_to_model(load_to_spec(init_scene_path))
 
-    env_class = resolve_env_class(env_config)
-    env_model = env_class.customize_model(env_model, env_config)
     env_factory = get_env_factory(
         robot_config=robot_config,
         environment_config=env_config,
-        env_class=env_class,
         env_model=env_model,
+        customize_model=True,
     )
 
     policy_factories, trained_params, evaluation_metrics = train(
