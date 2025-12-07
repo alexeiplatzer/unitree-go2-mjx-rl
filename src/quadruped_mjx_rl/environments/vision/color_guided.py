@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from jax import numpy as jnp
@@ -13,12 +14,30 @@ from quadruped_mjx_rl.environments.vision.vision_wrappers import (
 )
 
 
+@dataclass
+class ColorGuidedEnvConfig(VisionEnvConfig):
+    """Configuration for a Color Guided Vision Environment."""
+
+    camera_inputs: list[VisionEnvConfig.CameraInputConfig] = field(
+        default_factory=lambda: [
+            VisionEnvConfig.CameraInputConfig(
+                name="frontal_ego", use_brightness_randomized_rgb=True
+            ),
+            VisionEnvConfig.CameraInputConfig(name="terrain", use_actual_rgb=True),
+        ]
+    )
+
+    @classmethod
+    def get_vision_wrapper_class(cls) -> type["VisionWrapper"]:
+        return ColorGuidedVisionWrapper
+
+
 class ColorGuidedVisionWrapper(VisionWrapper):
     def __init__(
         self,
         env: Env,
         vision_env_config: VisionEnvConfig,
-        renderer_maker: Callable[[PipelineModel], Any] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any],
     ):
         super().__init__(env, vision_env_config, renderer_maker)
         # the initial values and sizes should be set up by the terrain map wrapper

@@ -6,14 +6,14 @@
 - [X] normalize the position and location of grid tiles in color rand envs
 - [X] figure out how to pass privileged terrain info into the environment
 - [X] figure out how to merge the FFN and RNN approach with minimal duplication
-- [ ] implement training fronted for recurrent support
-- [ ] implement correct evaluation for recurrent support
-- [ ] implement visualisation rollouts for recurrent support
+- [X] implement training fronted for recurrent support
+- [X] implement correct evaluation for recurrent support
 - [ ] finish setting up RNN training
 - [ ] verify the RNN architecture with examples
 - [ ] develop a simplified environment for testing the RNN setup
 - [ ] try out a very simple training procedure on chair GPUs
-
+- [ ] implement visualisation rollouts for recurrent support
+- 
 ## Mid term
 - [ ] check how multiple GPUs can be used for vision setups
 - [ ] improve and persist resulting evaluation and convergence data from the plots

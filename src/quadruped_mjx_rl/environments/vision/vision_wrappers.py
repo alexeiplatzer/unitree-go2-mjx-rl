@@ -40,6 +40,10 @@ class VisionEnvConfig:
         ]
     )
 
+    @classmethod
+    def get_vision_wrapper_class(cls) -> type["VisionWrapper"]:
+        return VisionWrapper
+
 
 class VisionWrapper(Wrapper):
     """A wrapper for an arbitrary MJX Environment that renders visual observations for it.
@@ -50,7 +54,7 @@ class VisionWrapper(Wrapper):
         self,
         env: Env,
         vision_env_config: VisionEnvConfig,
-        renderer_maker: Callable[[PipelineModel], Any] | None = None,
+        renderer_maker: Callable[[PipelineModel], Any],
     ):
         super().__init__(env)
         if vision_env_config is None:

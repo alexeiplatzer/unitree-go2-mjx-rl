@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -8,7 +7,6 @@ import jax.numpy as jnp
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
-    PipelineModel,
     PipelineState,
     State,
 )
@@ -20,7 +18,6 @@ from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnvConfig,
     QuadrupedVisionTargetEnv,
 )
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 
@@ -72,17 +69,11 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
         environment_config: QuadrupedObstacleAvoidingEnvConfig,
         robot_config: RobotConfig,
         env_model: EnvSpec | EnvModel,
-        vision_config: VisionConfig | None = None,
-        init_qpos: jax.Array | None = None,
-        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ):
         super().__init__(
             environment_config=environment_config,
             robot_config=robot_config,
             env_model=env_model,
-            vision_config=vision_config,
-            init_qpos=init_qpos,
-            renderer_maker=renderer_maker,
         )
 
         self._obstacle_margin = environment_config.rewards.obstacle_margin

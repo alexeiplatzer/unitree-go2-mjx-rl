@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,24 +10,19 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvSpec,
     Motion,
     Transform,
-    PipelineModel,
     PipelineState,
     State,
 )
 from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
     QuadrupedBaseEnv,
+    EnvironmentConfig,
 )
-from quadruped_mjx_rl.environments.quadruped.vision_base import (
-    QuadrupedVisionBaseEnvConfig,
-    QuadrupedVisionBaseEnv,
-)
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.robots import RobotConfig
 
 
 @dataclass
-class QuadrupedVisionTargetEnvConfig(QuadrupedVisionBaseEnvConfig):
+class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
 
     domain_rand: "QuadrupedVisionTargetEnvConfig.DomainRandConfig" = field(
         default_factory=lambda: QuadrupedVisionTargetEnvConfig.DomainRandConfig(
@@ -37,11 +31,11 @@ class QuadrupedVisionTargetEnvConfig(QuadrupedVisionBaseEnvConfig):
     )
 
     @dataclass
-    class RewardConfig(QuadrupedVisionBaseEnvConfig.RewardConfig):
+    class RewardConfig(EnvironmentConfig.RewardConfig):
         yaw_alignment_threshold: float = 1.35
 
         @dataclass
-        class ScalesConfig(QuadrupedVisionBaseEnvConfig.RewardConfig.ScalesConfig):
+        class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
             goal_progress: float = 2.5
             speed_towards_goal: float = 2.5
             goal_yaw_alignment: float = 1.0
@@ -62,7 +56,7 @@ class QuadrupedVisionTargetEnvConfig(QuadrupedVisionBaseEnvConfig):
 register_environment_config_class(QuadrupedVisionTargetEnvConfig)
 
 
-class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
+class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
     """In this environment, the robot is tasked with reaching a target body using both visual
     and proprioceptive input."""
 
@@ -71,20 +65,13 @@ class QuadrupedVisionTargetEnv(QuadrupedVisionBaseEnv):
         environment_config: QuadrupedVisionTargetEnvConfig,
         robot_config: RobotConfig,
         env_model: EnvSpec | EnvModel,
-        *,
-        vision_config: VisionConfig | None = None,
-        init_qpos: jax.Array | None = None,
-        renderer_maker: Callable[[PipelineModel], Any] | None = None,
     ):
         super().__init__(
             environment_config,
             robot_config,
             env_model,
-            vision_config=vision_config,
-            renderer_maker=renderer_maker,
         )
         self._rewards_config = environment_config.rewards
-        self._init_q = self._init_q if init_qpos is None else init_qpos
         self._goal_id = self._env_model.body("goal_sphere").id
 
     def reset(self, rng: jax.Array) -> State:

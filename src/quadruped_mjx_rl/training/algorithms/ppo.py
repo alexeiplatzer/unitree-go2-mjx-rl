@@ -5,7 +5,6 @@ import jax.numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticNetworkParams,
-    ActorCriticAgentParams,
     ActorCriticNetworks,
 )
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
