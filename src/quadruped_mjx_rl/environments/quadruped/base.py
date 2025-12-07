@@ -19,6 +19,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     State,
 )
 from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.environments.vision import VisionEnvConfig
 
 
 @dataclass
@@ -97,6 +98,8 @@ class EnvironmentConfig(Configuration):
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
     rewards: RewardConfig = field(default_factory=RewardConfig)
+
+    vision_env_config: VisionEnvConfig = field(default_factory=VisionEnvConfig)
 
     @classmethod
     def config_base_class_key(cls) -> str:

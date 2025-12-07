@@ -10,7 +10,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     PipelineModel,
     PipelineState,
 )
-from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, Wrapper
+from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 
 
@@ -42,7 +42,9 @@ class VisionEnvConfig:
 
 
 class VisionWrapper(Wrapper):
-    """A wrapper for an arbitrary MJX Environment that renders visual observations for it."""
+    """A wrapper for an arbitrary MJX Environment that renders visual observations for it.
+    Only renders the initial observations by default. Later observations must be updated
+    explicitly."""
 
     def __init__(
         self,
@@ -62,6 +64,20 @@ class VisionWrapper(Wrapper):
         _ = mjx.forward(mjx_model, mjx_data)
 
         self.renderer = renderer_maker(self.pipeline_model)
+
+
+    def reset(self, rng: jax.Array) -> State:
+        state = self.env.reset(rng)
+        return state.replace(
+            obs=state.obs | self.init_vision_obs(state.pipeline_state, state.info)
+        )
+
+    def step(self, state: State, action: jax.Array) -> State:
+        old_obs = state.obs
+        next_state = self.env.step(state, action)
+        return state.replace(
+            obs=old_obs | next_state.obs
+        )
 
     def init_vision_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, Any]
