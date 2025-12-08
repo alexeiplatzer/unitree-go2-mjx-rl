@@ -20,6 +20,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 )
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.environments.vision import VisionEnvConfig
+from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
 @dataclass
@@ -213,7 +214,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         model.dof_damping[6:] = environment_config.sim.override.Kd
         return model
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         rng, init_qpos_rng = jax.random.split(rng, 2)
         init_qpos = self._set_init_qpos(init_qpos_rng)
         pipeline_state = self.pipeline_init(init_qpos, jnp.zeros(self._nv))
@@ -239,7 +240,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
 
         if self._apply_kicks:
             # give the robot a random kick for robustness
@@ -284,12 +285,12 @@ class QuadrupedBaseEnv(PipelineEnv):
         return state
 
     # ------------ utility computations ------------
-    def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+    def _set_init_qpos(self, rng: PRNGKey) -> jax.Array:
         """Sets the initial position and orientation of all the movable bodies in the
         environment in generalized coordinates."""
         return self._init_q
 
-    def _physics_step(self, state: State, action: jax.Array) -> PipelineState:
+    def _physics_step(self, state: State, action: Action) -> PipelineState:
         """Performs all the physical steps in the simulation that happen between the steps of
         the RL environment. Applies the action to the robot's actuators for the duration."""
         motor_targets = self._default_pose + action * self._action_scale
@@ -319,22 +320,26 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array | dict[str, jax.Array]:
-        return self._init_proprioceptive_obs(pipeline_state, state_info)
+    ) -> Observation:
+        return {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
 
     def _get_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        previous_obs: jax.Array | dict[str, jax.Array],
-    ) -> jax.Array | dict[str, jax.Array]:
-        return self._get_proprioceptive_obs(pipeline_state, state_info, previous_obs)
+        previous_obs: Observation,
+    ) -> Observation:
+        return {
+            "proprioceptive": self._get_proprioceptive_obs(
+                pipeline_state, state_info, previous_obs["proprioceptive"]
+            )
+        }
 
     def _init_proprioceptive_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array | dict[str, jax.Array]:
+    ) -> jax.Array:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         if self._obs_config.history_length is not None:
             obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
@@ -345,8 +350,8 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        previous_obs: jax.Array | dict[str, jax.Array],
-    ) -> jax.Array | dict[str, jax.Array]:
+        previous_obs: jax.Array,
+    ) -> jax.Array:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         if self._obs_config.history_length is not None:
             assert isinstance(previous_obs, jax.Array)
@@ -420,7 +425,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        action: jax.Array,
+        action: Action,
         done: jax.Array,
     ) -> dict[str, jax.Array]:
         """Computes all the rewards for the current state of the environment and returns a dict
@@ -476,7 +481,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         # Penalize torques
         return jnp.sqrt(jnp.sum(jnp.square(torques))) + jnp.sum(jnp.abs(torques))
 
-    def _reward_action_rate(self, act: jax.Array, last_act: jax.Array) -> jax.Array:
+    def _reward_action_rate(self, act: Action, last_act: Action) -> jax.Array:
         # Penalize changes in actions
         return jnp.sum(jnp.square(act - last_act))
 

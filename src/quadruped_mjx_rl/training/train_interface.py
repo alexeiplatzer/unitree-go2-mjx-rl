@@ -9,38 +9,26 @@ import numpy as np
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
-from quadruped_mjx_rl.environments.physics_pipeline import Env, PipelineModel
-from quadruped_mjx_rl.models.factories import get_networks_factory
-from quadruped_mjx_rl.training import logger as metric_logger
+from quadruped_mjx_rl.environments import Env
+from quadruped_mjx_rl.domain_randomization import (
+    DomainRandomizationFn,
+    TerrainMapRandomizationFn,
+)
+from quadruped_mjx_rl.models import get_networks_factory
+from quadruped_mjx_rl.training import logger as metric_logger, training_utils as _utils
 from quadruped_mjx_rl.models.architectures import (
     ActorCriticConfig,
-    ActorCriticNetworkParams,
-    ActorCriticNetworks,
     TeacherStudentRecurrentNetworks,
 )
-from quadruped_mjx_rl.models.types import (
-    RecurrentAgentState,
-    ComponentNetworksArchitecture,
-    AgentParams,
-)
-from quadruped_mjx_rl.training import (
-    training_utils as _utils,
-)
-from quadruped_mjx_rl.training.algorithms.ppo import (
-    compute_ppo_loss,
-)
+from quadruped_mjx_rl.models.types import AgentParams
+from quadruped_mjx_rl.training.algorithms.ppo import compute_ppo_loss
 from quadruped_mjx_rl.training.configs import (
     TrainingConfig,
-    TrainingWithRecurrentStudentConfig, TrainingWithVisionConfig,
+    TrainingWithRecurrentStudentConfig,
+    TrainingWithVisionConfig,
 )
-from quadruped_mjx_rl.training.evaluation import make_progress_fn
-from quadruped_mjx_rl.training.fitting import get_fitter, Fitter
-from quadruped_mjx_rl.training.fitting.optimization import LossFn
-from quadruped_mjx_rl.training.train_backend_recurrent import (
-    train as recurrent_train,
-    TrainingState,
-)
-from quadruped_mjx_rl.training.evaluator import Evaluator
+from quadruped_mjx_rl.training.fitting import get_fitter
+from quadruped_mjx_rl.training.train_backend import train as train_backend, TrainingState
 
 
 def train(
@@ -51,9 +39,7 @@ def train(
     max_devices_per_host: int | None = None,
     # environment wrapper
     wrap_env: bool = True,
-    randomization_fn: (
-        Callable[[PipelineModel, jnp.ndarray], tuple[PipelineModel, PipelineModel]] | None
-    ) = None,
+    randomization_fn: DomainRandomizationFn | TerrainMapRandomizationFn | None = None,
     # checkpointing
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params: AgentParams | None = None,
@@ -241,13 +227,14 @@ def train(
     )
 
     metrics_aggregator = metric_logger.EpisodeMetricsLogger(
-        steps_between_logging=training_config.training_metrics_steps or env_step_per_training_step,
+        steps_between_logging=training_config.training_metrics_steps
+        or env_step_per_training_step,
         progress_fn=None,  # TODO: think how to pass it
     )
 
     logging.info("Setup took %s", time.time() - xt)
 
-    final_params = recurrent_train(
+    final_params = train_backend(
         training_config=training_config,
         env=env,
         fitter=fitter,
@@ -267,10 +254,14 @@ def train(
         recurrent_agent_state=agent_state,
         recurrent=recurrent,
         generate_unroll_factory=functools.partial(
-            ppo_networks.recurrent_unroll_factory,
+            ppo_networks.make_unroll_fn,
             deterministic=training_config.deterministic_eval,
             vision=training_config.use_vision,
-            proprio_steps_per_vision_step=training_config.proprio_steps_per_vision_step if isinstance(training_config, TrainingWithVisionConfig) else 1
+            proprio_steps_per_vision_step=(
+                training_config.proprio_steps_per_vision_step
+                if isinstance(training_config, TrainingWithVisionConfig)
+                else 1
+            ),
         ),
     )
 

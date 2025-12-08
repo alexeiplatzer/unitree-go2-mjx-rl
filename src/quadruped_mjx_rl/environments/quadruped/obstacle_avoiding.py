@@ -19,6 +19,7 @@ from quadruped_mjx_rl.environments.quadruped.target_reaching import (
     QuadrupedVisionTargetEnv,
 )
 from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.types import Action, PRNGKey
 
 
 @dataclass
@@ -90,7 +91,7 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
             for obstacle_name in obstacle_names
         ]
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         state = super().reset(rng)
 
         state.info["obstacles_xy"] = jnp.stack(
@@ -102,7 +103,7 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
 
         return state
 
-    def _set_init_qpos(self, rng: jax.Array) -> jax.Array:
+    def _set_init_qpos(self, rng: PRNGKey) -> jax.Array:
         # perturb obstacle locations
         init_q = self._init_q
         for qadr in self._obstacles_qposadr:
@@ -121,7 +122,7 @@ class QuadrupedObstacleAvoidingEnv(QuadrupedVisionTargetEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        action: jax.Array,
+        action: Action,
         done: jax.Array,
     ) -> dict[str, jax.Array]:
         rewards = QuadrupedVisionTargetEnv._get_rewards(

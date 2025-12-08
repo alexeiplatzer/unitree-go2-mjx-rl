@@ -1,30 +1,29 @@
 import functools
-from abc import ABC, abstractmethod
-from typing import Generic, Protocol, Any, TypeVar
-from collections.abc import Callable, Sequence
 import logging
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import Any, Generic, Protocol, TypeVar
 
 import jax
 import optax
 from flax.struct import dataclass as flax_dataclass
-from jax import numpy as jnp
 
+from quadruped_mjx_rl.environments import Env
 from quadruped_mjx_rl.models import AgentParams
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn, actor_step, vision_actor_step
 from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
+from quadruped_mjx_rl.models.types import AgentNetworkParams, PreprocessorParams
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import training_utils
+from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 from quadruped_mjx_rl.training.configs import (
-    OptimizerConfig, TrainingConfig,
+    OptimizerConfig,
+    TrainingConfig,
     TrainingWithVisionConfig,
 )
-from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
-from quadruped_mjx_rl.training.gradients import gradient_update_fn
-from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
-from quadruped_mjx_rl.environments import Env, State
+from quadruped_mjx_rl.training.evaluator import Evaluator
+from quadruped_mjx_rl.training.gradients import gradient_update_fn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
-from quadruped_mjx_rl.models.types import AgentNetworkParams, PolicyFactory, PreprocessorParams
 
 
 @flax_dataclass
@@ -83,8 +82,8 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
     ):
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def network(self) -> ComponentNetworksArchitecture[AgentNetworkParams]:
         pass
 
@@ -172,7 +171,8 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
         proprio_steps_per_vision_step = (
             training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig) else 1
+            if isinstance(training_config, TrainingWithVisionConfig)
+            else 1
         )
         evaluator = Evaluator(
             eval_env=eval_env,
@@ -184,8 +184,8 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
                 vision=training_config.use_vision,
-                proprio_steps_per_vision_step=proprio_steps_per_vision_step
-            )
+                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
+            ),
         )
 
         data_key = "eval/episode_reward"

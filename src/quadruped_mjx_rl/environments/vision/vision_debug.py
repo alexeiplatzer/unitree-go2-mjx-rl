@@ -7,6 +7,7 @@ from typing import Any
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.environments.physics_pipeline import load_to_model, PipelineState, State
 from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
 class VisionDebugEnv(PipelineEnv):
@@ -37,7 +38,7 @@ class VisionDebugEnv(PipelineEnv):
             viz_gpu_hdls=None,
         )
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         pipeline_state = self.pipeline_init(
             self._init_q
             + jax.random.uniform(rng, shape=self._init_q.shape, minval=0.0, maxval=0.0),
@@ -53,7 +54,7 @@ class VisionDebugEnv(PipelineEnv):
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         pipeline_state = self.pipeline_step(state.pipeline_state, jnp.zeros(self.action_size))
 
         # observation data
@@ -68,7 +69,7 @@ class VisionDebugEnv(PipelineEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array | dict[str, jax.Array]:
+    ) -> Observation:
         render_token, rgb, depth = self.renderer.init(
             pipeline_state.data, self.pipeline_model.model
         )
@@ -84,8 +85,8 @@ class VisionDebugEnv(PipelineEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        previous_obs: jax.Array | dict[str, jax.Array],
-    ) -> jax.Array | dict[str, jax.Array]:
+        previous_obs: Observation,
+    ) -> Observation:
         _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state.data)
         # rgb_norm = jnp.asarray(rgb[1][..., :3], dtype=jnp.float32) / 255.0
         # obs |= {"pixels/view_frontal_ego": rgb_norm, "pixels/view_terrain": depth[2]}

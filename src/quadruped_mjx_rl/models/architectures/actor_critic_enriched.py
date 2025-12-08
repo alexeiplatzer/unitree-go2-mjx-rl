@@ -8,7 +8,9 @@ from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
-    ActorCriticConfig, ActorCriticNetworks, ActorCriticNetworkParams
+    ActorCriticConfig,
+    ActorCriticNetworks,
+    ActorCriticNetworkParams,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
@@ -152,9 +154,7 @@ class ActorCriticEnrichedNetworks(
         input_vector = jnp.concatenate(
             (observation[self.policy_obs_key], latent_encoding), axis=-1
         )
-        return self.policy_module.apply(
-            network_params.policy, input_vector
-        )
+        return self.policy_module.apply(network_params.policy, input_vector)
 
     def apply_value_with_latents(
         self,

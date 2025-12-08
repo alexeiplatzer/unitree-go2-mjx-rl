@@ -21,6 +21,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
 )
 from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
 @dataclass
@@ -93,7 +94,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self._resampling_time = environment_config.command.resampling_time
         self._command_ranges = environment_config.command.ranges
 
-    def sample_command(self, rng: jax.Array) -> jax.Array:
+    def sample_command(self, rng: PRNGKey) -> jax.Array:
         key1, key2, key3 = jax.random.split(rng, 3)
         lin_vel_x = jax.random.uniform(
             key=key1,
@@ -116,7 +117,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         new_command = jnp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
         return new_command
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         state = super().step(state, action)
 
         # sample new command if more than max timesteps achieved
@@ -138,7 +139,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array | dict[str, jax.Array]:
+    ) -> jax.Array:
         """Resamples the command in addition to initializing observation arrays."""
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
         state_info["command"] = self.sample_command(command_key)
@@ -157,7 +158,7 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        action: jax.Array,
+        action: Action,
         done: jax.Array,
     ):
         rewards = QuadrupedBaseEnv._get_rewards(self, pipeline_state, state_info, action, done)

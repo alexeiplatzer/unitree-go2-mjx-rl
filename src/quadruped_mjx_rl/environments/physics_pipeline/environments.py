@@ -9,7 +9,7 @@ from quadruped_mjx_rl.environments.physics_pipeline.base import (
     PipelineModel,
     EnvModel,
 )
-from quadruped_mjx_rl.types import Observation, ObservationSize
+from quadruped_mjx_rl.types import Observation, ObservationSize, Action, PRNGKey, Metrics
 
 
 @flax_dataclass
@@ -28,11 +28,11 @@ class Env(ABC):
     """Interface for a Reinforcement Learning environment."""
 
     @abstractmethod
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         """Resets the environment to an initial state."""
 
     @abstractmethod
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         """Run one timestep of the environment's dynamics."""
 
     @property
@@ -66,10 +66,10 @@ class Wrapper(Env):
     def __init__(self, env: Env):
         self.env = env
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         return self.env.reset(rng)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         return self.env.step(state, action)
 
     @property

@@ -69,9 +69,11 @@ class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
         if policy_factory is None:
             policy_factory = self.get_acting_policy_factory()
         acting_policy = policy_factory(agent_params, deterministic)
-        step_fn = functools.partial(
-            vision_actor_step, proprio_substeps=proprio_steps_per_vision_step
-        ) if vision else actor_step
+        step_fn = (
+            functools.partial(vision_actor_step, proprio_substeps=proprio_steps_per_vision_step)
+            if vision
+            else actor_step
+        )
 
         def generate_unroll(
             env_state: State,

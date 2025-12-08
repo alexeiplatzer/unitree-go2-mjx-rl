@@ -10,7 +10,8 @@ from quadruped_mjx_rl.environments import is_obs_key_vision
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.models.types import (
     Policy,
-    PolicyWithLatents, PreprocessObservationFn,
+    PolicyWithLatents,
+    PreprocessObservationFn,
     PreprocessorParams,
     AgentNetworkParams,
     AgentParams,
@@ -36,14 +37,13 @@ def normalizer_select(
 
 
 def preprocess_obs_by_key(
-    *,
-    preprocess_obs_fn: PreprocessObservationFn,
     processor_params: PreprocessorParams,
     obs: Observation,
+    preprocess_obs_fn: PreprocessObservationFn,
 ) -> Observation:
     """Preprocesses the specified observations only, returns the same structure."""
-    if not isinstance(obs, Mapping):
-        return preprocess_obs_fn(obs, processor_params)
+    # if not isinstance(obs, Mapping):
+    #     return preprocess_obs_fn(obs, processor_params)
     return {
         obs_key: (
             obs[obs_key]
@@ -61,6 +61,7 @@ def make_dummy_obs(obs_size: ObservationSize) -> Observation:
         is_leaf=lambda x: isinstance(x, tuple),
     )
 
+
 def process_policy_logits(
     parametric_action_distribution,
     logits: jax.Array,
@@ -69,9 +70,7 @@ def process_policy_logits(
 ) -> tuple[Action, Extra]:
     if deterministic:
         return parametric_action_distribution.mode(logits), {}
-    raw_actions = parametric_action_distribution.sample_no_postprocessing(
-        logits, sample_key
-    )
+    raw_actions = parametric_action_distribution.sample_no_postprocessing(logits, sample_key)
     log_prob = parametric_action_distribution.log_prob(logits, raw_actions)
     postprocessed_actions = parametric_action_distribution.postprocess(raw_actions)
     return postprocessed_actions, {
@@ -86,25 +85,27 @@ def policy_factory(
     params: AgentParams,
     deterministic: bool = False,
 ) -> Policy:
-    return lambda obs, rng: process_policy_logits(
+    return lambda observation, sample_key: process_policy_logits(
         parametric_action_distribution=parametric_action_distribution,
-        logits=policy_apply(params.preprocessor_params, params.network_params, obs),
-        sample_key=rng,
-        deterministic=deterministic
+        logits=policy_apply(params.preprocessor_params, params.network_params, observation),
+        sample_key=sample_key,
+        deterministic=deterministic,
     )
 
 
 def policy_with_latents_factory(
-    policy_apply: Callable[[PreprocessorParams, AgentNetworkParams, Observation, jax.Array], jax.Array],
+    policy_apply: Callable[
+        [PreprocessorParams, AgentNetworkParams, Observation, jax.Array], jax.Array
+    ],
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
 ) -> PolicyWithLatents:
-    return lambda obs, rng, latent_encoding: process_policy_logits(
+    return lambda observation, sample_key, latent_encoding: process_policy_logits(
         parametric_action_distribution=parametric_action_distribution,
         logits=policy_apply(
-            params.preprocessor_params, params.network_params, obs, latent_encoding
+            params.preprocessor_params, params.network_params, observation, latent_encoding
         ),
-        sample_key=rng,
-        deterministic=deterministic
+        sample_key=sample_key,
+        deterministic=deterministic,
     )

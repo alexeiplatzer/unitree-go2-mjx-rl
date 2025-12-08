@@ -48,19 +48,19 @@ def collect_tile_ids(env_model: EnvModel, tile_body_prefix: str = "tile_") -> ja
     return jnp.array(geom_ids)
 
 
+# def randomize_tiles(
+#     pipeline_model: PipelineModel,
+#     env_model: EnvModel,
+#     rng_key: PRNGKey,
+#     num_worlds: int,
+# ) -> tuple[PipelineModel, PipelineModel]:
+#     pipeline_model_v, in_axes, _ = randomize_tiles_with_internals(
+#         pipeline_model, env_model, rng_key, num_worlds
+#     )
+#     return pipeline_model_v, in_axes
+
+
 def randomize_tiles(
-    pipeline_model: PipelineModel,
-    env_model: EnvModel,
-    rng_key: PRNGKey,
-    num_worlds: int,
-) -> tuple[PipelineModel, PipelineModel]:
-    pipeline_model_v, in_axes, _ = randomize_tiles_with_internals(
-        pipeline_model, env_model, rng_key, num_worlds
-    )
-    return pipeline_model_v, in_axes
-
-
-def randomize_tiles_with_internals(
     pipeline_model: PipelineModel,
     env_model: EnvModel,
     rng_key: PRNGKey,

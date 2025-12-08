@@ -25,11 +25,11 @@ if __name__ == "__main__":
     env_config = JoystickBaseEnvConfig()
 
     model_config = ActorCriticConfig(
-        policy=ModuleConfigMLP(layer_sizes=[128, 128, 128, 128, 128]),
-        value=ModuleConfigMLP(layer_sizes=[256, 256, 256, 256, 256]),
+        policy=ModuleConfigMLP(layer_sizes=[128, 128]),
+        value=ModuleConfigMLP(layer_sizes=[256, 256]),
     )
 
-    training_config = TrainingConfig(num_timesteps=1_000_000, num_envs=256, num_eval_envs=256)
+    training_config = TrainingConfig(num_timesteps=100_000, num_envs=8, num_eval_envs=8)
 
     init_scene_path = paths.unitree_go2_init_scene
 
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         customize_model=True,
     )
 
-    policy_factories, trained_params, evaluation_metrics = train(
+    trained_params = train(
         training_config=training_config,
         model_config=model_config,
         training_env=env_factory(),

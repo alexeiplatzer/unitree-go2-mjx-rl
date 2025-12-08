@@ -12,6 +12,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
 )
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
 def adjust_brightness(img, scale):
@@ -69,23 +70,20 @@ class VisionWrapper(Wrapper):
 
         self.renderer = renderer_maker(self.pipeline_model)
 
-
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         state = self.env.reset(rng)
         return state.replace(
-            obs=state.obs | self.init_vision_obs(state.pipeline_state, state.info)
+            obs=dict(state.obs) | dict(self.init_vision_obs(state.pipeline_state, state.info))
         )
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         old_obs = state.obs
         next_state = self.env.step(state, action)
-        return state.replace(
-            obs=old_obs | next_state.obs
-        )
+        return state.replace(obs=dict(old_obs) | dict(next_state.obs))
 
     def init_vision_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, Any]
-    ) -> dict[str, jax.Array]:
+    ) -> Observation:
         rng = state_info["rng"]
         rng_brightness, rng = jax.random.split(rng)
         state_info["rng"] = rng
@@ -108,13 +106,13 @@ class VisionWrapper(Wrapper):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> dict[str, jax.Array]:
+    ) -> Observation:
         _, rgb, depth = self.renderer.init(pipeline_state.data, self.pipeline_model.model)
         return self._format_camera_observations(rgb, depth, state_info)
 
     def _format_camera_observations(
         self, rgb_inputs: jax.Array, depth_inputs: jax.Array, state_info: dict[str, Any]
-    ) -> dict[str, jax.Array]:
+    ) -> Observation:
         """Prepares rgb and depth observations from cameras' inputs."""
         camera_obs = {}
         for idx, camera_input_config in enumerate(self._camera_inputs_config):

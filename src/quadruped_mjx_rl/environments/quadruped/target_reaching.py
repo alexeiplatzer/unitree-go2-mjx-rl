@@ -19,6 +19,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
 )
 from quadruped_mjx_rl.robots import RobotConfig
+from quadruped_mjx_rl.types import Action, PRNGKey
 
 
 @dataclass
@@ -74,7 +75,7 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         self._rewards_config = environment_config.rewards
         self._goal_id = self._env_model.body("goal_sphere").id
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         state = super().reset(rng)
 
         state.info["goal_xy"] = state.pipeline_state.data.xpos[self._goal_id, :2]
@@ -86,7 +87,7 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        action: jax.Array,
+        action: Action,
         done: jax.Array,
     ) -> dict[str, jax.Array]:
         rewards = QuadrupedBaseEnv._get_rewards(self, pipeline_state, state_info, action, done)

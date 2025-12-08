@@ -15,7 +15,8 @@ from quadruped_mjx_rl.models.architectures import (
 )
 from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
 from quadruped_mjx_rl.models.types import (
-    AgentNetworkParams, identity_observation_preprocessor,
+    AgentNetworkParams,
+    identity_observation_preprocessor,
     PreprocessObservationFn,
 )
 from quadruped_mjx_rl.types import ObservationSize

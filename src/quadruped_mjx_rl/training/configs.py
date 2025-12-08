@@ -95,7 +95,6 @@ class TrainingWithVisionConfig(TrainingConfig):
                     " rendering!"
                 )
 
-
     @classmethod
     def config_class_key(cls) -> str:
         return "PPO_Vision"
@@ -114,7 +113,11 @@ class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
                 "Recurrent training must have num_updates_per_batch == 1. Repeated updates on "
                 "the same batch will break the recurrent buffers."
             )
-        if self.unroll_length % (self.vision_steps_per_recurrent_step * self.proprio_steps_per_vision_step) != 0:
+        if (
+            self.unroll_length
+            % (self.vision_steps_per_recurrent_step * self.proprio_steps_per_vision_step)
+            != 0
+        ):
             raise ValueError(
                 "Unroll length must be divisible by the product of vision steps per recurrent "
                 "step and proprio steps per vision step."

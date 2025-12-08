@@ -5,13 +5,11 @@ from typing import Any, NamedTuple
 
 import jax
 
-from quadruped_mjx_rl.running_statistics import (
-    NestedArray,
-)
+from quadruped_mjx_rl.running_statistics import NestedArray, NestedSpec
 
 # Reinforcement learning types
-Observation = jax.Array | Mapping[str, jax.Array]
-ObservationSize = int | Mapping[str, tuple[int, ...] | int]
+Observation = Mapping[str, jax.Array]
+ObservationSize = Mapping[str, tuple[int, ...] | int]
 Action = jax.Array
 Metrics = Mapping[str, jax.Array] | Mapping[str, float]
 
@@ -24,9 +22,9 @@ Extra = Mapping[str, Any]
 class Transition(NamedTuple):
     """Container for a transition."""
 
-    observation: NestedArray
+    observation: NestedSpec
     action: NestedArray
     reward: NestedArray
     discount: NestedArray
-    next_observation: NestedArray
-    extras: NestedArray = ()
+    next_observation: NestedSpec
+    extras: NestedSpec = ()

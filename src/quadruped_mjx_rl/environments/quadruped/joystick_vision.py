@@ -2,22 +2,18 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-import jax
-
 from quadruped_mjx_rl.environments import Env
 from quadruped_mjx_rl.environments.physics_pipeline import (
     EnvModel,
     EnvSpec,
     PipelineModel,
 )
-from quadruped_mjx_rl.environments.quadruped.base import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
-from quadruped_mjx_rl.environments.vision import VisionEnvConfig, VisionWrapper
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision import VisionWrapper
 from quadruped_mjx_rl.robots import RobotConfig
 
 
@@ -39,6 +35,7 @@ class QuadrupedJoystickVisionEnvConfig(JoystickBaseEnvConfig):
 
 
 register_environment_config_class(QuadrupedJoystickVisionEnvConfig)
+
 
 class QuadrupedJoystickVisionEnv(VisionWrapper):
 

@@ -30,7 +30,9 @@ from quadruped_mjx_rl.models.base_modules import (
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     PreprocessObservationFn,
-    PreprocessorParams, RecurrentCarry, RecurrentAgentState
+    PreprocessorParams,
+    RecurrentCarry,
+    RecurrentAgentState,
 )
 from quadruped_mjx_rl.models.networks_utils import policy_with_latents_factory
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transition
@@ -198,16 +200,14 @@ class TeacherStudentRecurrentNetworks(
         reinitialization_key: PRNGKey,
     ) -> tuple[jax.Array, RecurrentAgentState]:
         observation = self.preprocess_obs(preprocessor_params, observation)
-        encoding, recurrent_carry = (
-            self.student_encoder_module.apply(
-                network_params.student_encoder,
-                observation[self.student_encoder_obs_key],
-                observation[self.student_proprio_obs_key],
-                done,
-                recurrent_carry,
-                reinitialization_key,
-                method="encode",
-            )
+        encoding, recurrent_carry = self.student_encoder_module.apply(
+            network_params.student_encoder,
+            observation[self.student_encoder_obs_key],
+            observation[self.student_proprio_obs_key],
+            done,
+            recurrent_carry,
+            reinitialization_key,
+            method="encode",
         )
         return encoding, recurrent_carry
 

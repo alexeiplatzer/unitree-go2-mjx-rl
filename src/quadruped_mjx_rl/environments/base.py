@@ -17,7 +17,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     make_pipeline_model,
     State,
 )
-from quadruped_mjx_rl.types import ObservationSize
+from quadruped_mjx_rl.types import ObservationSize, Observation, Action, PRNGKey
 
 
 def pipeline_n_steps(
@@ -62,10 +62,10 @@ class PipelineEnv(Env):
         self._ctrl_dt = ctrl_dt
         self._n_frames = int(ctrl_dt / sim_dt)
 
-    def reset(self, rng: jax.Array) -> State:
+    def reset(self, rng: PRNGKey) -> State:
         """Resets the environment to an initial state."""
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, state: State, action: Action) -> State:
         """Run one timestep of the environment's dynamics."""
 
     def pipeline_init(
@@ -78,7 +78,7 @@ class PipelineEnv(Env):
         """Initializes the pipeline state."""
         return pipeline_init(self._pipeline_model, q, qd, act, ctrl)
 
-    def pipeline_step(self, pipeline_state: PipelineState, action: jax.Array) -> PipelineState:
+    def pipeline_step(self, pipeline_state: PipelineState, action: Action) -> PipelineState:
         """Takes a physics step using the physics pipeline."""
         return pipeline_n_steps(self._pipeline_model, pipeline_state, action, self._n_frames)
 
@@ -92,8 +92,8 @@ class PipelineEnv(Env):
         rng = jax.random.PRNGKey(0)
         reset_state = self.unwrapped.reset(rng)
         obs = reset_state.obs
-        if isinstance(obs, jax.Array):
-            return obs.shape[-1]
+        # if isinstance(obs, jax.Array):
+        #     return obs.shape[-1]
         return jax.tree_util.tree_map(lambda x: x.shape, obs)
 
     @property

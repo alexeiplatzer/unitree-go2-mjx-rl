@@ -13,6 +13,7 @@ from quadruped_mjx_rl.environments.quadruped.joystick_base import (
     JoystickBaseEnvConfig,
     QuadrupedJoystickBaseEnv,
 )
+from quadruped_mjx_rl.types import Observation
 
 
 @dataclass
@@ -37,7 +38,7 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array | dict[str, jax.Array]:
+    ) -> Observation:
         state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         privileged_obs = jnp.concatenate(self._get_privileged_obs_list())
         obs = {
@@ -55,8 +56,8 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-        previous_obs: jax.Array | dict[str, jax.Array],
-    ) -> jax.Array | dict[str, jax.Array]:
+        previous_obs: Observation,
+    ) -> Observation:
         state_obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
         obs = {
             "proprioceptive": state_obs,

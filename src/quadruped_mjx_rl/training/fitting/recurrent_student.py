@@ -1,32 +1,32 @@
 import functools
-from typing import Any, Callable
 import logging
+from typing import Any
 
 import jax
 import optax
 from jax import numpy as jnp
 
-import quadruped_mjx_rl.training.algorithms.ppo
 from quadruped_mjx_rl.environments import Env
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentRecurrentNetworks,
 )
-from quadruped_mjx_rl.models.types import PolicyFactory, RecurrentAgentState
+from quadruped_mjx_rl.models.types import PreprocessorParams, RecurrentAgentState
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import gradients, training_utils
+from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
+from quadruped_mjx_rl.training.configs import (
+    TeacherStudentOptimizerConfig,
+    TrainingWithRecurrentStudentConfig,
+    TrainingWithVisionConfig,
+)
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
-from quadruped_mjx_rl.training.fitting.optimization import Fitter, LossFn, make_optimizer, SimpleFitter
 from quadruped_mjx_rl.training.fitting.optimization import EvalFn
-from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition, Observation
-from quadruped_mjx_rl.training.configs import (
-    TeacherStudentOptimizerConfig, TrainingConfig,
-    TrainingWithRecurrentStudentConfig, TrainingWithVisionConfig,
-)
+from quadruped_mjx_rl.training.fitting.optimization import LossFn, make_optimizer, SimpleFitter
 from quadruped_mjx_rl.training.fitting.teacher_student import TeacherStudentOptimizerState
+from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
 
 
 class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
@@ -35,7 +35,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         optimizer_config: TeacherStudentOptimizerConfig,
         network: TeacherStudentRecurrentNetworks,
         main_loss_fn: LossFn[TeacherStudentNetworkParams, TeacherStudentRecurrentNetworks],
-        algorithm_hyperparams: quadruped_mjx_rl.training.algorithms.ppo.HyperparamsPPO,
+        algorithm_hyperparams: HyperparamsPPO,
     ):
         super().__init__(
             optimizer_config=optimizer_config,
@@ -126,7 +126,8 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
         proprio_steps_per_vision_step = (
             training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig) else 1
+            if isinstance(training_config, TrainingWithVisionConfig)
+            else 1
         )
         teacher_evaluator = Evaluator(
             eval_env=eval_env,
@@ -140,7 +141,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 vision=training_config.use_vision,
                 proprio_steps_per_vision_step=proprio_steps_per_vision_step,
                 policy_factory=self.network.get_acting_policy_factory(),
-            )
+            ),
         )
         student_evaluator = Evaluator(
             eval_env=eval_env,
@@ -154,7 +155,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 vision=training_config.use_vision,
                 vision_substeps=training_config.vision_steps_per_recurrent_step,
                 proprio_substeps=proprio_steps_per_vision_step,
-            )
+            ),
         )
 
         data_key = "eval/episode_reward"
@@ -211,8 +212,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             student_eval_fn(current_step, params, training_metrics)
             logging.info(
                 f"student absolute loss: "
-                f"{training_metrics.get("training/student_total_loss", "not known yet")}",
-
+                f"{training_metrics.get('training/student_total_loss', 'not known yet')}",
             )
 
         return evaluation_fn, times
@@ -220,7 +220,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
 def compute_student_recurrent_loss(
     network_params: TeacherStudentNetworkParams,
-    preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
+    preprocessor_params: PreprocessorParams,
     agent_state: RecurrentAgentState,
     data: Transition,
     rng: PRNGKey,

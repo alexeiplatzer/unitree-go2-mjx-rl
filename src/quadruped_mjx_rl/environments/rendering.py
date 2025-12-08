@@ -8,7 +8,7 @@ import numpy as np
 from etils.epath import Path, PathLike
 import functools
 
-from quadruped_mjx_rl.domain_randomization import DomainRandomizationFn
+from quadruped_mjx_rl.domain_randomization.types import DomainRandomizationFn
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.physics_pipeline import Env
 

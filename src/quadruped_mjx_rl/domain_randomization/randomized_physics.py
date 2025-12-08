@@ -9,7 +9,7 @@ def domain_randomize(
     env_model: EnvModel,
     rng_key: PRNGKey,
     num_worlds: int,
-):
+) -> tuple[PipelineModel, PipelineModel]:
     """Randomizes the mjx.Model."""
 
     @jax.vmap

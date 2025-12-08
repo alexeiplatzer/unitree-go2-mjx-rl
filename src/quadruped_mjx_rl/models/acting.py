@@ -52,7 +52,7 @@ def actor_step(
     extra_fields: Sequence[str] = (),
 ) -> tuple[State, Transition]:
     """Collect data."""
-    actions, policy_extras = policy(observation=env_state.obs, key=key)
+    actions, policy_extras = policy(observation=env_state.obs, sample_key=key)
     nstate = env.step(env_state, actions)
     state_extras = {x: nstate.info[x] for x in extra_fields}
     transition = Transition(
@@ -83,7 +83,7 @@ def vision_actor_step(
         length=proprio_substeps,
     )
     vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
-    next_state = next_state.replace(obs=next_state.obs | vision_obs)
+    next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
     return next_state, transitions
 
 

@@ -5,4 +5,7 @@ from quadruped_mjx_rl.environments.vision.robotic_vision import (
 )
 from quadruped_mjx_rl.environments.vision.vision_debug import VisionDebugEnv
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionEnvConfig, VisionWrapper
-from quadruped_mjx_rl.environments.vision.color_guided import ColorGuidedVisionWrapper, ColorGuidedEnvConfig
+from quadruped_mjx_rl.environments.vision.color_guided import (
+    ColorGuidedVisionWrapper,
+    ColorGuidedEnvConfig,
+)

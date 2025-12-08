@@ -1,41 +1,39 @@
 """Custom fitter for the teacher-student actor-critic architecture"""
 
 import functools
-from typing import Any, Callable
 import logging
+from typing import Any
 
 import jax
 import optax
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-import quadruped_mjx_rl.training.algorithms.ppo
 from quadruped_mjx_rl.environments import Env
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
     TeacherStudentNetworks,
 )
-from quadruped_mjx_rl.models.types import PolicyFactory
+from quadruped_mjx_rl.models.types import PreprocessorParams
 from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import gradients, training_utils
+from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
+from quadruped_mjx_rl.training.configs import (
+    TeacherStudentOptimizerConfig,
+    TrainingConfig,
+    TrainingWithVisionConfig,
+)
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.fitting.optimization import (
-    LossFn,
-    Fitter,
     EvalFn,
-    SimpleFitter,
-    OptimizerState,
+    LossFn,
     make_optimizer,
+    OptimizerState,
+    SimpleFitter,
 )
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
-from quadruped_mjx_rl.training.configs import (
-    TeacherStudentOptimizerConfig, TrainingConfig,
-    TrainingWithVisionConfig,
-)
-from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 
 @flax_dataclass
@@ -124,7 +122,8 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
         proprio_steps_per_vision_step = (
             training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig) else 1
+            if isinstance(training_config, TrainingWithVisionConfig)
+            else 1
         )
         teacher_evaluator = Evaluator(
             eval_env=eval_env,
@@ -138,7 +137,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 vision=training_config.use_vision,
                 proprio_steps_per_vision_step=proprio_steps_per_vision_step,
                 policy_factory=self.network.get_acting_policy_factory(),
-            )
+            ),
         )
         student_evaluator = Evaluator(
             eval_env=eval_env,
@@ -152,7 +151,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 vision=training_config.use_vision,
                 proprio_steps_per_vision_step=proprio_steps_per_vision_step,
                 policy_factory=self.network.get_student_policy_factory(),
-            )
+            ),
         )
 
         data_key = "eval/episode_reward"
@@ -209,8 +208,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             student_eval_fn(current_step, params, training_metrics)
             logging.info(
                 f"student absolute loss: "
-                f"{training_metrics.get("training/student_total_loss", "not known yet")}",
-
+                f"{training_metrics.get('training/student_total_loss', 'not known yet')}",
             )
 
         return evaluation_fn, times
@@ -218,7 +216,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
 def compute_student_loss(
     network_params: TeacherStudentNetworkParams,
-    preprocessor_params: quadruped_mjx_rl.models.types.PreprocessorParams,
+    preprocessor_params: PreprocessorParams,
     data: Transition,
     network: TeacherStudentNetworks,
 ) -> tuple[jax.Array, Metrics]:

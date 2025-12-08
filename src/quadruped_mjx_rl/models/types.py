@@ -21,7 +21,7 @@ class Policy(Protocol):
     def __call__(
         self,
         observation: Observation,
-        key: PRNGKey,
+        sample_key: PRNGKey,
     ) -> tuple[Action, Extra]:
         pass
 
@@ -31,7 +31,7 @@ class PolicyWithLatents(Protocol):
         self,
         observation: Observation,
         latent_encoding: jax.Array,
-        key: PRNGKey,
+        sample_key: PRNGKey,
     ) -> tuple[Action, Extra]:
         pass
 
@@ -55,14 +55,14 @@ class InitCarryFn(Protocol):
 class PreprocessObservationFn(Protocol):
     def __call__(
         self,
-        observation: Observation,
+        observation: jax.Array,
         preprocessor_params: PreprocessorParams,
     ) -> jax.Array:
         pass
 
 
 def identity_observation_preprocessor(
-    observation: Observation, preprocessor_params: PreprocessorParams
+    observation: jax.Array, preprocessor_params: PreprocessorParams
 ):
     del preprocessor_params
     return observation

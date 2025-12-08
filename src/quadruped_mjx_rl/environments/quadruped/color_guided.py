@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 
 from quadruped_mjx_rl.environments.quadruped.base import (
-    QuadrupedBaseEnv, register_environment_config_class,
+    QuadrupedBaseEnv,
+    register_environment_config_class,
 )
 from quadruped_mjx_rl.environments.quadruped.target_reaching import (
-    QuadrupedVisionTargetEnv, QuadrupedVisionTargetEnvConfig,
+    QuadrupedVisionTargetEnv,
+    QuadrupedVisionTargetEnvConfig,
 )
 from quadruped_mjx_rl.environments.vision import ColorGuidedEnvConfig
 

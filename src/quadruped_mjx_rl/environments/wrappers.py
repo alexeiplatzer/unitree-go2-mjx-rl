@@ -1,5 +1,4 @@
 import functools
-from collections.abc import Callable
 
 import jax
 from flax import struct as flax_struct
@@ -12,7 +11,6 @@ from quadruped_mjx_rl.domain_randomization import (
 from quadruped_mjx_rl.environments.physics_pipeline.base import PipelineModel, EnvModel
 from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
 from quadruped_mjx_rl.types import PRNGKey
-from quadruped_mjx_rl.models.types import InitCarryFn
 
 
 def wrap_for_training(
@@ -21,9 +19,10 @@ def wrap_for_training(
     device_count: int = 1,
     episode_length: int = 1000,
     action_repeat: int = 1,
-    randomization_fn: DomainRandomizationFn | None = None,
+    randomization_fn: DomainRandomizationFn | TerrainMapRandomizationFn | None = None,
     rng_key: PRNGKey | None = None,
     vision: bool = False,
+    num_terrain_colors: int = 1,
 ) -> Wrapper:
     """
     Common wrapper pattern for all training agents.
@@ -38,8 +37,7 @@ def wrap_for_training(
             and in_axes to vmap over
         rng_key: an RNG key used for domain randomization
         vision: whether the environment will be vision-based
-        recurrent: whether the environment should support episode-long recurrent states
-        recurrent_init_carry_fn: function that initializes the recurrent hidden state
+        num_terrain_colors: number of terrain colors to use for terrain map randomization
 
     Returns:
         An environment that is wrapped with Episode and AutoReset wrappers.  If the
@@ -50,20 +48,21 @@ def wrap_for_training(
     else:
         # all the devices get the same randomization seed
         local_num_envs = num_envs // device_count
-        envs_key = jax.random.split(rng_key, local_num_envs)
-        env = _vmap_wrap(
+        # envs_key = jax.random.split(rng_key, local_num_envs)
+        env = _vmap_wrap_with_randomization(
             env,
             vision=vision,
             num_worlds=local_num_envs,
             randomization_fn=randomization_fn,
-            worlds_random_key=envs_key,
+            worlds_random_key=rng_key,
+            num_terrain_colors=num_terrain_colors,
         )
     env = EpisodeWrapper(env, episode_length, action_repeat)
     env = AutoResetWrapper(env)
     return env
 
 
-def _vmap_wrap(
+def _vmap_wrap_with_randomization(
     env: Env,
     vision: bool = False,
     num_worlds: int = 1,
@@ -77,8 +76,8 @@ def _vmap_wrap(
     if num_terrain_colors > 1:
         assert randomization_fn is not None
         # let the randomization function have the same interface as in the single color case
-        randomization_fn = functools.partial(randomization_fn, num_colors=num_terrain_colors)
-        wrapper = TerrainMapWrapper
+        # randomization_fn = functools.partial(randomization_fn, num_colors=num_terrain_colors)
+        wrapper = functools.partial(TerrainMapWrapper, num_colors=num_terrain_colors)
     else:
         wrapper = DomainRandomizationVmapWrapper
 
@@ -382,7 +381,8 @@ def _supplement_vision_randomization_fn(
     env_model: EnvModel,
     rng_key: PRNGKey,
     num_worlds: int,
-    randomization_fn: DomainRandomizationFn,
+    randomization_fn: DomainRandomizationFn | TerrainMapRandomizationFn,
+    **randomization_fn_kwargs,
 ) -> tuple[PipelineModel, PipelineModel] | tuple[PipelineModel, PipelineModel, tuple]:
     """Tile the necessary missing fields for the Madrona memory buffer copy."""
     randomization_outputs = randomization_fn(
@@ -390,6 +390,7 @@ def _supplement_vision_randomization_fn(
         env_model=env_model,
         rng_key=rng_key,
         num_worlds=num_worlds,
+        **randomization_fn_kwargs,
     )
     pipeline_model, in_axes, *rest_outputs = randomization_outputs
 
@@ -424,9 +425,9 @@ class TerrainMapWrapper(Wrapper):
     def __init__(
         self,
         env: Env,
-        colored_terrain_randomization_fn: TerrainMapRandomizationFn,
-        rng_key: jax.Array,
-        num_worlds: int,
+        randomization_fn: TerrainMapRandomizationFn,
+        key_envs: jax.Array,
+        num_envs: int,
         num_colors: int = 2,
     ):
         super().__init__(env)
@@ -434,11 +435,11 @@ class TerrainMapWrapper(Wrapper):
             self._sys_v,
             self._in_axes,
             (self._rgba_table_v, self._friction_table_v, self._stiffness_table_v),
-        ) = colored_terrain_randomization_fn(
+        ) = randomization_fn(
             pipeline_model=self.pipeline_model,
             env_model=self.env_model,
-            rng_key=rng_key,
-            num_worlds=num_worlds,
+            rng_key=key_envs,
+            num_worlds=num_envs,
             num_colors=num_colors,
         )
         self._rgba_table = jnp.zeros((num_colors, 4))

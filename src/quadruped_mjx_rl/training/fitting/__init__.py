@@ -7,7 +7,6 @@ from quadruped_mjx_rl.models import (
 from quadruped_mjx_rl.models.architectures import ActorCriticNetworkParams
 from quadruped_mjx_rl.training.fitting.optimization import (
     Fitter,
-    OptimizerConfig,
     OptimizerState,
     SimpleFitter,
 )

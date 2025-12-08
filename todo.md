@@ -1,15 +1,14 @@
 # Todo list
 
 ## Short term
-- [X] adapt training utils and wrap for training for new domain rand architectures
-- [X] add a more varied color palette to color randomization
-- [X] normalize the position and location of grid tiles in color rand envs
-- [X] figure out how to pass privileged terrain info into the environment
-- [X] figure out how to merge the FFN and RNN approach with minimal duplication
 - [X] implement training fronted for recurrent support
 - [X] implement correct evaluation for recurrent support
 - [X] finish setting up RNN training
-- [ ] update randomization functions interfacing with other subpackages
+- [X] update randomization functions interfacing with other subpackages
+- [X] dictify all obs for simplicity
+- [ ] check what's wrong with the progress plots
+- [ ] init agent state implementation
+- [ ] add a config for terrain randomization, think whether to factor it in and with what
 - [ ] verify the RNN architecture with examples
 - [ ] develop a simplified environment for testing the RNN setup
 - [ ] try out a very simple training procedure on chair GPUs
