@@ -2,6 +2,7 @@
 
 import functools
 import logging
+from pathlib import Path
 from typing import Any
 
 import jax
@@ -118,6 +119,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         eval_key: PRNGKey,
         training_config: TrainingConfig,
         run_in_cell: bool = True,
+        save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
         teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
         proprio_steps_per_vision_step = (
@@ -159,6 +161,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         teacher_progress_fn, times = make_progress_fn(
             run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path,
             num_timesteps=training_config.num_timesteps,
             title="Teacher evaluation results",
             color="blue",
@@ -171,6 +174,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         student_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path,
             num_timesteps=training_config.num_timesteps,
             title="Student evaluation results",
             color="green",
@@ -185,6 +189,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         convergence_err_key = ""  # TODO: check how student loss is passed along
         convergence_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path,
             num_timesteps=training_config.num_timesteps,
             title="Student encoder convergence",
             color="red",

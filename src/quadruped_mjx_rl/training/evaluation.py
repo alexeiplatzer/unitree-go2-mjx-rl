@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 from IPython.display import display
@@ -7,6 +8,7 @@ from IPython.display import display
 def make_progress_fn(
     *,
     run_in_cell: bool = True,
+    save_plots_path: Path | None = None,
     title: str = "Evaluation results",
     color: str = "blue",
     num_timesteps: float = 1_000_000,
@@ -20,6 +22,8 @@ def make_progress_fn(
     Args:
         run_in_cell: whether to update the plot dynamically in a jupyter cell display a new
             plot every time using native matplotlib display functionality.
+        save_plots_path: if provided, the path to the file in which the latest plot will be
+            saved.
         title: the title of the plot.
         color: the color of the data line.
         num_timesteps: the total number of timesteps over which the data is plotted.
@@ -56,6 +60,8 @@ def make_progress_fn(
 
         if run_in_cell:
             handle.update(fig)
+        elif save_plots_path is not None:
+            fig.savefig(save_plots_path)
         else:
             fig.show()
 

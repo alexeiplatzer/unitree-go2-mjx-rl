@@ -2,6 +2,7 @@ import functools
 import logging
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import jax
 import jax.numpy as jnp
@@ -44,6 +45,7 @@ def train(
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params: AgentParams | None = None,
     run_in_cell: bool = True,
+    save_plots_path: Path | None = None,
 ) -> AgentParams:
     # Unpack hyperparams
     num_envs = training_config.num_envs
@@ -224,6 +226,7 @@ def train(
         eval_key=eval_key,
         training_config=training_config,
         run_in_cell=run_in_cell,
+        save_plots_path=save_plots_path,
     )
 
     metrics_aggregator = metric_logger.EpisodeMetricsLogger(

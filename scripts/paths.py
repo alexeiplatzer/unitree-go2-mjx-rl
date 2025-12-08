@@ -15,6 +15,9 @@ EXPERIMENTS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "experiments"
 EXPERIMENT_CONFIGS_DIRECTORY = EXPERIMENTS_DIRECTORY / "configs"
 EXPERIMENT_CONFIGS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
+TRAINING_PLOTS_DIRECTORY = EXPERIMENTS_DIRECTORY / "training_plots"
+TRAINING_PLOTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
 TRAINED_POLICIES_DIRECTORY = EXPERIMENTS_DIRECTORY / "trained_policies"
 ckpt_path = TRAINED_POLICIES_DIRECTORY / "quadrupred_joystick/ckpts"
 ckpt_path.mkdir(parents=True, exist_ok=True)

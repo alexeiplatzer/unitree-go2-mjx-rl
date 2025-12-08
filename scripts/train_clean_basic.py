@@ -1,14 +1,17 @@
 import numpy as np
 import paths
-from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
+
 from quadruped_mjx_rl.robots import predefined_robot_configs
 from quadruped_mjx_rl.environments import JoystickBaseEnvConfig
-from quadruped_mjx_rl.models import ActorCriticConfig
+from quadruped_mjx_rl.models import ActorCriticConfig, ModuleConfigMLP
 from quadruped_mjx_rl.training.configs import TrainingConfig
 from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to_model
-from quadruped_mjx_rl.environments import resolve_env_class, get_env_factory
+from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.training.train_interface import train
 from quadruped_mjx_rl.domain_randomization.randomized_physics import domain_randomize
+from quadruped_mjx_rl.environments.rendering import (
+    large_overview_camera, render_model, show_image
+)
 import logging
 
 if __name__ == "__main__":
@@ -35,6 +38,14 @@ if __name__ == "__main__":
 
     env_model = spec_to_model(load_to_spec(init_scene_path))
 
+    # Render the situation
+    image = render_model(
+        env_model=env_model,
+        initial_keyframe=robot_config.initial_keyframe,
+        camera=large_overview_camera(),
+    )
+    show_image(image)
+
     env_factory = get_env_factory(
         robot_config=robot_config,
         environment_config=env_config,
@@ -49,4 +60,5 @@ if __name__ == "__main__":
         evaluation_env=env_factory(),
         randomization_fn=domain_randomize,
         run_in_cell=False,
+        save_plots_path=paths.ROLLOUTS_DIRECTORY / "simple_training_plot",
     )

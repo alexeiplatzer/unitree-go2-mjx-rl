@@ -2,6 +2,7 @@ import functools
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Generic, Protocol, TypeVar
 
 import jax
@@ -107,6 +108,7 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         eval_key: PRNGKey,
         training_config: TrainingConfig,
         run_in_cell: bool = True,
+        save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
         pass
 
@@ -168,6 +170,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         eval_key: PRNGKey,
         training_config: TrainingConfig,
         run_in_cell: bool = True,
+        save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
         proprio_steps_per_vision_step = (
             training_config.proprio_steps_per_vision_step
@@ -192,6 +195,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         data_err_key = "eval/episode_reward_std"
         progress_fn, times = make_progress_fn(
             run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path,
             num_timesteps=training_config.num_timesteps,
             title="Evaluation results",
             color="blue",
