@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # Prepare configs
     configs = prepare_configs(
         paths.CONFIGS_DIRECTORY / "unitree_go2.yaml",
-        paths.CONFIGS_DIRECTORY / "basic_lightweight_example.yaml",
+        paths.CONFIGS_DIRECTORY / "raw_ppo_example.yaml",
     )
     robot_config = configs.get("robot")
     env_config = configs.get("environment")
