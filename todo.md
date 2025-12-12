@@ -6,6 +6,7 @@
 - [X] finish setting up RNN training
 - [X] update randomization functions interfacing with other subpackages
 - [X] dictify all obs for simplicity
+- [ ] save plots into a subdirectory. organise experiments by runs
 - [ ] check what's wrong with the progress plots
 - [ ] init agent state implementation
 - [ ] add a config for terrain randomization, think whether to factor it in and with what

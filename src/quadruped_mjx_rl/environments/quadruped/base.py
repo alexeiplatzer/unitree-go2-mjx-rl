@@ -29,7 +29,7 @@ class EnvironmentConfig(Configuration):
     class ObservationConfig:
         general_noise: float | None = 0.05
         clip: float | None = 100.0
-        history_length: int | None = 15  # keep track of the last 15 steps
+        history_length: int = 15
 
     observation_noise: ObservationConfig = field(default_factory=ObservationConfig)
 
@@ -341,9 +341,8 @@ class QuadrupedBaseEnv(PipelineEnv):
         state_info: dict[str, Any],
     ) -> jax.Array:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
-        if self._obs_config.history_length is not None:
-            obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
-            obs = self._update_obs_history(obs_history=obs_history, current_obs=obs)
+        obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
+        obs = self._update_obs_history(obs_history=obs_history, current_obs=obs)
         return obs
 
     def _get_proprioceptive_obs(
@@ -353,9 +352,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         previous_obs: jax.Array,
     ) -> jax.Array:
         obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
-        if self._obs_config.history_length is not None:
-            assert isinstance(previous_obs, jax.Array)
-            obs = self._update_obs_history(obs_history=previous_obs, current_obs=obs)
+        obs = self._update_obs_history(obs_history=previous_obs, current_obs=obs)
         return obs
 
     def _update_obs_history(self, obs_history: jax.Array, current_obs: jax.Array) -> jax.Array:

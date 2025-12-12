@@ -10,6 +10,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to
 from quadruped_mjx_rl.training.train_interface import train
 from quadruped_mjx_rl.models.io import save_params
 
+
 if __name__ == "__main__":
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         evaluation_env=env_factory(),
         randomization_fn=domain_randomize,
         run_in_cell=False,
-        save_plots_path=paths.TRAINING_PLOTS_DIRECTORY / "simple_training_plot",
+        save_plots_path=paths.TRAINING_PLOTS_DIRECTORY,
     )
     save_params(
         params=trained_params, path=paths.TRAINED_POLICIES_DIRECTORY / "train_unitree_go2_raw"

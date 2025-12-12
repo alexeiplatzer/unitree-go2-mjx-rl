@@ -1,25 +1,16 @@
-from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import robots, environments, models, policy_rendering
-from quadruped_mjx_rl.environments.vision import robotic_vision
-from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
-
 import paths
+from quadruped_mjx_rl import config_utils as cfg
+from quadruped_mjx_rl import environments, models, policy_rendering, robots
+from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
 
 
 if __name__ == "__main__":
 
     # --- Robot configs ---
-    unitree_go2_robot_config = robots.unitree_go2_config()
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "unitree_go2.yaml",
-        unitree_go2_robot_config,
-    )
-
-    google_barkour_vb_robot_config = robots.google_barkour_vb_config()
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "google_barkour_vb.yaml",
-        google_barkour_vb_robot_config,
-    )
+    for robot_name, robot_config_factory in robots.predefined_robot_configs.items():
+        cfg.save_configs(
+            paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", robot_config_factory()
+        )
 
     # --- Reinforcement learning configs ---
     raw_ppo_env_config = environments.JoystickBaseEnvConfig()

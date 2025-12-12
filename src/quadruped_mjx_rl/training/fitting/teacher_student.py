@@ -56,8 +56,13 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             main_loss_fn=main_loss_fn,
             algorithm_hyperparams=algorithm_hyperparams,
         )
+        # TODO: temporary fix for teacher student without vision
+        if isinstance(optimizer_config, TeacherStudentOptimizerConfig):
+            student_learning_rate = optimizer_config.student_learning_rate
+        else:
+            student_learning_rate = optimizer_config.learning_rate
         self.student_optimizer = make_optimizer(
-            optimizer_config.student_learning_rate, optimizer_config.max_grad_norm
+            student_learning_rate, optimizer_config.max_grad_norm
         )
         student_loss_fn = functools.partial(compute_student_loss, network=network)
         self.student_gradient_update_fn = gradients.gradient_update_fn(
@@ -161,7 +166,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         teacher_progress_fn, times = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "teacher_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Teacher evaluation results",
             color="blue",
@@ -174,7 +179,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         student_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "student_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Student evaluation results",
             color="green",
@@ -189,7 +194,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         convergence_err_key = ""  # TODO: check how student loss is passed along
         convergence_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "student_convergence" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Student encoder convergence",
             color="red",
@@ -230,10 +235,10 @@ def compute_student_loss(
     # Put the time dimension first.
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
     teacher_latent_vector = network.apply_acting_encoder(
-        preprocessor_params, network_params.acting_encoder, data.observation
+        preprocessor_params, network_params, data.observation
     )
     student_latent_vector = network.apply_student_encoder(
-        preprocessor_params, network_params.student_encoder, data.observation
+        preprocessor_params, network_params, data.observation
     )
     teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()

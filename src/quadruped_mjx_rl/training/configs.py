@@ -12,7 +12,7 @@ class OptimizerConfig:
 
 @dataclass
 class TeacherStudentOptimizerConfig(OptimizerConfig):
-    student_learning_rate: float = 0.0004
+    student_learning_rate: float = 0.0004  # currently only supported for vision
 
 
 @dataclass

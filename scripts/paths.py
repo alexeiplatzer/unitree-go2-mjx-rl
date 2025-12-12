@@ -3,6 +3,8 @@ from pathlib import Path
 PROJECT_ROOT_DIRECTORY = Path(__file__).parent.parent
 
 CONFIGS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "configs"
+ROBOT_CONFIGS_DIRECTORY = CONFIGS_DIRECTORY / "robot_configs"
+ROBOT_CONFIGS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 
 RESOURCES_DIRECTORY = PROJECT_ROOT_DIRECTORY / "resources"
 UNITREE_GO2_RESOURCES = RESOURCES_DIRECTORY / "unitree_go2"

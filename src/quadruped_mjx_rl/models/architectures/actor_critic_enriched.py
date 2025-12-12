@@ -99,7 +99,7 @@ class ActorCriticEnrichedNetworks(
             activate_final=True,
             extra_final_layer_size=model_config.latent_encoding_size,
         )
-        self.dummy_latent = jax.zeros((1, model_config.latent_encoding_size))
+        self.dummy_latent = jnp.zeros((1, model_config.latent_encoding_size))
         super().__init__(
             model_config=model_config,
             observation_size=observation_size,

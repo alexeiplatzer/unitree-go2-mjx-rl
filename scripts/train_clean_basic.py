@@ -60,5 +60,5 @@ if __name__ == "__main__":
         evaluation_env=env_factory(),
         randomization_fn=domain_randomize,
         run_in_cell=False,
-        save_plots_path=paths.ROLLOUTS_DIRECTORY / "simple_training_plot",
+        save_plots_path=paths.TRAINING_PLOTS_DIRECTORY,
     )

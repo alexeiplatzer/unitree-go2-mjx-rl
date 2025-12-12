@@ -17,7 +17,6 @@ environment:
   environment_class: TeacherStudent
   observation_noise:
     clip: 100.0
-    extended_history_length: 45
     general_noise: 0.05
     history_length: 15
   rewards:
@@ -43,41 +42,17 @@ environment:
       Kd: 0.5
       Kp: 35.0
     sim_dt: 0.004
-  vision_env_config:
-    brightness:
-    - 0.75
-    - 2.0
-    camera_inputs:
-    - name: frontal_ego
-      use_actual_rgb: false
-      use_brightness_randomized_rgb: true
-      use_depth: false
-    - name: terrain
-      use_actual_rgb: false
-      use_brightness_randomized_rgb: false
-      use_depth: true
-    vision_config:
-      enabled_cameras:
-      - 1
-      - 2
-      enabled_geom_groups:
-      - 0
-      gpu_id: 0
-      render_batch_size: 512
-      render_height: 64
-      render_width: 128
-      use_rasterizer: false
+  vision_env_config: null
 model:
   encoder:
     layer_sizes:
     - 256
     - 256
   encoder_obs_key: environment_privileged
-  latent_encoding_size: 16
+  latent_encoding_size: 256
   model_class: TeacherStudent
   policy:
     layer_sizes:
-    - 128
     - 128
     - 128
     - 128
@@ -92,22 +67,21 @@ model:
     - 256
     - 256
     - 256
-    - 256
   value_obs_key: proprioceptive
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 256
+  batch_size: 16
   deterministic_eval: false
   episode_length: 1000
   log_training_metrics: false
   normalize_observations: true
-  num_envs: 8192
-  num_eval_envs: 8192
-  num_evals: 10
-  num_minibatches: 32
+  num_envs: 8
+  num_eval_envs: 8
+  num_evals: 5
+  num_minibatches: 8
   num_resets_per_eval: 0
-  num_timesteps: 100000000
+  num_timesteps: 100000
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0004

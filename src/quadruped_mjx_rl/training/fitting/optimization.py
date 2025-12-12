@@ -195,7 +195,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         data_err_key = "eval/episode_reward_std"
         progress_fn, times = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "evaluation_results" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Evaluation results",
             color="blue",

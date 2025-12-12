@@ -165,7 +165,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         teacher_progress_fn, times = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "teacher_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Teacher evaluation results",
             color="blue",
@@ -178,7 +178,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
         student_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "student_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Student evaluation results",
             color="green",
@@ -193,7 +193,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         convergence_err_key = ""
         convergence_progress_fn, _ = make_progress_fn(
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path,
+            save_plots_path=save_plots_path / "student_convergence" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
             title="Student encoder convergence",
             color="red",
@@ -239,12 +239,12 @@ def compute_student_recurrent_loss(
     done = 1 - data.discount
 
     teacher_latent_vector = network.apply_acting_encoder(
-        preprocessor_params, network_params.acting_encoder, data.observation
+        preprocessor_params, network_params, data.observation
     )
 
     student_latent_vector, agent_state = network.apply_student_encoder(
         preprocessor_params=preprocessor_params,
-        network_params=network_params.student_encoder,
+        network_params=network_params,
         observation=data.observation,
         done=done,
         recurrent_agent_state=agent_state,
