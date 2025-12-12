@@ -1,9 +1,10 @@
 """Function to load MuJoCo mjcf format to Brax model."""
 
 from xml.etree import ElementTree
+from pathlib import Path
 
 import mujoco
-from etils.epath import Path, PathLike
+from etils.epath import PathLike
 from mujoco import mjx
 
 

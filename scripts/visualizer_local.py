@@ -9,8 +9,7 @@ from mujoco import mjx
 
 import paths
 from quadruped_mjx_rl.domain_randomization.randomized_tiles import randomize_tiles
-from quadruped_mjx_rl.environments import get_env_factory
-from quadruped_mjx_rl.environments import QuadrupedVisionBaseEnvConfig
+from quadruped_mjx_rl.environments import get_env_factory, QuadrupedVisionTargetEnvConfig
 from quadruped_mjx_rl.environments.rendering import (
     large_overview_camera,
     render_model,

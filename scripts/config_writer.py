@@ -1,52 +1,68 @@
 import paths
 from quadruped_mjx_rl import config_utils as cfg
-from quadruped_mjx_rl import environments, models, policy_rendering, robots
-from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithVisionConfig
+from quadruped_mjx_rl import environments, models, policy_rendering, training
+
+
+def make_model_hyperparams_lighter(model_cfg: models.ActorCriticConfig) -> None:
+    model_cfg.policy.layer_sizes = [model_cfg.policy.layer_sizes[0], model_cfg.policy.layer_sizes[-1]]
+    model_cfg.value.layer_sizes = [model_cfg.value.layer_sizes[0], model_cfg.value.layer_sizes[-1]]
+
+
+def make_training_hyperparams_lighter(training_cfg: training.TrainingConfig) -> None:
+    training_cfg.num_timesteps = 100_000
+    training_cfg.num_envs = 4
+    training_cfg.num_eval_envs = 4
+    training_cfg.batch_size = 4
+    training_cfg.num_minibatches = 4
+    training_cfg.num_evals = 5
 
 
 if __name__ == "__main__":
 
-    # --- Robot configs ---
-    for robot_name, robot_config_factory in robots.predefined_robot_configs.items():
-        cfg.save_configs(
-            paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", robot_config_factory()
-        )
 
-    # --- Reinforcement learning configs ---
-    raw_ppo_env_config = environments.JoystickBaseEnvConfig()
-    raw_ppo_model_config = models.ActorCriticConfig()
-
-    guided_ppo_env_config = environments.TeacherStudentEnvironmentConfig()
-    guided_ppo_model_config = models.TeacherStudentConfig()
-
-    ppo_training_config = TrainingConfig()
-
+    # Joystick Basic
+    env_config = environments.JoystickBaseEnvConfig()
+    model_config = models.ActorCriticConfig()
+    training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "raw_ppo_example.yaml",
-        raw_ppo_env_config,
-        raw_ppo_model_config,
-        ppo_training_config,
+        paths.CONFIGS_DIRECTORY / "joystick_basic_ppo.yaml",
+        env_config,
+        model_config,
+        training_config,
     )
 
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "guided_ppo_example.yaml",
-        guided_ppo_env_config,
-        guided_ppo_model_config,
-        ppo_training_config,
+        paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml",
+        env_config,
+        model_config,
+        training_config,
     )
 
-    vision_ppo_env_config = environments.QuadrupedJoystickVisionEnvConfig()
-    vision_ppo_model_config = models.TeacherStudentVisionConfig()
-    vision_ppo_training_config = TrainingWithVisionConfig()
-
+    # Joystick Teacher-Student Proprioceptive
+    env_config = environments.TeacherStudentEnvironmentConfig()
+    model_config = models.TeacherStudentConfig()
+    training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "vision_ppo_example.yaml",
-        vision_ppo_env_config,
-        vision_ppo_model_config,
-        vision_ppo_training_config,
+        paths.CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
+        env_config,
+        model_config,
+        training_config,
     )
 
-    # --- Example rendering config ---
+    # Joystick Depth-vision Teacher with RGB-vision Student
+    env_config = environments.QuadrupedJoystickVisionEnvConfig()
+    model_config = models.TeacherStudentVisionConfig()
+    training_config = training.TrainingWithVisionConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
+        env_config,
+        model_config,
+        training_config,
+    )
+
+    # Example rendering config
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "render_basic_example.yaml",
         policy_rendering.RenderConfig(),
