@@ -298,7 +298,7 @@ class MixedModeRNN(linen.RNNCellBase):
             self.convolutional_module.dense_layer_sizes[-1]
             + self.proprioceptive_preprocessing_module.layer_sizes[-1]
         )
-        return self.recurrent_module.initialize_carry(rng, input_shape)
+        return self.recurrent_module.initialize_carry(rng, (input_shape,))
 
     @property
     def num_feature_axes(self) -> int:

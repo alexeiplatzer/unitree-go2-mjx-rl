@@ -101,20 +101,6 @@ class TeacherStudentRecurrentNetworks(
         )
         self.recurrent_output_size = model_config.student.recurrent.recurrent_size
         self.buffers_length = model_config.student_recurrent_backpropagation_steps
-        self.dummy_agent_state = RecurrentAgentState(
-            recurrent_carry=(
-                jnp.zeros((1, self.recurrent_output_size)),
-                jnp.zeros((1, self.recurrent_output_size)),
-            ),
-            recurrent_buffer=jnp.zeros(
-                (
-                    1,
-                    model_config.student_recurrent_backpropagation_steps,
-                    self.recurrent_input_size,
-                )
-            ),
-            done_buffer=jnp.ones((1, model_config.student_recurrent_backpropagation_steps, 1)),
-        )
 
         super().__init__(
             model_config=model_config,
@@ -130,7 +116,8 @@ class TeacherStudentRecurrentNetworks(
 
     def initialize(self, rng: PRNGKey) -> TeacherStudentNetworkParams:
         policy_key, value_key, teacher_key, student_key = jax.random.split(rng, 4)
-        student_params_key, student_dummy_key = jax.random.split(student_key, 2)
+        student_params_key, student_dummy_key, student_agent_key = jax.random.split(student_key, 3)
+        dummy_agent_state = self.init_agent_state((1,), jax.random.PRNGKey(0))
         dummy_done = jnp.zeros((1, 1))
         return TeacherStudentNetworkParams(
             policy=self.policy_module.init(
@@ -153,31 +140,27 @@ class TeacherStudentRecurrentNetworks(
                 self.dummy_obs[self.student_encoder_obs_key],
                 self.dummy_obs[self.student_proprio_obs_key],
                 dummy_done,
-                self.dummy_agent_state.recurrent_carry,
-                self.dummy_agent_state.recurrent_buffer,
-                self.dummy_agent_state.done_buffer,
+                dummy_agent_state.recurrent_carry,
+                dummy_agent_state.recurrent_buffer,
+                dummy_agent_state.done_buffer,
                 student_dummy_key,
             ),
         )
 
-    def init_student_carry(self, init_carry_key: PRNGKey) -> jax.Array:
+    def init_student_carry(self, init_carry_key: PRNGKey) -> RecurrentCarry:
         return self.student_encoder_module.initialize_carry(init_carry_key)
 
     def init_agent_state(self, shape: tuple[int, ...], key: PRNGKey) -> RecurrentAgentState:
-        # TODO finish
+        # TODO check vmapping
+        init_carry_keys = jax.random.split(key, shape)
+        recurrent_carry = self.init_student_carry(init_carry_keys)
+        # recurrent_carry = jax.vmap(self.init_student_carry, in_axes=shape)(init_carry_keys)
         return RecurrentAgentState(
-            recurrent_carry=(
-                jnp.zeros((1, self.recurrent_output_size)),
-                jnp.zeros((1, self.recurrent_output_size)),
-            ),
+            recurrent_carry=recurrent_carry,
             recurrent_buffer=jnp.zeros(
-                (
-                    1,
-                    self.buffers_length,
-                    self.recurrent_input_size,
-                )
+                (*shape, self.buffers_length, self.recurrent_input_size,)
             ),
-            done_buffer=jnp.ones((1, self.buffers_length, 1)),
+            done_buffer=jnp.ones((*shape, self.buffers_length, 1)),
         )
 
     def apply_student_encoder(
@@ -212,7 +195,7 @@ class TeacherStudentRecurrentNetworks(
         done: jax.Array,
         recurrent_carry: RecurrentCarry,
         reinitialization_key: PRNGKey,
-    ) -> tuple[jax.Array, RecurrentAgentState]:
+    ) -> tuple[jax.Array, RecurrentCarry]:
         observation = self.preprocess_obs(preprocessor_params, observation)
         encoding, recurrent_carry = self.student_encoder_module.apply(
             network_params.student_encoder,
