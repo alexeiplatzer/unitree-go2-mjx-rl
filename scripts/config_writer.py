@@ -51,12 +51,30 @@ if __name__ == "__main__":
         training_config,
     )
 
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "joystick_teacher_student_light.yaml",
+        env_config,
+        model_config,
+        training_config,
+    )
+
     # Joystick Depth-vision Teacher with RGB-vision Student
     env_config = environments.QuadrupedJoystickVisionEnvConfig()
     model_config = models.TeacherStudentVisionConfig()
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
+        env_config,
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "teacher_student_vision_light.yaml",
         env_config,
         model_config,
         training_config,

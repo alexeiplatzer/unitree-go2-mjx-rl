@@ -95,21 +95,22 @@ class TeacherStudentRecurrentNetworks(
             extra_final_layer_size=model_config.latent_encoding_size,
         )
 
-        recurrent_input_size = (
+        self.recurrent_input_size = (
             model_config.student.convolutional.dense.layer_sizes[-1]
             + model_config.student.proprioceptive_preprocessing.layer_sizes[-1]
         )
-        recurrent_output_size = model_config.student.recurrent.recurrent_size
+        self.recurrent_output_size = model_config.student.recurrent.recurrent_size
+        self.buffers_length = model_config.student_recurrent_backpropagation_steps
         self.dummy_agent_state = RecurrentAgentState(
             recurrent_carry=(
-                jnp.zeros((1, recurrent_output_size)),
-                jnp.zeros((1, recurrent_output_size)),
+                jnp.zeros((1, self.recurrent_output_size)),
+                jnp.zeros((1, self.recurrent_output_size)),
             ),
             recurrent_buffer=jnp.zeros(
                 (
                     1,
                     model_config.student_recurrent_backpropagation_steps,
-                    recurrent_input_size,
+                    self.recurrent_input_size,
                 )
             ),
             done_buffer=jnp.ones((1, model_config.student_recurrent_backpropagation_steps, 1)),
@@ -163,8 +164,21 @@ class TeacherStudentRecurrentNetworks(
         return self.student_encoder_module.initialize_carry(init_carry_key)
 
     def init_agent_state(self, shape: tuple[int, ...], key: PRNGKey) -> RecurrentAgentState:
-        # TODO implement: shape is leading shape
-        pass
+        # TODO finish
+        return RecurrentAgentState(
+            recurrent_carry=(
+                jnp.zeros((1, self.recurrent_output_size)),
+                jnp.zeros((1, self.recurrent_output_size)),
+            ),
+            recurrent_buffer=jnp.zeros(
+                (
+                    1,
+                    self.buffers_length,
+                    self.recurrent_input_size,
+                )
+            ),
+            done_buffer=jnp.ones((1, self.buffers_length, 1)),
+        )
 
     def apply_student_encoder(
         self,
