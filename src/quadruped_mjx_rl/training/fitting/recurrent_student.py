@@ -122,6 +122,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         eval_env: Env,
         eval_key: PRNGKey,
         training_config: TrainingWithRecurrentStudentConfig,
+        show_outputs: bool = True,
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
@@ -164,6 +165,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         data_err_key = "eval/episode_reward_std"
 
         teacher_progress_fn, times = make_progress_fn(
+            show_outputs=show_outputs,
             run_in_cell=run_in_cell,
             save_plots_path=save_plots_path / "teacher_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
@@ -177,6 +179,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         )
 
         student_progress_fn, _ = make_progress_fn(
+            show_outputs=show_outputs,
             run_in_cell=run_in_cell,
             save_plots_path=save_plots_path / "student_evaluation" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
@@ -192,6 +195,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         convergence_key = "student_total_loss"
         convergence_err_key = ""
         convergence_progress_fn, _ = make_progress_fn(
+            show_outputs=show_outputs,
             run_in_cell=run_in_cell,
             save_plots_path=save_plots_path / "student_convergence" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,

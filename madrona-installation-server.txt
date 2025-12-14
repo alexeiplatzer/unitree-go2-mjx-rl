@@ -1,0 +1,26 @@
+conda create -p ./my-conda python=3.11 -y
+conda activate ./my-conda
+conda install -c nvidia "cuda=12.4.*" "cuda-nvcc=12.4.*" "cuda-cudart=12.4.*" "cuda-cudart-dev=12.4.*" "cuda-cccl=12.4.*" "libnvjitlink=12.4.*" "libnvjitlink-dev=12.4.*" cudnn cmake -y
+conda install xorg-xorgproto -y
+git clone https://github.com/shacklettbp/madrona_mjx.git
+cd madrona_mjx
+git submodule update --init --recursive
+mkdir build
+cd build
+cmake .. -DLOAD_VULKAN=OFF
+make -j
+
+# if goes wrong
+cd ..
+rm -rf build
+# repeat step 8
+
+grep -R "/lib64/libm.so.6" "$CONDA_PREFIX" 2>/dev/null
+
+./my-conda/x86_64-conda-linux-gnu/sysroot/usr/lib64/libc.so
+./my-conda/x86_64-conda-linux-gnu/sysroot/usr/lib64/libm.so
+
+/lib/x86_64-linux-gnu/libc.so.6
+/usr/lib/x86_64-linux-gnu/libc_nonshared.a
+/lib/x86_64-linux-gnu/libm.so.6
+/usr/lib/x86_64-linux-gnu/libmvec.so.1

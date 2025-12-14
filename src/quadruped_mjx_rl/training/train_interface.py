@@ -44,9 +44,33 @@ def train(
     # checkpointing
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params: AgentParams | None = None,
+    # progress plotting
+    show_outputs: bool = True,
     run_in_cell: bool = True,
     save_plots_path: Path | None = None,
 ) -> AgentParams:
+    """
+
+    Args:
+        training_config: Hyperparameters for the training loop and RL algorithm
+        model_config: Hyperparameters for the neural network architecture
+        training_env: Environment used for training
+        evaluation_env: Environment used for evaluation. If None, the training env is used.
+        max_devices_per_host: Limit of the number of devices to be used per process.
+        wrap_env: Whether to wrap the environment for training and evaluation, or use it as is.
+        randomization_fn: Domain randomization function, randomizes each parallel environment.
+        policy_params_fn: Callback function called with the intermediate agent parameters after
+            each training epoch.
+        restore_params: Pre-trained agent parameters which will be used as initial.
+        show_outputs: Whether to show progress plots dynamically
+        run_in_cell: Whether an IPython context is present (like a Jupyter notebook cell). In
+            this case, the plots are updated dynamically, replacing the older ones each step.
+        save_plots_path: A path to a directory where the plot images should be saved.
+
+    Returns:
+        The final trained parameters for the agent.
+
+    """
     # Unpack hyperparams
     num_envs = training_config.num_envs
     num_eval_envs = training_config.num_eval_envs
@@ -225,6 +249,7 @@ def train(
         eval_env=eval_env,
         eval_key=eval_key,
         training_config=training_config,
+        show_outputs=show_outputs,
         run_in_cell=run_in_cell,
         save_plots_path=save_plots_path,
     )

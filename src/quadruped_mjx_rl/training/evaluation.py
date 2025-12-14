@@ -7,6 +7,7 @@ from IPython.display import display
 
 def make_progress_fn(
     *,
+    show_outputs: bool = True,
     run_in_cell: bool = True,
     save_plots_path: Path | None = None,
     title: str = "Evaluation results",
@@ -20,6 +21,7 @@ def make_progress_fn(
 ):
     """Returns a progress function that plots the chosen metric values over time.
     Args:
+        show_outputs: whether to show the intermediate plots dynamically.
         run_in_cell: whether to update the plot dynamically in a jupyter cell display a new
             plot every time using native matplotlib display functionality.
         save_plots_path: if provided, the path to the file in which the latest plot will be
@@ -58,11 +60,12 @@ def make_progress_fn(
         ax.set_title(f"{title} - current {label_key} per episode: {y_data[-1]:.3f}")
         ax.errorbar(x_data, y_data, yerr=y_data_err, color=color)
 
-        if run_in_cell:
-            handle.update(fig)
-        elif save_plots_path is not None:
+        if show_outputs:
+            if run_in_cell:
+                handle.update(fig)
+            else:
+                fig.show()
+        if save_plots_path is not None:
             fig.savefig(save_plots_path)
-        else:
-            fig.show()
 
     return progress, times

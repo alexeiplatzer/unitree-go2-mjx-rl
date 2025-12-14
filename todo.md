@@ -3,9 +3,9 @@
 ## Short term
 
 - [X] check what's wrong with the progress plots
-- [ ] init agent state implementation
+- [X] init agent state implementation
 - [X] try out a very simple training procedure on chair GPUs
-- [ ] add config writing for complicated visual and recurrent envs
+- [X] add config writing for complicated visual and recurrent envs
 - [ ] add scripts for envs with more complicated terrains
 - [ ] check how multiple GPUs can be used for vision setups
 

@@ -107,6 +107,7 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
         eval_env: Env,
         eval_key: PRNGKey,
         training_config: TrainingConfig,
+        show_outputs: bool = False,
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
@@ -169,6 +170,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         eval_env: Env,
         eval_key: PRNGKey,
         training_config: TrainingConfig,
+        show_outputs: bool = False,
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
@@ -194,6 +196,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         data_key = "eval/episode_reward"
         data_err_key = "eval/episode_reward_std"
         progress_fn, times = make_progress_fn(
+            show_outputs=show_outputs,
             run_in_cell=run_in_cell,
             save_plots_path=save_plots_path / "evaluation_results" if save_plots_path else None,
             num_timesteps=training_config.num_timesteps,
