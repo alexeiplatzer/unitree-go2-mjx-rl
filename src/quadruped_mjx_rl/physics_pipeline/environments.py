@@ -3,13 +3,13 @@ from typing import Any
 import jax
 from flax.struct import dataclass as flax_dataclass
 
-from quadruped_mjx_rl.environments.physics_pipeline.base import (
+from quadruped_mjx_rl.physics_pipeline.base import (
     Base,
     PipelineState,
     PipelineModel,
     EnvModel,
 )
-from quadruped_mjx_rl.types import Observation, ObservationSize, Action, PRNGKey, Metrics
+from quadruped_mjx_rl.types import Observation, ObservationSize, Action, PRNGKey
 
 
 @flax_dataclass

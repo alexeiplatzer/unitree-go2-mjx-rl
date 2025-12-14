@@ -4,7 +4,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     EnvModel,
     EnvSpec,
     PipelineState,

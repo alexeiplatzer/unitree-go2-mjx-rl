@@ -10,10 +10,10 @@ import numpy as np
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
-from quadruped_mjx_rl.environments import Env
+from quadruped_mjx_rl.physics_pipeline import Env
 from quadruped_mjx_rl.domain_randomization import (
-    DomainRandomizationFn,
-    TerrainMapRandomizationFn,
+    DomainRandomizationConfig,
+    TerrainMapRandomizationConfig,
 )
 from quadruped_mjx_rl.models import get_networks_factory
 from quadruped_mjx_rl.training import logger as metric_logger, training_utils as _utils
@@ -40,7 +40,9 @@ def train(
     max_devices_per_host: int | None = None,
     # environment wrapper
     wrap_env: bool = True,
-    randomization_fn: DomainRandomizationFn | TerrainMapRandomizationFn | None = None,
+    randomization_config: (
+        DomainRandomizationConfig | TerrainMapRandomizationConfig | None
+    ) = None,
     # checkpointing
     policy_params_fn: Callable[..., None] = lambda *args: None,
     restore_params: AgentParams | None = None,
@@ -58,7 +60,7 @@ def train(
         evaluation_env: Environment used for evaluation. If None, the training env is used.
         max_devices_per_host: Limit of the number of devices to be used per process.
         wrap_env: Whether to wrap the environment for training and evaluation, or use it as is.
-        randomization_fn: Domain randomization function, randomizes each parallel environment.
+        randomization_config: Domain randomization config, randomizes each parallel environment.
         policy_params_fn: Callback function called with the intermediate agent parameters after
             each training epoch.
         restore_params: Pre-trained agent parameters which will be used as initial.
@@ -147,7 +149,7 @@ def train(
             device_count=device_count,
             episode_length=training_config.episode_length,
             action_repeat=action_repeat,
-            randomization_fn=randomization_fn,
+            randomization_config=randomization_config,
             rng_key=wrapping_key,
             vision=training_config.use_vision,
         )
@@ -239,7 +241,7 @@ def train(
             device_count=1,  # eval on the host only
             episode_length=training_config.episode_length,
             action_repeat=action_repeat,
-            randomization_fn=randomization_fn,
+            randomization_config=randomization_config,
             rng_key=eval_key,
             vision=training_config.use_vision,
         )

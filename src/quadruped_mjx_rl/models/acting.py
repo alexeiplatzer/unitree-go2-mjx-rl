@@ -6,7 +6,7 @@ from typing import Protocol
 
 import jax
 
-from quadruped_mjx_rl.environments.physics_pipeline import Env, State
+from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.models.types import (
     Policy,

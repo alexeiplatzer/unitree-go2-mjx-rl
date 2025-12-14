@@ -3,7 +3,7 @@
 import jax
 from mujoco import mjx
 
-from quadruped_mjx_rl.environments.physics_pipeline.base import (
+from quadruped_mjx_rl.physics_pipeline.base import (
     Motion,
     Transform,
     PipelineState,

@@ -4,7 +4,7 @@ tiled terrain approach."""
 import mujoco as mj
 import numpy as np
 
-from quadruped_mjx_rl.environments.physics_pipeline import EnvSpec
+from quadruped_mjx_rl.physics_pipeline import EnvSpec
 from quadruped_mjx_rl.robots import RobotConfig
 
 

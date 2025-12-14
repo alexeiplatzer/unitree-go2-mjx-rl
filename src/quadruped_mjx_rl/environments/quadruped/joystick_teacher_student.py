@@ -6,8 +6,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments import EnvModel
-from quadruped_mjx_rl.environments.physics_pipeline import EnvSpec, PipelineState
+from quadruped_mjx_rl.physics_pipeline import EnvSpec, PipelineState, EnvModel
 from quadruped_mjx_rl.environments.quadruped.base import QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.base import register_environment_config_class
 from quadruped_mjx_rl.environments.quadruped.joystick_base import (
@@ -49,7 +48,9 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         env_model: EnvModel | EnvSpec,
     ):
         super().__init__(environment_config, robot_config, env_model)
-        self._extended_history_length = environment_config.observation_noise.extended_history_length
+        self._extended_history_length = (
+            environment_config.observation_noise.extended_history_length
+        )
 
     def _init_obs(
         self,
@@ -77,7 +78,9 @@ class QuadrupedJoystickTeacherStudentEnv(QuadrupedJoystickBaseEnv):
         state_info: dict[str, Any],
         previous_obs: Observation,
     ) -> Observation:
-        short_history = self._get_proprioceptive_obs(pipeline_state, state_info, previous_obs["proprioceptive"])
+        short_history = self._get_proprioceptive_obs(
+            pipeline_state, state_info, previous_obs["proprioceptive"]
+        )
         state_obs_length = short_history.size // self._obs_config.history_length
         long_history = self._update_obs_history(
             obs_history=previous_obs["proprioceptive_history"],

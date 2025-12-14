@@ -1,10 +1,4 @@
 from quadruped_mjx_rl.environments.base import PipelineEnv
-from quadruped_mjx_rl.environments.physics_pipeline import (
-    EnvModel,
-    load_to_model,
-    Env,
-    State,
-)
 from quadruped_mjx_rl.environments.quadruped import (
     EnvironmentConfig,
     JoystickBaseEnvConfig,

@@ -99,6 +99,15 @@ model:
     - 256
     - 256
   value_obs_key: proprioceptive
+terrain:
+  base_scene_file: scene_mjx_cylinders.xml
+  randomization_config:
+    obstacle_names:
+    - cylinder_0
+    - cylinder_1
+    offset_max: 3.0
+    offset_min: -3.0
+  terrain_class: SimpleObstacle
 training:
   action_repeat: 1
   augment_pixels: false

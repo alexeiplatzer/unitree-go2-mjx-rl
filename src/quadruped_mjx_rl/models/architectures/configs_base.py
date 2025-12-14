@@ -7,7 +7,7 @@ from typing import Generic
 import jax
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import Env, State
+from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.models.acting import actor_step, GenerateUnrollFn, vision_actor_step
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory

@@ -1,10 +1,9 @@
-from abc import abstractmethod
 from collections.abc import Sequence
 
 import jax
 import numpy as np
 
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     Env,
     EnvModel,
     EnvSpec,
@@ -17,7 +16,7 @@ from quadruped_mjx_rl.environments.physics_pipeline import (
     make_pipeline_model,
     State,
 )
-from quadruped_mjx_rl.types import ObservationSize, Observation, Action, PRNGKey
+from quadruped_mjx_rl.types import ObservationSize, Action, PRNGKey
 
 
 def pipeline_n_steps(

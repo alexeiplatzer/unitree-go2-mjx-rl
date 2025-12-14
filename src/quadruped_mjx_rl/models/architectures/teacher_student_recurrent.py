@@ -6,7 +6,7 @@ import jax
 from flax import linen
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.environments import Env, State
+from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.models.acting import GenerateUnrollFn, recurrent_actor_step
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedNetworks,
@@ -116,7 +116,9 @@ class TeacherStudentRecurrentNetworks(
 
     def initialize(self, rng: PRNGKey) -> TeacherStudentNetworkParams:
         policy_key, value_key, teacher_key, student_key = jax.random.split(rng, 4)
-        student_params_key, student_dummy_key, student_agent_key = jax.random.split(student_key, 3)
+        student_params_key, student_dummy_key, student_agent_key = jax.random.split(
+            student_key, 3
+        )
         dummy_agent_state = self.init_agent_state((1,), jax.random.PRNGKey(0))
         dummy_done = jnp.zeros((1, 1))
         return TeacherStudentNetworkParams(
@@ -158,7 +160,11 @@ class TeacherStudentRecurrentNetworks(
         return RecurrentAgentState(
             recurrent_carry=recurrent_carry,
             recurrent_buffer=jnp.zeros(
-                (*shape, self.buffers_length, self.recurrent_input_size,)
+                (
+                    *shape,
+                    self.buffers_length,
+                    self.recurrent_input_size,
+                )
             ),
             done_buffer=jnp.ones((*shape, self.buffers_length, 1)),
         )

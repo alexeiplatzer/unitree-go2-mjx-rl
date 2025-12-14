@@ -7,7 +7,7 @@ import jax
 import optax
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.environments import Env
+from quadruped_mjx_rl.physics_pipeline import Env
 from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
     TeacherStudentAgentParams,
     TeacherStudentNetworkParams,
@@ -197,7 +197,9 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         convergence_progress_fn, _ = make_progress_fn(
             show_outputs=show_outputs,
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path / "student_convergence" if save_plots_path else None,
+            save_plots_path=(
+                save_plots_path / "student_convergence" if save_plots_path else None
+            ),
             num_timesteps=training_config.num_timesteps,
             title="Student encoder convergence",
             color="red",

@@ -6,11 +6,11 @@ import jax
 from jax import numpy as jnp
 from mujoco import mjx
 
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     PipelineModel,
     PipelineState,
 )
-from quadruped_mjx_rl.environments.physics_pipeline.environments import Env, State, Wrapper
+from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
 from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
 from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 

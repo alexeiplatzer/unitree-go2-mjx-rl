@@ -2,8 +2,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from quadruped_mjx_rl.environments import Env
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
+    Env,
     EnvModel,
     EnvSpec,
     PipelineModel,

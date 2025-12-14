@@ -1,15 +1,13 @@
-import functools
 from collections.abc import Callable
 from typing import Any
 
 from etils.epath import PathLike
 
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     EnvModel,
     load_to_model,
     PipelineModel,
 )
-from quadruped_mjx_rl.environments.vision import VisionWrapper
 from quadruped_mjx_rl.environments.quadruped import (
     EnvironmentConfig,
     QuadrupedBaseEnv,

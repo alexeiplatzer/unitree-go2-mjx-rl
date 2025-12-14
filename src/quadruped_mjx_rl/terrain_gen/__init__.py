@@ -2,10 +2,13 @@
 lighting and obstacles. This is achieved by modifying the environment specification, which can
 be then compiled into the environment model with which the simulator will work."""
 
-from quadruped_mjx_rl.terrain_gen.tile import TerrainConfig, get_simple_tiled_terrain
-from quadruped_mjx_rl.terrain_gen.elements import add_cylinders, add_goal_sphere, add_lights
-from quadruped_mjx_rl.terrain_gen.factories import (
-    make_simple_obstacle_terrain,
-    make_empty_terrain,
-    make_plain_tiled_terrain,
+from quadruped_mjx_rl.terrain_gen.configs import (
+    TerrainConfig,
+    FlatTerrainConfig,
+    FlatTiledTerrainConfig,
+    StripeTilesTerrainConfig,
+    SimpleObstacleTerrainConfig,
+    ColorMapTerrainConfig,
+    make_terrain,
 )
+from quadruped_mjx_rl.terrain_gen.elements import add_cylinders, add_goal_sphere, add_lights

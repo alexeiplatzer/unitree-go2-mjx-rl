@@ -8,9 +8,9 @@ from quadruped_mjx_rl.environments import (
 )
 from quadruped_mjx_rl.models import TeacherStudentVisionConfig
 from quadruped_mjx_rl.training.configs import TrainingWithVisionConfig
-from quadruped_mjx_rl.environments.physics_pipeline import load_to_spec, spec_to_model
+from quadruped_mjx_rl.physics_pipeline import load_to_spec, spec_to_model
 from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, StripesTile
-from quadruped_mjx_rl.terrain_gen.tile import TerrainConfig
+from quadruped_mjx_rl.terrain_gen.configs import TiledTerrainConfig
 from quadruped_mjx_rl.environments import resolve_env_class, get_env_factory
 from quadruped_mjx_rl.training.train_interface import train
 from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer, VisionConfig
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     flat_tile = FlatTile()
     stripes_tile = StripesTile()
-    terrain = TerrainConfig(tiles=[[flat_tile] * 4 + [stripes_tile] * 4])
+    terrain = TiledTerrainConfig(tiles=[[flat_tile] * 4 + [stripes_tile] * 4])
     env_spec = load_to_spec(init_scene_path)
     terrain.make_arena(env_spec)
     env_model = spec_to_model(env_spec)

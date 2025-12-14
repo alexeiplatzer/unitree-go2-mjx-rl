@@ -7,7 +7,7 @@ import jax
 import jax.numpy as jnp
 
 from quadruped_mjx_rl import math
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     EnvModel,
     EnvSpec,
     Motion,
@@ -21,7 +21,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
 )
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.types import Observation, Action, PRNGKey
+from quadruped_mjx_rl.types import Action, PRNGKey
 
 
 @dataclass

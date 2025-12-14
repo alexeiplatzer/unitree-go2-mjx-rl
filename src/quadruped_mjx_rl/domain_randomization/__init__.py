@@ -1,15 +1,17 @@
 from quadruped_mjx_rl.domain_randomization.types import (
-    DomainRandomizationFn,
-    TerrainMapRandomizationFn,
+    DomainRandomizationConfig,
+    TerrainMapRandomizationConfig,
 )
-from quadruped_mjx_rl.domain_randomization.debug_randomizer import randomize_minimal
+from quadruped_mjx_rl.domain_randomization.debug_minimal_randomizer import (
+    DebugMinimalRandomizationConfig,
+)
 from quadruped_mjx_rl.domain_randomization.randomized_physics import (
-    domain_randomize as randomize_physics,
+    PhysicsDomainRandomizationConfig,
 )
 from quadruped_mjx_rl.domain_randomization.randomized_obstacles import (
-    terrain_randomize as randomize_obstacles,
+    ObstaclePositionRandomizationConfig,
 )
 from quadruped_mjx_rl.domain_randomization.randomized_tiles import (
-    randomize_tiles,
+    ColorMapRandomizationConfig,
     color_meaning_fn,
 )

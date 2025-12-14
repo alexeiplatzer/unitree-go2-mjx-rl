@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from flax.struct import dataclass as flax_dataclass
 
 from quadruped_mjx_rl import running_statistics, types
-from quadruped_mjx_rl.environments.physics_pipeline import Env, State
+from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.models import AgentParams
 from quadruped_mjx_rl.models.acting import GenerateUnrollFn, wrap_roll
 from quadruped_mjx_rl.models.types import RecurrentAgentState, AgentNetworkParams
@@ -17,7 +17,7 @@ from quadruped_mjx_rl.training import (
     training_utils as _utils,
     logger as metric_logger,
 )
-from quadruped_mjx_rl.training.configs import TrainingConfig, TrainingWithRecurrentStudentConfig
+from quadruped_mjx_rl.training.configs import TrainingConfig
 from quadruped_mjx_rl.training.fitting import Fitter, OptimizerState
 from quadruped_mjx_rl.types import PRNGKey
 

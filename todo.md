@@ -7,6 +7,7 @@
 - [X] try out a very simple training procedure on chair GPUs
 - [X] add config writing for complicated visual and recurrent envs
 - [ ] add scripts for envs with more complicated terrains
+- [ ] check correctness of vision obs handling
 - [ ] check how multiple GPUs can be used for vision setups
 
 ## Mid term
@@ -19,9 +20,9 @@
 - [ ] try to train with a simple MLP model
 - [ ] draft a plan for the final paper
 - [ ] standardize and make configurable observation-related keywords
-- [ ] add a terrain generation config base class and corresponding config classes
-- [ ] save plots into a subdirectory. organise experiments by runs
-- [ ] add a config for terrain randomization, think whether to factor it in and with what
+- [X] add a terrain generation config base class and corresponding config classes
+- [X] save plots into a subdirectory. organise experiments by runs
+- [X] add a config for terrain randomization, think whether to factor it in and with what
 
 ## Long term
 

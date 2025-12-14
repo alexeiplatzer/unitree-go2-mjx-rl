@@ -9,7 +9,6 @@ import mujoco as mj
 import numpy as np
 
 from quadruped_mjx_rl.terrain_gen.noise_utils import edge_slope, perlin
-from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 
 
 @dataclass

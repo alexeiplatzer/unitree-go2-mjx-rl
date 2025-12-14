@@ -4,7 +4,7 @@ from typing import Callable
 import jax
 import numpy as np
 
-from quadruped_mjx_rl.environments import Env, State
+from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.wrappers import EvalWrapper
 from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.types import AgentParams

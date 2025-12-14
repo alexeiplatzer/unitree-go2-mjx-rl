@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import jax.numpy as jnp
 
-from quadruped_mjx_rl.environments.physics_pipeline import PipelineModel
+from quadruped_mjx_rl.physics_pipeline import PipelineModel
 
 
 @dataclass

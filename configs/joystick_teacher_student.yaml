@@ -94,6 +94,14 @@ model:
     - 256
     - 256
   value_obs_key: proprioceptive
+terrain:
+  base_scene_file: scene_mjx.xml
+  randomization_config:
+    friction_max: 1.4
+    friction_min: 0.6
+    gain_max: 5.0
+    gain_min: -5.0
+  terrain_class: Flat
 training:
   action_repeat: 1
   augment_pixels: false

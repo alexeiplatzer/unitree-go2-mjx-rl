@@ -9,7 +9,7 @@ import jax
 import optax
 from flax.struct import dataclass as flax_dataclass
 
-from quadruped_mjx_rl.environments import Env
+from quadruped_mjx_rl.physics_pipeline import Env
 from quadruped_mjx_rl.models import AgentParams
 from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
 from quadruped_mjx_rl.models.types import AgentNetworkParams, PreprocessorParams

@@ -10,7 +10,7 @@ import numpy as np
 from quadruped_mjx_rl import math
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.environments.base import PipelineEnv
-from quadruped_mjx_rl.environments.physics_pipeline import (
+from quadruped_mjx_rl.physics_pipeline import (
     Motion,
     Transform,
     EnvModel,

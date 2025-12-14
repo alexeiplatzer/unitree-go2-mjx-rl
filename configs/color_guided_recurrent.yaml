@@ -108,6 +108,16 @@ model:
     - 256
     - 256
   value_obs_key: proprioceptive
+terrain:
+  base_scene_file: scene_mjx_empty_arena.xml
+  n_columns: 4
+  n_rows: 4
+  num_colors: 2
+  randomization_config:
+    num_colors: 2
+    tile_body_prefix: tile_
+  square_size: 1.0
+  terrain_class: ColorMap
 training:
   action_repeat: 1
   augment_pixels: false

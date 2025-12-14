@@ -8,9 +8,9 @@ import numpy as np
 from etils.epath import Path, PathLike
 import functools
 
-from quadruped_mjx_rl.domain_randomization.types import DomainRandomizationFn
+from quadruped_mjx_rl.domain_randomization import DomainRandomizationConfig
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
-from quadruped_mjx_rl.environments.physics_pipeline import Env
+from quadruped_mjx_rl.physics_pipeline import Env
 
 
 def render_scene(
@@ -58,8 +58,9 @@ def tile_images(img: np.ndarray, d: int) -> np.ndarray:
 
 
 def render_vision_observations(
-    env: Env, seed: int, domain_rand_fn: DomainRandomizationFn, num_worlds: int
+    env: Env, seed: int, domain_rand_config: DomainRandomizationConfig, num_worlds: int
 ) -> list[np.ndarray]:
+    # TODO: update
     rng_key = jax.random.PRNGKey(seed)
     domain_rand_key, reset_key = jax.random.split(rng_key, 2)
     wrapped_env = wrap_for_training(
@@ -67,7 +68,7 @@ def render_vision_observations(
         vision=True,
         num_vision_envs=num_worlds,
         randomization_fn=functools.partial(
-            domain_rand_fn,
+            domain_rand_config=domain_rand_config,
             env_model=env.env_model,
             rng_key=domain_rand_key,
             num_worlds=num_worlds,
