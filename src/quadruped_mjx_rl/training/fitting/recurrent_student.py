@@ -258,6 +258,18 @@ def compute_student_recurrent_loss(
         reinitialization_key=rng,
     )
 
+    # # match the shapes
+    # teacher_substeps = teacher_latent_vector.shape[0]
+    # student_substeps = student_latent_vector.shape[0]
+    # if teacher_substeps > student_substeps:
+    #     student_latent_vector = jnp.repeat(
+    #         student_latent_vector, teacher_substeps // student_substeps, axis=0
+    #     )
+    # elif teacher_substeps < student_substeps:
+    #     teacher_latent_vector = jnp.repeat(
+    #         teacher_latent_vector, student_substeps // teacher_substeps, axis=0
+    #     )
+
     teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
     total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
 

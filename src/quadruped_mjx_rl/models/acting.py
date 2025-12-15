@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 from typing import Protocol
 
 import jax
+from jax import numpy as jnp
 
 from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
@@ -84,8 +85,17 @@ def vision_actor_step(
     )
     # TODO: this is probably not properly vmapped over envs
     vision_obs = jax.vmap(env.get_vision_obs)(next_state.pipeline_state, next_state.info)
+    vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), vision_obs)
     # TODO: the recurrent network expects currently rarer vision obs
-    next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
+    # next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
+    transitions = Transition(
+        observation=dict(transitions.observation) | dict(vision_obs),
+        action=transitions.action,
+        reward=transitions.reward,
+        discount=transitions.discount,
+        next_observation=dict(transitions.next_observation) | dict(vision_obs),
+        extras=transitions.extras,
+    )
     return next_state, transitions
 
 

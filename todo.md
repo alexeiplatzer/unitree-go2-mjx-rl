@@ -8,6 +8,7 @@
 - [X] add config writing for complicated visual and recurrent envs
 - [X] add scripts for envs with more complicated terrains
 - [X] add vision support to the universal script
+- [ ] swap the substep configs into the model config
 - [ ] check correctness of vision obs handling
 - [ ] check correctness of recurrency handling
 - [ ] debug dry run on cpu locally all the envs

@@ -91,6 +91,7 @@ class ActorCriticEnrichedNetworks(
         action_size: int,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
+        encoder_supersteps: int = 1,
     ):
         """Make Actor Critic networks with preprocessor."""
         self.acting_encoder_obs_key = model_config.encoder_obs_key
@@ -107,6 +108,7 @@ class ActorCriticEnrichedNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
+        self.encoder_supersteps = encoder_supersteps
 
     @staticmethod
     def agent_params_class() -> type[ActorCriticEnrichedAgentParams]:
@@ -139,9 +141,11 @@ class ActorCriticEnrichedNetworks(
         observation: Observation,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
-        return self.acting_encoder_module.apply(
+        latent_encoding = self.acting_encoder_module.apply(
             network_params.acting_encoder, observation[self.acting_encoder_obs_key]
         )
+        latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
+        return latent_encoding
 
     def apply_policy_with_latents(
         self,
