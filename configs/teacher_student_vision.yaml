@@ -11,10 +11,10 @@ environment:
   control:
     action_scale: 0.3
   domain_rand:
-    apply_kicks: false
+    apply_kicks: true
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: JoystickVision
+  environment_class: JoystickBase
   observation_noise:
     clip: 100.0
     general_noise: 0.05

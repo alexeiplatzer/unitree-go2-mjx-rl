@@ -240,7 +240,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             )
             logging.info(f"{name} {data_key}: {evaluator_metrics[data_key]}")
             logging.info(f"{name} {data_err_key}: {evaluator_metrics[data_err_key]}")
-            logging.info(f"current_step: {current_step}")
+            # logging.info(f"current_step: {current_step}")
             progress_fn(current_step, evaluator_metrics)
 
         return evaluation_fn

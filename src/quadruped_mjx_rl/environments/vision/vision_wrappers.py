@@ -77,6 +77,7 @@ class VisionWrapper(Wrapper):
         )
 
     def step(self, state: State, action: Action) -> State:
+        # TODO check that this works as expected: keeps old vision obs
         old_obs = state.obs
         next_state = self.env.step(state, action)
         return state.replace(obs=dict(old_obs) | dict(next_state.obs))
@@ -107,7 +108,7 @@ class VisionWrapper(Wrapper):
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
     ) -> Observation:
-        _, rgb, depth = self.renderer.init(pipeline_state.data, self.pipeline_model.model)
+        _, rgb, depth = self.renderer.render(state_info["render_token"], pipeline_state.data)
         return self._format_camera_observations(rgb, depth, state_info)
 
     def _format_camera_observations(

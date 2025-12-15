@@ -6,12 +6,20 @@
 - [X] init agent state implementation
 - [X] try out a very simple training procedure on chair GPUs
 - [X] add config writing for complicated visual and recurrent envs
-- [ ] add scripts for envs with more complicated terrains
+- [X] add scripts for envs with more complicated terrains
+- [X] add vision support to the universal script
 - [ ] check correctness of vision obs handling
-- [ ] check how multiple GPUs can be used for vision setups
+- [ ] check correctness of recurrency handling
+- [ ] debug dry run on cpu locally all the envs
+- [ ] update the notebooks, especially the universal one
+- [ ] tryout runs with the notebooks on colab
+- [ ] tryout runs on the chair server
+- [ ] check server results and plan further action
+
 
 ## Mid term
 
+- [ ] check how multiple GPUs can be used for vision setups
 - [ ] implement visualisation rollouts for recurrent support
 - [ ] verify the RNN architecture with examples
 - [ ] develop a simplified environment for testing the RNN setup

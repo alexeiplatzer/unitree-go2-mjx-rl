@@ -125,7 +125,6 @@ def train(
         training_state, state, key, agent_state = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        # acting_policy = acting_policy_factory(training_state.agent_params, deterministic=False)
         generate_unroll = generate_unroll_factory(training_state.agent_params)
         roll = functools.partial(
             wrap_roll(generate_unroll),
@@ -141,10 +140,11 @@ def train(
             length=batch_size * num_minibatches // num_envs,
         )
 
+        # TODO: agent state is per-env, should be updated similarly, no multiple unrolls per env should be allowed
         # Have leading dimensions (batch_size * num_minibatches, unroll_length)
         data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 1, 2), data)
         data = jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data)
-        assert data.discount.shape[1:] == (unroll_length,)
+        assert data.discount.shape[-1] % unroll_length == 0  # without the substeps
 
         # Update normalization params and normalize observations.
         normalizer_params = running_statistics.update(

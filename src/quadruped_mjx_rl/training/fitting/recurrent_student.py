@@ -192,7 +192,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             data_min=-10,
         )
 
-        convergence_key = "student_total_loss"
+        convergence_key = "training/student_total_loss"
         convergence_err_key = ""
         convergence_progress_fn, _ = make_progress_fn(
             show_outputs=show_outputs,
@@ -206,8 +206,8 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode MSE",
             data_key=convergence_key,
             data_err_key=convergence_err_key,
-            data_max=100,
-            data_min=-100,  # TODO no idea what are appropriate values here, check in practice
+            data_max=1,
+            data_min=0,  # TODO no idea what are appropriate values here, check in practice
         )
 
         teacher_eval_fn = self._evaluation_factory(
@@ -221,10 +221,11 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             logging.info(f"current_step: {current_step}")
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
-            logging.info(
-                f"student absolute loss: "
-                f"{training_metrics.get('training/student_total_loss', 'not known yet')}",
-            )
+            if convergence_key in training_metrics:
+                logging.info(f"student absolute loss: {training_metrics[convergence_key]}")
+                convergence_progress_fn(current_step, training_metrics)
+            else:
+                logging.info("student absolute loss: not known yet.")
 
         return evaluation_fn, times
 

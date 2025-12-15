@@ -17,7 +17,7 @@ class ObstaclePositionRandomizationConfig(DomainRandomizationConfig):
         self,
         pipeline_model: PipelineModel,
         env_model: EnvModel,
-        rng_key: PRNGKey,
+        key: PRNGKey,
         num_worlds: int,
     ) -> tuple[PipelineModel, PipelineModel]:
         obstacle_ids = [
@@ -35,7 +35,7 @@ class ObstaclePositionRandomizationConfig(DomainRandomizationConfig):
                 body_pos = body_pos.at[obstacle_id, :2].set(body_pos[obstacle_id, :2] + offset)
             return body_pos
 
-        key_envs = jax.random.split(rng_key, num_worlds)
+        key_envs = jax.random.split(key, num_worlds)
         body_pos = rand(key_envs)
 
         in_axes = jax.tree_util.tree_map(lambda x: None, pipeline_model)

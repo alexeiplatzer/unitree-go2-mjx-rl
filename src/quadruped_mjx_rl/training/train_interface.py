@@ -170,7 +170,6 @@ def train(
     # Shapes of different observation tensors
     # Discard the batch axes over devices and envs.
     obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], env_state.obs)
-    # TODO: the recurrent network expects currently rarer vision obs
 
     preprocess_fn = (
         running_statistics.normalize

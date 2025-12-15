@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Generic
 
 import jax
+from jax import numpy as jnp
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.physics_pipeline import Env, State
@@ -75,6 +76,12 @@ class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
             else actor_step
         )
 
+        def reshape(data):
+            if vision:
+                return jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data)
+            else:
+                return data
+
         def generate_unroll(
             env_state: State,
             key: PRNGKey,
@@ -90,6 +97,7 @@ class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
                 (),
                 length=unroll_length,
             )
+            transitions = reshape(transitions)
             return env_state, transitions
 
         return generate_unroll

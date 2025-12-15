@@ -82,7 +82,9 @@ def vision_actor_step(
         (),
         length=proprio_substeps,
     )
-    vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
+    # TODO: this is probably not properly vmapped over envs
+    vision_obs = jax.vmap(env.get_vision_obs)(next_state.pipeline_state, next_state.info)
+    # TODO: the recurrent network expects currently rarer vision obs
     next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
     return next_state, transitions
 

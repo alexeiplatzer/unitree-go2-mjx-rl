@@ -8,8 +8,6 @@ from quadruped_mjx_rl.environments.quadruped import (
     QuadrupedGaitTrackingEnvConfig,
     QuadrupedJoystickBaseEnv,
     QuadrupedJoystickTeacherStudentEnv,
-    QuadrupedJoystickVisionEnv,
-    QuadrupedJoystickVisionEnvConfig,
     QuadrupedObstacleAvoidingEnv,
     QuadrupedObstacleAvoidingEnvConfig,
     QuadrupedVisionTargetEnv,
@@ -21,5 +19,4 @@ from quadruped_mjx_rl.environments.factories import (
     get_base_model,
     get_env_factory,
     is_obs_key_vision,
-    QuadrupedEnvFactory,
 )

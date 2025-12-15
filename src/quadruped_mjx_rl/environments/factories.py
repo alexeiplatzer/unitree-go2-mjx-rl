@@ -14,8 +14,6 @@ from quadruped_mjx_rl.environments.quadruped import (
 )
 from quadruped_mjx_rl.robots import RobotConfig
 
-QuadrupedEnvFactory = Callable[[], type(QuadrupedBaseEnv)]
-
 
 def is_obs_key_vision(obs_key: str) -> bool:
     """Checks if the observation key corresponds to a vision observation."""
@@ -38,7 +36,7 @@ def get_env_factory(
     customize_model: bool = True,
     use_vision: bool = False,
     renderer_maker: Callable[[PipelineModel], Any] | None = None,
-) -> QuadrupedEnvFactory:
+) -> Callable[[], type(QuadrupedBaseEnv)]:
     """
     Prepares parameters to instantiate an environment. For vision environments, also wraps
     the environment with a vision wrapper.
@@ -52,8 +50,9 @@ def get_env_factory(
     if use_vision:
         if renderer_maker is None:
             raise ValueError("Vision rendering requires a renderer_maker.")
+        _env_factory = env_factory
         env_factory = lambda: environment_config.vision_env_config.get_vision_wrapper_class()(
-            env=env_factory(),
+            env=_env_factory(),
             vision_env_config=environment_config.vision_env_config,
             renderer_maker=renderer_maker,
         )

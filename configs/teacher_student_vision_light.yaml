@@ -11,14 +11,14 @@ environment:
   control:
     action_scale: 0.3
   domain_rand:
-    apply_kicks: false
+    apply_kicks: true
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: JoystickVision
+  environment_class: JoystickBase
   observation_noise:
     clip: 100.0
     general_noise: 0.05
-    history_length: 15
+    history_length: 13
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -62,7 +62,7 @@ environment:
       enabled_geom_groups:
       - 0
       gpu_id: 0
-      render_batch_size: 512
+      render_batch_size: 4
       render_height: 64
       render_width: 128
       use_rasterizer: false
@@ -111,23 +111,23 @@ terrain:
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 4
+  batch_size: 6
   deterministic_eval: false
-  episode_length: 1000
+  episode_length: 17
   log_training_metrics: false
   normalize_observations: true
-  num_envs: 4
-  num_eval_envs: 4
+  num_envs: 15
+  num_eval_envs: 15
   num_evals: 5
-  num_minibatches: 4
+  num_minibatches: 10
   num_resets_per_eval: 0
   num_timesteps: 100000
-  num_updates_per_batch: 8
+  num_updates_per_batch: 1
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0
     student_learning_rate: 0.001
-  proprio_steps_per_vision_step: 1
+  proprio_steps_per_vision_step: 11
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97
@@ -138,5 +138,5 @@ training:
   seed: 0
   training_class: PPO_Vision
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 2
   use_vision: true
