@@ -34,7 +34,7 @@ from quadruped_mjx_rl.models.types import (
     RecurrentCarry,
     RecurrentAgentState,
 )
-from quadruped_mjx_rl.models.networks_utils import policy_with_latents_factory
+from quadruped_mjx_rl.models.networks_utils import process_policy_logits
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transition
 
 
@@ -61,6 +61,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
         )
     )
     student_recurrent_backpropagation_steps: int = 64
+    student_encoder_supersteps: int = 4
 
     @classmethod
     def config_class_key(cls) -> str:

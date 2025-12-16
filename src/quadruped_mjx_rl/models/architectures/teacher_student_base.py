@@ -116,8 +116,6 @@ class TeacherStudentNetworks(
         action_size: int,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
-        encoder_supersteps: int = 1,
-        student_encoder_supersteps: int = 1,
     ):
         """Make teacher-student network with preprocessor."""
         self.student_encoder_obs_key = model_config.student_obs_key
@@ -132,9 +130,7 @@ class TeacherStudentNetworks(
             action_size=action_size,
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
-            encoder_supersteps=encoder_supersteps,
         )
-        self.student_encoder_supersteps = student_encoder_supersteps
 
     @staticmethod
     def agent_params_class() -> type[TeacherStudentAgentParams]:
@@ -168,12 +164,14 @@ class TeacherStudentNetworks(
         preprocessor_params: PreprocessorParams,
         network_params: TeacherStudentNetworkParams,
         observation: Observation,
+        repeat_output: bool = True,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
         latent_encoding = self.student_encoder_module.apply(
             network_params.student_encoder, observation[self.student_encoder_obs_key]
         )
-        latent_encoding = jnp.repeat(latent_encoding, self.student_encoder_supersteps, axis=0)
+        if repeat_output:
+            latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
         return latent_encoding
 
     def apply_student_policy(

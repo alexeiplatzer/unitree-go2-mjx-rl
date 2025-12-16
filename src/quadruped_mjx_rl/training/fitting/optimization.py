@@ -174,11 +174,6 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
-        proprio_steps_per_vision_step = (
-            training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig)
-            else 1
-        )
         evaluator = Evaluator(
             eval_env=eval_env,
             key=eval_key,
@@ -188,8 +183,6 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             unroll_factory=lambda params: self.network.make_unroll_fn(
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
-                vision=training_config.use_vision,
-                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
             ),
         )
 

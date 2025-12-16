@@ -16,6 +16,7 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 from quadruped_mjx_rl.models.base_modules import ActivationFn
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.models.types import (
+    Policy,
     AgentParams,
     identity_observation_preprocessor,
     Params,
@@ -24,7 +25,7 @@ from quadruped_mjx_rl.models.types import (
     PreprocessorParams,
     AgentNetworkParams,
 )
-from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
+from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Action, Extra
 
 
 @dataclass
@@ -144,18 +145,23 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
     def policy_metafactory(
         self,
         policy_apply_fn: Callable[
-            [PreprocessorParams, AgentNetworkParams, Observation], jax.Array
-        ],
+            [PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array
+        ] | Callable[[PreprocessorParams, AgentNetworkParams, Observation], jax.Array],
     ) -> PolicyFactory[AgentNetworkParams]:
         def make_policy(
             params: AgentParams[ActorCriticNetworkParams], deterministic: bool = False
-        ):
-            return networks_utils.policy_factory(
-                policy_apply=policy_apply_fn,
-                parametric_action_distribution=self.parametric_action_distribution,
-                params=params,
-                deterministic=deterministic,
-            )
+        ) -> Policy:
+            def policy(sample_key: PRNGKey, observation: Observation, *args) -> tuple[Action, Extra]:
+                policy_logits = policy_apply_fn(
+                    params.preprocessor_params, params.network_params, observation, *args
+                )
+                return networks_utils.process_policy_logits(
+                    parametric_action_distribution=self.parametric_action_distribution,
+                    logits=policy_logits,
+                    sample_key=sample_key,
+                    deterministic=deterministic,
+                )
+            return policy
 
         return make_policy
 

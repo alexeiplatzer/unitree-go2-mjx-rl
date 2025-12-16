@@ -1,5 +1,7 @@
 """Actor-Critic architecture with an additional common encoder."""
 
+import functools
+from collections.abc import Sequence, Callable
 from dataclasses import dataclass, field
 
 import jax
@@ -7,25 +9,28 @@ from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
+from quadruped_mjx_rl.environments.vision import VisionWrapper
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn, vision_actor_step
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
-    ActorCriticConfig,
-    ActorCriticNetworks,
-    ActorCriticNetworkParams,
+    ActorCriticConfig, ActorCriticNetworkParams, ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
     register_model_config_class,
 )
 from quadruped_mjx_rl.models.base_modules import ActivationFn
-from quadruped_mjx_rl.models.base_modules import ModuleConfigCNN, ModuleConfigMLP
+from quadruped_mjx_rl.models.base_modules import ModuleConfigCNN
+from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
+from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory
 from quadruped_mjx_rl.models.types import (
-    AgentParams,
     identity_observation_preprocessor,
     Params,
     PreprocessObservationFn,
     PreprocessorParams,
 )
-from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
+from quadruped_mjx_rl.physics_pipeline import Env, State
+from quadruped_mjx_rl.types import Observation, PRNGKey, Transition
+from quadruped_mjx_rl.types import ObservationSize
 
 
 @dataclass
@@ -37,6 +42,7 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
         )
     )
     latent_encoding_size: int = 16
+    encoder_supersteps: int = 16
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -91,7 +97,6 @@ class ActorCriticEnrichedNetworks(
         action_size: int,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
-        encoder_supersteps: int = 1,
     ):
         """Make Actor Critic networks with preprocessor."""
         self.acting_encoder_obs_key = model_config.encoder_obs_key
@@ -108,7 +113,13 @@ class ActorCriticEnrichedNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
-        self.encoder_supersteps = encoder_supersteps
+        self.encoder_supersteps = model_config.encoder_supersteps
+        if isinstance(model_config.encoder, ModuleConfigCNN):
+            self.vision = True
+        else:
+            self.vision = False
+            if self.encoder_supersteps > 1:
+                raise ValueError("Non-vision encoders do not support supersteps.")
 
     @staticmethod
     def agent_params_class() -> type[ActorCriticEnrichedAgentParams]:
@@ -139,12 +150,14 @@ class ActorCriticEnrichedNetworks(
         preprocessor_params: PreprocessorParams,
         network_params: ActorCriticEnrichedNetworkParams,
         observation: Observation,
+        repeat_output: bool = True,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
         latent_encoding = self.acting_encoder_module.apply(
             network_params.acting_encoder, observation[self.acting_encoder_obs_key]
         )
-        latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
+        if repeat_output:
+            latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
         return latent_encoding
 
     def apply_policy_with_latents(
@@ -201,3 +214,60 @@ class ActorCriticEnrichedNetworks(
         return self.apply_value_with_latents(
             preprocessor_params, network_params, observation, latent_encoding
         )
+
+    def make_unroll_fn(
+        self,
+        agent_params: AgentParams[AgentNetworkParams],
+        *,
+        deterministic: bool = False,
+        policy_factory: PolicyFactory | None = None,
+        apply_encoder_fn: Callable | None = None,
+    ) -> GenerateUnrollFn:
+        if not self.vision:
+            return super().make_unroll_fn(
+                agent_params, deterministic=deterministic, policy_factory=policy_factory
+            )
+
+        if policy_factory is None:
+            policy_factory = self.policy_metafactory(self.apply_policy_with_latents)
+        acting_policy = policy_factory(agent_params, deterministic)
+
+        if apply_encoder_fn is None:
+            apply_encoder_fn = self.apply_acting_encoder
+        vision_encoder = functools.partial(
+            apply_encoder_fn,
+            preprocessor_params=agent_params.preprocessor_params,
+            network_params=agent_params.network_params,
+            repeat_output=False,
+        )
+
+        def generate_unroll(
+            env_state: State,
+            key: PRNGKey,
+            env: Env,
+            unroll_length: int,
+            extra_fields: Sequence[str] = (),
+        ) -> tuple[State, Transition]:
+            assert isinstance(env, VisionWrapper)
+            first_vision_obs = jax.vmap(env.get_vision_obs)(
+                env_state.pipeline_state, env_state.info
+            )
+            (env_state, _, _), transitions = jax.lax.scan(
+                functools.partial(
+                    vision_actor_step,
+                    env=env,
+                    policy=acting_policy,
+                    vision_encoder=vision_encoder,
+                    extra_fields=extra_fields,
+                    proprio_substeps=self.encoder_supersteps,
+                ),
+                (env_state, key, first_vision_obs),
+                (),
+                length=unroll_length,
+            )
+            transitions = jax.tree_util.tree_map(
+                lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), transitions
+            )
+            return env_state, transitions
+
+        return generate_unroll

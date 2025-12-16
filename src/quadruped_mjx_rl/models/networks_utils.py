@@ -10,7 +10,6 @@ from quadruped_mjx_rl.environments import is_obs_key_vision
 from quadruped_mjx_rl.models.distributions import ParametricDistribution
 from quadruped_mjx_rl.models.types import (
     Policy,
-    PolicyWithLatents,
     PreprocessObservationFn,
     PreprocessorParams,
     AgentNetworkParams,
@@ -63,7 +62,8 @@ def make_dummy_obs(obs_size: ObservationSize) -> Observation:
 
 
 def process_policy_logits(
-    parametric_action_distribution,
+    *,
+    parametric_action_distribution: ParametricDistribution,
     logits: jax.Array,
     sample_key: PRNGKey,
     deterministic: bool = False,
@@ -80,32 +80,14 @@ def process_policy_logits(
 
 
 def policy_factory(
-    policy_apply: Callable[[PreprocessorParams, AgentNetworkParams, Observation], jax.Array],
+    policy_apply: Callable[[PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array],
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
 ) -> Policy:
-    return lambda observation, sample_key: process_policy_logits(
+    return lambda sample_key, observation, *args: process_policy_logits(
         parametric_action_distribution=parametric_action_distribution,
-        logits=policy_apply(params.preprocessor_params, params.network_params, observation),
-        sample_key=sample_key,
-        deterministic=deterministic,
-    )
-
-
-def policy_with_latents_factory(
-    policy_apply: Callable[
-        [PreprocessorParams, AgentNetworkParams, Observation, jax.Array], jax.Array
-    ],
-    parametric_action_distribution: ParametricDistribution,
-    params: AgentParams,
-    deterministic: bool = False,
-) -> PolicyWithLatents:
-    return lambda observation, sample_key, latent_encoding: process_policy_logits(
-        parametric_action_distribution=parametric_action_distribution,
-        logits=policy_apply(
-            params.preprocessor_params, params.network_params, observation, latent_encoding
-        ),
+        logits=policy_apply(params.preprocessor_params, params.network_params, observation, *args),
         sample_key=sample_key,
         deterministic=deterministic,
     )

@@ -283,14 +283,7 @@ def train(
         recurrent_agent_state=agent_state,
         recurrent=recurrent,
         generate_unroll_factory=functools.partial(
-            ppo_networks.make_unroll_fn,
-            deterministic=training_config.deterministic_eval,
-            vision=training_config.use_vision,
-            proprio_steps_per_vision_step=(
-                training_config.proprio_steps_per_vision_step
-                if isinstance(training_config, TrainingWithVisionConfig)
-                else 1
-            ),
+            ppo_networks.make_unroll_fn, deterministic=training_config.deterministic_eval
         ),
     )
 

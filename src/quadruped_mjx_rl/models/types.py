@@ -20,20 +20,21 @@ RecurrentCarry = tuple[jax.Array, jax.Array] | None
 class Policy(Protocol):
     def __call__(
         self,
-        observation: Observation,
         sample_key: PRNGKey,
+        observation: Observation,
+        latent_encoding: jax.Array | None = None,
     ) -> tuple[Action, Extra]:
         pass
 
 
-class PolicyWithLatents(Protocol):
-    def __call__(
-        self,
-        observation: Observation,
-        latent_encoding: jax.Array,
-        sample_key: PRNGKey,
-    ) -> tuple[Action, Extra]:
-        pass
+# class PolicyWithLatents(Protocol):
+#     def __call__(
+#         self,
+#         observation: Observation,
+#         latent_encoding: jax.Array,
+#         sample_key: PRNGKey,
+#     ) -> tuple[Action, Extra]:
+#         pass
 
 
 class RecurrentEncoder(Protocol):

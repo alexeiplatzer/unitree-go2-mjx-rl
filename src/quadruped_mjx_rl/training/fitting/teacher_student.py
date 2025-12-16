@@ -142,9 +142,6 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             unroll_factory=lambda params: self.network.make_unroll_fn(
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
-                vision=training_config.use_vision,
-                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
-                policy_factory=self.network.get_acting_policy_factory(),
             ),
         )
         student_evaluator = Evaluator(
@@ -156,9 +153,8 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             unroll_factory=lambda params: self.network.make_unroll_fn(
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
-                vision=training_config.use_vision,
-                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
-                policy_factory=self.network.get_student_policy_factory(),
+                policy_factory=self.network.get_acting_policy_factory() if not self.network.vision else None,
+                apply_encoder_fn=self.network.apply_student_encoder,
             ),
         )
 

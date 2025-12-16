@@ -11,13 +11,13 @@ from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.models.types import (
     Policy,
-    PolicyWithLatents,
     RecurrentCarry,
     RecurrentEncoder,
 )
 from quadruped_mjx_rl.types import (
     PRNGKey,
     Transition,
+    Observation,
 )
 
 
@@ -71,44 +71,49 @@ def actor_step(
 def vision_actor_step(
     env_state: State,
     key: PRNGKey,
+    last_vision_obs: Observation,
     *,
     env: VisionWrapper,
     policy: Policy,
+    vision_encoder: Callable[[Observation], jax.Array] | None = None,
     extra_fields: Sequence[str] = (),
     proprio_substeps: int = 1,
-) -> tuple[State, Transition]:
+) -> tuple[State, Observation, Transition]:
+    if vision_encoder is not None:
+        latent_encoding = vision_encoder(last_vision_obs)
+        policy = functools.partial(policy, latent_encoding=latent_encoding)
     (next_state, _), transitions = jax.lax.scan(
         functools.partial(actor_step, env=env, policy=policy, extra_fields=extra_fields),
         (env_state, key),
         (),
         length=proprio_substeps,
     )
-    # TODO: this is probably not properly vmapped over envs
-    vision_obs = jax.vmap(env.get_vision_obs)(next_state.pipeline_state, next_state.info)
-    vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), vision_obs)
-    # TODO: the recurrent network expects currently rarer vision obs
-    # next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
+    # add vision observations to transitions
+    last_vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), last_vision_obs)
     transitions = Transition(
-        observation=dict(transitions.observation) | dict(vision_obs),
+        observation=dict(transitions.observation) | dict(last_vision_obs),
         action=transitions.action,
         reward=transitions.reward,
         discount=transitions.discount,
-        next_observation=dict(transitions.next_observation) | dict(vision_obs),
+        next_observation=dict(transitions.next_observation) | dict(last_vision_obs),
         extras=transitions.extras,
     )
-    return next_state, transitions
+
+    # update the vision observations
+    next_vision_obs = jax.vmap(env.get_vision_obs)(next_state.pipeline_state, next_state.info)
+    # next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
+    return next_state, next_vision_obs, transitions
 
 
 @wrap_roll
 def recurrent_actor_step(
     env_state: State,
     recurrent_carry: RecurrentCarry,
-    initial_encoding,
+    initial_encoding: jax.Array,
     key: PRNGKey,
-    _,
     *,
     env: VisionWrapper,
-    policy: PolicyWithLatents,
+    policy: Policy,
     recurrent_encoder: RecurrentEncoder,
     extra_fields: Sequence[str] = (),
     vision_substeps: int = 0,
