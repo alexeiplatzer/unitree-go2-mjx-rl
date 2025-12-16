@@ -8,8 +8,8 @@ import jax
 from quadruped_mjx_rl.running_statistics import NestedArray, NestedSpec
 
 # Reinforcement learning types
-Observation = Mapping[str, jax.Array]
-ObservationSize = Mapping[str, tuple[int, ...] | int]
+Observation = dict[str, jax.Array]
+ObservationSize = dict[str, tuple[int, ...] | int]
 Action = jax.Array
 Metrics = Mapping[str, jax.Array] | Mapping[str, float]
 

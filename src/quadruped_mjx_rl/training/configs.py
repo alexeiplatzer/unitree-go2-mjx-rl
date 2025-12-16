@@ -64,7 +64,6 @@ register_config_base_class(TrainingConfig)
 
 @dataclass
 class TrainingWithVisionConfig(TrainingConfig):
-    proprio_steps_per_vision_step: int = 1
     use_vision: bool = True
     augment_pixels: bool = False
     num_envs: int = 256  # Most of these int args are reduced because vision is heavier
@@ -72,6 +71,8 @@ class TrainingWithVisionConfig(TrainingConfig):
     num_timesteps: int = 1_000_000
     batch_size: int = 256
     num_updates_per_batch: int = 8
+    unroll_length = 3
+    episode_length: int = 50
     optimizer: TeacherStudentOptimizerConfig = field(
         default_factory=lambda: TeacherStudentOptimizerConfig(
             max_grad_norm=1.0,
@@ -101,9 +102,7 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
-    unroll_length: int = 25
-    proprio_steps_per_vision_step: int = 5
-    vision_steps_per_recurrent_step: int = 5
+    unroll_length: int = 2
     num_updates_per_batch = 1
 
     def check_validity(self):
@@ -113,15 +112,15 @@ class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
                 "Recurrent training must have num_updates_per_batch == 1. Repeated updates on "
                 "the same batch will break the recurrent buffers."
             )
-        if (
-            self.unroll_length
-            % (self.vision_steps_per_recurrent_step * self.proprio_steps_per_vision_step)
-            != 0
-        ):
-            raise ValueError(
-                "Unroll length must be divisible by the product of vision steps per recurrent "
-                "step and proprio steps per vision step."
-            )
+        # if (
+        #     self.unroll_length
+        #     % (self.vision_steps_per_recurrent_step * self.proprio_steps_per_vision_step)
+        #     != 0
+        # ):
+        #     raise ValueError(
+        #         "Unroll length must be divisible by the product of vision steps per recurrent "
+        #         "step and proprio steps per vision step."
+        #     )
 
     @classmethod
     def config_class_key(cls) -> str:

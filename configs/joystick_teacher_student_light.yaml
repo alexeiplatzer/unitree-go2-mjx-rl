@@ -73,6 +73,7 @@ model:
     - 256
     - 256
   encoder_obs_key: environment_privileged
+  encoder_supersteps: 16
   latent_encoding_size: 16
   model_class: TeacherStudent
   policy:

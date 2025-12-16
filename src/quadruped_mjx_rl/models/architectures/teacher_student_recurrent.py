@@ -110,6 +110,7 @@ class TeacherStudentRecurrentNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
+        self.student_encoder_supersteps = model_config.student_encoder_supersteps
 
     @staticmethod
     def agent_params_class() -> type[TeacherStudentAgentParams]:
@@ -215,22 +216,19 @@ class TeacherStudentRecurrentNetworks(
         )
         return encoding, recurrent_carry
 
-    def recurrent_unroll_factory(
+    def make_student_unroll_fn(
         self,
-        params: TeacherStudentAgentParams,
+        agent_params: TeacherStudentAgentParams,
+        *,
         deterministic: bool = False,
-        vision: bool = True,
-        vision_substeps: int = 1,
-        proprio_substeps: int = 1,
     ) -> GenerateUnrollFn:
-        policy = policy_with_latents_factory(
-            policy_apply=self.apply_policy_with_latents,
-            parametric_action_distribution=self.parametric_action_distribution,
-            params=params,
-            deterministic=deterministic,
-        )
-        if not vision:
+        policy = self.policy_metafactory(self.apply_policy_with_latents)(agent_params, deterministic)
+        if not self.vision:
             vision_substeps = 0
+            proprio_substeps = self.student_encoder_supersteps
+        else:
+            vision_substeps = self.student_encoder_supersteps
+            proprio_substeps = self.encoder_supersteps
 
         def generate_unroll(
             env_state: State,
@@ -240,6 +238,7 @@ class TeacherStudentRecurrentNetworks(
             extra_fields: Sequence[str] = (),
         ) -> tuple[State, Transition]:
             key, init_carry_key = jax.random.split(key)
+            # TODO: vmap?
             init_carry = self.init_student_carry(init_carry_key)
             (env_state, _, _, _), transitions = jax.lax.scan(
                 functools.partial(

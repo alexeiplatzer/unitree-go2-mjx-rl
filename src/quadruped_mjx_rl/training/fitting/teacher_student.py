@@ -128,11 +128,6 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
         teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
-        proprio_steps_per_vision_step = (
-            training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig)
-            else 1
-        )
         teacher_evaluator = Evaluator(
             eval_env=eval_env,
             key=teacher_eval_key,

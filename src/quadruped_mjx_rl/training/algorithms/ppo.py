@@ -63,7 +63,9 @@ def compute_ppo_loss(
 
     baseline = network.apply_value(preprocessor_params, network_params, data.observation)
     terminal_obs = jax.tree_util.tree_map(lambda x: x[-1], data.next_observation)
-    bootstrap_value = network.apply_value(preprocessor_params, network_params, terminal_obs)
+    bootstrap_value = network.apply_value(
+        preprocessor_params, network_params, terminal_obs, terminal=True
+    )
 
     rewards = data.reward * hyperparams.reward_scaling
     truncation = data.extras["state_extras"]["truncation"]

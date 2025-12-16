@@ -1,16 +1,24 @@
 environment:
-  command: {}
+  command:
+    ranges:
+      ang_vel_yaw_max: 0.7
+      ang_vel_yaw_min: -0.7
+      lin_vel_x_max: 1.5
+      lin_vel_x_min: -0.6
+      lin_vel_y_max: 0.8
+      lin_vel_y_min: -0.8
+    resampling_time: 500
   control:
     action_scale: 0.3
   domain_rand:
-    apply_kicks: false
+    apply_kicks: true
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: QuadrupedColorGuided
+  environment_class: JoystickBase
   observation_noise:
     clip: 100.0
     general_noise: 0.05
-    history_length: 15
+    history_length: 13
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -19,15 +27,15 @@ environment:
       ang_vel_xy: -0.05
       feet_air_time: 0.2
       foot_slip: -0.1
-      goal_progress: 2.5
-      goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
       orientation: -5.0
-      speed_towards_goal: 2.5
+      stand_still: -0.5
       termination: -1.0
       torques: -0.0002
+      tracking_ang_vel: 0.8
+      tracking_lin_vel: 1.5
     termination_body_height: 0.18
-    yaw_alignment_threshold: 1.35
+    tracking_sigma: 0.25
   sim:
     ctrl_dt: 0.02
     override:
@@ -44,9 +52,9 @@ environment:
       use_brightness_randomized_rgb: true
       use_depth: false
     - name: terrain
-      use_actual_rgb: true
+      use_actual_rgb: false
       use_brightness_randomized_rgb: false
-      use_depth: false
+      use_depth: true
     vision_config:
       enabled_cameras:
       - 1
@@ -65,76 +73,57 @@ model:
       - 256
       - 256
     filter_sizes:
-    - 16
-    - 16
-    - 16
-  encoder_obs_key: privileged_terrain_map
-  encoder_supersteps: 16
+    - 32
+    - 64
+    - 64
+  encoder_obs_key: pixels/terrain/depth
+  encoder_supersteps: 11
   latent_encoding_size: 16
-  model_class: TeacherStudentRecurrent
+  model_class: TeacherStudentVision
   policy:
     layer_sizes:
     - 128
     - 128
-    - 128
-    - 128
   policy_obs_key: proprioceptive
   student:
-    convolutional:
-      dense:
-        layer_sizes:
-        - 128
-        - 128
-        - 64
-      filter_sizes:
-      - 32
-      - 32
-      - 32
-    proprioceptive_preprocessing:
+    dense:
       layer_sizes:
-      - 64
-      - 64
-    recurrent:
-      dense:
-        layer_sizes:
-        - 16
-      recurrent_size: 16
-  student_encoder_supersteps: 4
+      - 256
+      - 256
+    filter_sizes:
+    - 32
+    - 64
+    - 64
   student_obs_key: pixels/frontal_ego/rgb_adjusted
-  student_proprio_obs_key: proprioceptive
-  student_recurrent_backpropagation_steps: 64
   value:
     layer_sizes:
     - 256
     - 256
-    - 256
-    - 256
   value_obs_key: proprioceptive
 terrain:
-  base_scene_file: scene_mjx_empty_arena.xml
-  n_columns: 4
-  n_rows: 4
-  num_colors: 2
+  base_scene_file: scene_mjx_cylinders.xml
   randomization_config:
-    num_colors: 2
-    tile_body_prefix: tile_
-  square_size: 1.0
-  terrain_class: ColorMap
+    obstacle_names:
+    - cylinder_0
+    - cylinder_1
+    offset_max: 3.0
+    offset_min: -3.0
+  terrain_class: SimpleObstacle
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 256
+  batch_size: 4
   deterministic_eval: false
-  episode_length: 50
+  episode_length: 17
   log_training_metrics: false
   normalize_observations: true
-  num_envs: 256
-  num_eval_envs: 256
-  num_evals: 10
-  num_minibatches: 32
+  num_envs: 10
+  num_eval_envs: 10
+  num_evals: 5
+  num_minibatches: 25
   num_resets_per_eval: 0
-  num_timesteps: 1000000
-  num_updates_per_batch: 8
+  num_timesteps: 100000
+  num_updates_per_batch: 2
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0
@@ -147,7 +136,7 @@ training:
     normalize_advantage: true
     reward_scaling: 1
   seed: 0
-  training_class: PPO_RecurrentStudent
+  training_class: PPO_Vision
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 3
   use_vision: true

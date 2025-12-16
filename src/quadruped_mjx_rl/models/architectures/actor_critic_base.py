@@ -135,6 +135,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         preprocessor_params: PreprocessorParams,
         network_params: ActorCriticNetworkParams,
         observation: Observation,
+        terminal: bool = False,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
         return jnp.squeeze(
@@ -151,9 +152,9 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         def make_policy(
             params: AgentParams[ActorCriticNetworkParams], deterministic: bool = False
         ) -> Policy:
-            def policy(sample_key: PRNGKey, observation: Observation, *args) -> tuple[Action, Extra]:
+            def policy(sample_key: PRNGKey, observation: Observation, *args, **kwargs) -> tuple[Action, Extra]:
                 policy_logits = policy_apply_fn(
-                    params.preprocessor_params, params.network_params, observation, *args
+                    params.preprocessor_params, params.network_params, observation, *args, **kwargs
                 )
                 return networks_utils.process_policy_logits(
                     parametric_action_distribution=self.parametric_action_distribution,

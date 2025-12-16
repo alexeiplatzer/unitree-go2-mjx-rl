@@ -127,11 +127,6 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
         teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
-        proprio_steps_per_vision_step = (
-            training_config.proprio_steps_per_vision_step
-            if isinstance(training_config, TrainingWithVisionConfig)
-            else 1
-        )
         teacher_evaluator = Evaluator(
             eval_env=eval_env,
             key=teacher_eval_key,
@@ -141,9 +136,6 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             unroll_factory=lambda params: self.network.make_unroll_fn(
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
-                vision=training_config.use_vision,
-                proprio_steps_per_vision_step=proprio_steps_per_vision_step,
-                policy_factory=self.network.get_acting_policy_factory(),
             ),
         )
         student_evaluator = Evaluator(
@@ -152,12 +144,9 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.recurrent_unroll_factory(
-                params=params,
+            unroll_factory=lambda params: self.network.make_student_unroll_fn(
+                agent_params=params,
                 deterministic=training_config.deterministic_eval,
-                vision=training_config.use_vision,
-                vision_substeps=training_config.vision_steps_per_recurrent_step,
-                proprio_substeps=proprio_steps_per_vision_step,
             ),
         )
 

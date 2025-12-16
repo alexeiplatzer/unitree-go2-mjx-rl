@@ -207,9 +207,10 @@ class ActorCriticEnrichedNetworks(
         preprocessor_params: PreprocessorParams,
         network_params: ActorCriticEnrichedNetworkParams,
         observation: Observation,
+        terminal: bool = False,
     ) -> jax.Array:
         latent_encoding = self.apply_acting_encoder(
-            preprocessor_params, network_params, observation
+            preprocessor_params, network_params, observation, repeat_output=not terminal
         )
         return self.apply_value_with_latents(
             preprocessor_params, network_params, observation, latent_encoding
@@ -248,7 +249,6 @@ class ActorCriticEnrichedNetworks(
             unroll_length: int,
             extra_fields: Sequence[str] = (),
         ) -> tuple[State, Transition]:
-            assert isinstance(env, VisionWrapper)
             first_vision_obs = jax.vmap(env.get_vision_obs)(
                 env_state.pipeline_state, env_state.info
             )
@@ -261,7 +261,7 @@ class ActorCriticEnrichedNetworks(
                     extra_fields=extra_fields,
                     proprio_substeps=self.encoder_supersteps,
                 ),
-                (env_state, key, first_vision_obs),
+                (env_state, first_vision_obs, key),
                 (),
                 length=unroll_length,
             )

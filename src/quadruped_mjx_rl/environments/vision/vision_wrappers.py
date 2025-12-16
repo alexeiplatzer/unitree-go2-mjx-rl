@@ -72,19 +72,19 @@ class VisionWrapper(Wrapper):
 
     def reset(self, rng: PRNGKey) -> State:
         state = self.env.reset(rng)
-        return state.replace(
-            obs=dict(state.obs) | dict(self.init_vision_obs(state.pipeline_state, state.info))
-        )
+        # to update the state info
+        self.init_vision_obs(state.pipeline_state, state.info)
+        return state
 
-    def step(self, state: State, action: Action) -> State:
-        # TODO check that this works as expected: keeps old vision obs
-        old_obs = state.obs
-        next_state = self.env.step(state, action)
-        return state.replace(obs=dict(old_obs) | dict(next_state.obs))
+    # def step(self, state: State, action: Action) -> State:
+    #     # TODO check that this works as expected: keeps old vision obs
+    #     old_obs = state.obs
+    #     next_state = self.env.step(state, action)
+    #     return state.replace(obs=dict(old_obs) | dict(next_state.obs))
 
     def init_vision_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, Any]
-    ) -> Observation:
+    ) -> None:
         rng = state_info["rng"]
         rng_brightness, rng = jax.random.split(rng)
         state_info["rng"] = rng
@@ -96,12 +96,10 @@ class VisionWrapper(Wrapper):
         )
         state_info["brightness"] = brightness
 
-        render_token, rgb, depth = self.renderer.init(
+        render_token, _, _ = self.renderer.init(
             pipeline_state.data, self.pipeline_model.model
         )
         state_info["render_token"] = render_token
-
-        return self._format_camera_observations(rgb, depth, state_info)
 
     def get_vision_obs(
         self,

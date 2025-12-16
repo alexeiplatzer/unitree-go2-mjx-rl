@@ -69,6 +69,7 @@ model:
     - 16
     - 16
   encoder_obs_key: privileged_terrain_map
+  encoder_supersteps: 16
   latent_encoding_size: 16
   model_class: TeacherStudentRecurrent
   policy:
@@ -96,6 +97,7 @@ model:
         layer_sizes:
         - 16
       recurrent_size: 16
+  student_encoder_supersteps: 4
   student_obs_key: pixels/frontal_ego/rgb_adjusted
   student_proprio_obs_key: proprioceptive
   student_recurrent_backpropagation_steps: 64
@@ -119,7 +121,7 @@ training:
   augment_pixels: false
   batch_size: 4
   deterministic_eval: false
-  episode_length: 1000
+  episode_length: 50
   log_training_metrics: false
   normalize_observations: true
   num_envs: 4
@@ -133,7 +135,6 @@ training:
     learning_rate: 0.0004
     max_grad_norm: 1.0
     student_learning_rate: 0.001
-  proprio_steps_per_vision_step: 1
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97

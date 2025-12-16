@@ -12,6 +12,7 @@ from quadruped_mjx_rl.environments.vision.vision_wrappers import (
     VisionWrapper,
     VisionEnvConfig,
 )
+from quadruped_mjx_rl.types import Observation
 
 
 @dataclass
@@ -45,18 +46,18 @@ class ColorGuidedVisionWrapper(VisionWrapper):
         self._friction_table = jnp.array(())
         self._stiffness_table = jnp.array(())
 
-    def init_vision_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, Any]
-    ) -> dict[str, jax.Array]:
-        obs = super().init_vision_obs(pipeline_state, state_info)
-        obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
-        return obs
+    # def init_vision_obs(
+    #     self, pipeline_state: PipelineState, state_info: dict[str, Any]
+    # ) -> tuple[Observation, dict[str, Any]]:
+    #     obs, state_info = super().init_vision_obs(pipeline_state, state_info)
+    #     obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
+    #     return obs, state_info
 
     def get_vision_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> dict[str, jax.Array]:
+    ) -> Observation:
         obs = super().get_vision_obs(pipeline_state, state_info)
         obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
         return obs

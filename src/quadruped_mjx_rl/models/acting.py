@@ -70,8 +70,8 @@ def actor_step(
 @wrap_roll
 def vision_actor_step(
     env_state: State,
-    key: PRNGKey,
     last_vision_obs: Observation,
+    key: PRNGKey,
     *,
     env: VisionWrapper,
     policy: Policy,
@@ -80,7 +80,7 @@ def vision_actor_step(
     proprio_substeps: int = 1,
 ) -> tuple[State, Observation, Transition]:
     if vision_encoder is not None:
-        latent_encoding = vision_encoder(last_vision_obs)
+        latent_encoding = vision_encoder(observation=last_vision_obs)
         policy = functools.partial(policy, latent_encoding=latent_encoding)
     (next_state, _), transitions = jax.lax.scan(
         functools.partial(actor_step, env=env, policy=policy, extra_fields=extra_fields),
@@ -91,11 +91,11 @@ def vision_actor_step(
     # add vision observations to transitions
     last_vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), last_vision_obs)
     transitions = Transition(
-        observation=dict(transitions.observation) | dict(last_vision_obs),
+        observation=transitions.observation | last_vision_obs,
         action=transitions.action,
         reward=transitions.reward,
         discount=transitions.discount,
-        next_observation=dict(transitions.next_observation) | dict(last_vision_obs),
+        next_observation=transitions.next_observation | last_vision_obs,
         extras=transitions.extras,
     )
 
@@ -133,6 +133,9 @@ def recurrent_actor_step(
         length=n_substeps,
     )
     next_encoding, recurrent_carry = recurrent_encoder(
-        transitions.observation, 1 - transitions.discount, final_key, recurrent_carry
+        observation=transitions.observation,
+        done=1 - transitions.discount,
+        key=final_key,
+        recurrent_carry=recurrent_carry,
     )
     return next_state, recurrent_carry, next_encoding, transitions

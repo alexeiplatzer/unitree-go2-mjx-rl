@@ -75,6 +75,7 @@ model:
     - 64
     - 64
   encoder_obs_key: pixels/terrain/depth
+  encoder_supersteps: 16
   latent_encoding_size: 16
   model_class: TeacherStudentVision
   policy:
@@ -111,7 +112,7 @@ training:
   augment_pixels: false
   batch_size: 4
   deterministic_eval: false
-  episode_length: 1000
+  episode_length: 50
   log_training_metrics: false
   normalize_observations: true
   num_envs: 4
@@ -125,7 +126,6 @@ training:
     learning_rate: 0.0004
     max_grad_norm: 1.0
     student_learning_rate: 0.001
-  proprio_steps_per_vision_step: 1
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97

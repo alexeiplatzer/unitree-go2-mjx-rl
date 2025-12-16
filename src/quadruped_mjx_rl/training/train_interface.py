@@ -9,6 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.environments.vision import VisionWrapper
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.physics_pipeline import Env
 from quadruped_mjx_rl.domain_randomization import (
@@ -84,9 +85,11 @@ def train(
     unroll_length = training_config.unroll_length
     action_repeat = training_config.action_repeat
 
+    vision = training_config.use_vision  # TODO needs to check also on model config side
+
     # Check arguments
     training_config.check_validity()
-    if training_config.use_vision and evaluation_env is not None:
+    if vision and evaluation_env is not None:
         raise ValueError(
             "Evaluation env is not None. The Madrona-MJX vision backend doesn't support "
             "multiple env instances, one env must be used for both training and evaluation."
@@ -151,25 +154,30 @@ def train(
             action_repeat=action_repeat,
             randomization_config=randomization_config,
             rng_key=wrapping_key,
-            vision=training_config.use_vision,
+            vision=vision,
         )
         if wrap_env
         else training_env
     )
 
-    reset_fn = jax.jit(jax.vmap(env.reset))
     # TODO deal with the reusage of these key envs in backend
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
     # key_envs, key_agent_states = jax.random.split(key_envs)
-    env_state = reset_fn(key_envs)
 
     num_device_envs = num_envs // process_count // local_devices_to_use
     state_shape = (local_devices_to_use, num_device_envs)
 
+    reset_fn = jax.jit(jax.vmap(env.reset))
+    env_state = reset_fn(key_envs)
+
     # Shapes of different observation tensors
     # Discard the batch axes over devices and envs.
-    obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], env_state.obs)
+    obs = env_state.obs
+    if vision:
+        vision_obs = jax.jit(jax.vmap(jax.vmap(env.get_vision_obs)))(env_state.pipeline_state, env_state.info)
+        obs = obs | vision_obs
+    obs_shape = jax.tree_util.tree_map(lambda x: x.shape[2:], obs)
 
     preprocess_fn = (
         running_statistics.normalize
@@ -233,7 +241,7 @@ def train(
 
     eval_env = (
         env
-        if training_config.use_vision or not wrap_env
+        if vision or not wrap_env
         else wrap_for_training(
             env=evaluation_env or training_env,
             num_envs=num_eval_envs,
@@ -242,7 +250,7 @@ def train(
             action_repeat=action_repeat,
             randomization_config=randomization_config,
             rng_key=eval_key,
-            vision=training_config.use_vision,
+            vision=vision,
         )
     )
 
