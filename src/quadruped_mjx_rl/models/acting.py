@@ -89,7 +89,9 @@ def vision_actor_step(
         length=proprio_substeps,
     )
     # add vision observations to transitions
-    last_vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), last_vision_obs)
+    last_vision_obs = jax.tree_util.tree_map(
+        lambda x: jnp.expand_dims(x, axis=0), last_vision_obs
+    )
     transitions = Transition(
         observation=transitions.observation | last_vision_obs,
         action=transitions.action,

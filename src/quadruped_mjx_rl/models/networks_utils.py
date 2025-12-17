@@ -80,14 +80,18 @@ def process_policy_logits(
 
 
 def policy_factory(
-    policy_apply: Callable[[PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array],
+    policy_apply: Callable[
+        [PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array
+    ],
     parametric_action_distribution: ParametricDistribution,
     params: AgentParams,
     deterministic: bool = False,
 ) -> Policy:
     return lambda sample_key, observation, *args: process_policy_logits(
         parametric_action_distribution=parametric_action_distribution,
-        logits=policy_apply(params.preprocessor_params, params.network_params, observation, *args),
+        logits=policy_apply(
+            params.preprocessor_params, params.network_params, observation, *args
+        ),
         sample_key=sample_key,
         deterministic=deterministic,
     )

@@ -12,7 +12,9 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.environments.vision import VisionWrapper
 from quadruped_mjx_rl.models.acting import GenerateUnrollFn, vision_actor_step
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
-    ActorCriticConfig, ActorCriticNetworkParams, ActorCriticNetworks,
+    ActorCriticConfig,
+    ActorCriticNetworkParams,
+    ActorCriticNetworks,
 )
 from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
@@ -36,12 +38,18 @@ from quadruped_mjx_rl.types import ObservationSize
 @dataclass
 class ActorCriticEnrichedConfig(ActorCriticConfig):
     encoder_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
+    policy: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 128, 128])
+    )
+    value: ModuleConfigMLP = field(
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256])
+    )
     encoder: ModuleConfigCNN = field(
         default_factory=lambda: ModuleConfigCNN(
-            filter_sizes=[32, 64, 64], dense=ModuleConfigMLP(layer_sizes=[256, 256])
+            filter_sizes=[16, 32, 64], dense=ModuleConfigMLP(layer_sizes=[256])
         )
     )
-    latent_encoding_size: int = 16
+    latent_encoding_size: int = 256
     encoder_supersteps: int = 16
 
     @classmethod

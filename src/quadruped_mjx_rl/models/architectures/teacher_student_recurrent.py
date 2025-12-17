@@ -46,17 +46,17 @@ class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
     student_proprio_obs_key: str = "proprioceptive"
     encoder: ModuleConfigCNN = field(
         default_factory=lambda: ModuleConfigCNN(
-            filter_sizes=[16, 16, 16], dense=ModuleConfigMLP(layer_sizes=[256, 256])
+            filter_sizes=[16, 32, 32], dense=ModuleConfigMLP(layer_sizes=[256])
         )
     )
     student: ModuleConfigMixedModeRNN = field(
         default_factory=lambda: ModuleConfigMixedModeRNN(
             convolutional=ModuleConfigCNN(
-                filter_sizes=[32, 32, 32], dense=ModuleConfigMLP(layer_sizes=[128, 128, 64])
+                filter_sizes=[16, 32, 32], dense=ModuleConfigMLP(layer_sizes=[128, 64])
             ),
-            proprioceptive_preprocessing=ModuleConfigMLP(layer_sizes=[64, 64]),
+            proprioceptive_preprocessing=ModuleConfigMLP(layer_sizes=[128, 64]),
             recurrent=ModuleConfigLSTM(
-                recurrent_size=16, dense=ModuleConfigMLP(layer_sizes=[16])
+                recurrent_size=128, dense=ModuleConfigMLP(layer_sizes=[128])
             ),
         )
     )
@@ -222,7 +222,9 @@ class TeacherStudentRecurrentNetworks(
         *,
         deterministic: bool = False,
     ) -> GenerateUnrollFn:
-        policy = self.policy_metafactory(self.apply_policy_with_latents)(agent_params, deterministic)
+        policy = self.policy_metafactory(self.apply_policy_with_latents)(
+            agent_params, deterministic
+        )
         if not self.vision:
             vision_substeps = 0
             proprio_substeps = self.student_encoder_supersteps

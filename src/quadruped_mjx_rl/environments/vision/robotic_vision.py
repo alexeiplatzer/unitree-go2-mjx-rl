@@ -10,11 +10,11 @@ from quadruped_mjx_rl.physics_pipeline import PipelineModel
 @dataclass
 class VisionConfig:
     gpu_id: int = 0
-    render_batch_size: int = 512
+    render_batch_size: int = 256
     render_width: int = 128
-    render_height: int = 64
+    render_height: int = 128
     use_rasterizer: bool = False
-    enabled_geom_groups: list[int] = field(default_factory=lambda: [0])
+    enabled_geom_groups: list[int] = field(default_factory=lambda: [0, 1, 2])
     enabled_cameras: list[int] = field(default_factory=lambda: [1, 2])
 
 

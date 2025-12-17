@@ -68,11 +68,12 @@ class TrainingWithVisionConfig(TrainingConfig):
     augment_pixels: bool = False
     num_envs: int = 256  # Most of these int args are reduced because vision is heavier
     num_eval_envs: int = 256
-    num_timesteps: int = 1_000_000
-    batch_size: int = 256
-    num_updates_per_batch: int = 8
-    unroll_length = 3
+    batch_size: int = 16
+    num_minibatches: int = 32
+    num_updates_per_batch: int = 4
+    unroll_length = 4
     episode_length: int = 50
+    num_timesteps: int = 10_000_000
     optimizer: TeacherStudentOptimizerConfig = field(
         default_factory=lambda: TeacherStudentOptimizerConfig(
             max_grad_norm=1.0,
@@ -102,7 +103,7 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
-    unroll_length: int = 2
+    unroll_length: int = 4
     num_updates_per_batch = 1
 
     def check_validity(self):

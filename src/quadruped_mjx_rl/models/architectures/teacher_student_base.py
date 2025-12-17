@@ -31,10 +31,10 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
     encoder_obs_key: str = "environment_privileged"
     student_obs_key: str = "proprioceptive_history"
     encoder: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256])
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[128, 256])
     )
     student: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256])
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[512, 256])
     )
 
     @classmethod
@@ -53,12 +53,12 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
     student_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
     encoder: ModuleConfigCNN = field(
         default_factory=lambda: ModuleConfigCNN(
-            filter_sizes=[32, 64, 64], dense=ModuleConfigMLP(layer_sizes=[256, 256])
+            filter_sizes=[16, 32, 64], dense=ModuleConfigMLP(layer_sizes=[256])
         )
     )
     student: ModuleConfigCNN = field(
         default_factory=lambda: ModuleConfigCNN(
-            filter_sizes=[32, 64, 64], dense=ModuleConfigMLP(layer_sizes=[256, 256])
+            filter_sizes=[16, 32, 64], dense=ModuleConfigMLP(layer_sizes=[256])
         )
     )
 

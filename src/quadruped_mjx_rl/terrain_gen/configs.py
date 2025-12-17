@@ -191,8 +191,8 @@ class SimpleObstacleTerrainConfig(TerrainConfig):
 
     # TODO: make the cylinder addition dynamical
     base_scene_file: str = "scene_mjx_cylinders.xml"
-    randomization_config: ObstaclePositionRandomizationConfig = field(
-        default_factory=ObstaclePositionRandomizationConfig
+    randomization_config: PhysicsDomainRandomizationConfig = field(
+        default_factory=PhysicsDomainRandomizationConfig
     )
 
     @classmethod

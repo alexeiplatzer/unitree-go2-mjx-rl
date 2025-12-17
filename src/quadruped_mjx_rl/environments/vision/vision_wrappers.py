@@ -96,9 +96,7 @@ class VisionWrapper(Wrapper):
         )
         state_info["brightness"] = brightness
 
-        render_token, _, _ = self.renderer.init(
-            pipeline_state.data, self.pipeline_model.model
-        )
+        render_token, _, _ = self.renderer.init(pipeline_state.data, self.pipeline_model.model)
         state_info["render_token"] = render_token
 
     def get_vision_obs(

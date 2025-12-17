@@ -78,7 +78,13 @@ if __name__ == "__main__":
 
     # Prepare the environment factory
     vision = isinstance(training_config, TrainingWithVisionConfig)
-    renderer_maker = functools.partial(get_renderer, vision_config=env_config.vision_env_config.vision_config, debug=debug) if vision else None
+    renderer_maker = (
+        functools.partial(
+            get_renderer, vision_config=env_config.vision_env_config.vision_config, debug=debug
+        )
+        if vision
+        else None
+    )
     env_factory = get_env_factory(
         robot_config=robot_config,
         environment_config=env_config,

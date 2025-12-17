@@ -32,11 +32,11 @@ from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Action
 class ActorCriticConfig(ModelConfig):
     policy_obs_key: str = "proprioceptive"
     policy: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[128, 128, 128, 128])
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[128, 128, 128, 128, 128])
     )
     value_obs_key: str = "proprioceptive"
     value: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256, 256])
+        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256, 256, 256])
     )
 
     @classmethod
@@ -145,16 +145,23 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
 
     def policy_metafactory(
         self,
-        policy_apply_fn: Callable[
-            [PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array
-        ] | Callable[[PreprocessorParams, AgentNetworkParams, Observation], jax.Array],
+        policy_apply_fn: (
+            Callable[[PreprocessorParams, AgentNetworkParams, Observation, ...], jax.Array]
+            | Callable[[PreprocessorParams, AgentNetworkParams, Observation], jax.Array]
+        ),
     ) -> PolicyFactory[AgentNetworkParams]:
         def make_policy(
             params: AgentParams[ActorCriticNetworkParams], deterministic: bool = False
         ) -> Policy:
-            def policy(sample_key: PRNGKey, observation: Observation, *args, **kwargs) -> tuple[Action, Extra]:
+            def policy(
+                sample_key: PRNGKey, observation: Observation, *args, **kwargs
+            ) -> tuple[Action, Extra]:
                 policy_logits = policy_apply_fn(
-                    params.preprocessor_params, params.network_params, observation, *args, **kwargs
+                    params.preprocessor_params,
+                    params.network_params,
+                    observation,
+                    *args,
+                    **kwargs,
                 )
                 return networks_utils.process_policy_logits(
                     parametric_action_distribution=self.parametric_action_distribution,
@@ -162,6 +169,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
                     sample_key=sample_key,
                     deterministic=deterministic,
                 )
+
             return policy
 
         return make_policy

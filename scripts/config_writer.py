@@ -72,7 +72,7 @@ if __name__ == "__main__":
     )
 
     # Joystick Depth-vision Teacher with RGB-vision Student
-    terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    terrain_config = terrain_gen.StripeTilesTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
     model_config = models.TeacherStudentVisionConfig()
     training_config = training.TrainingWithVisionConfig()
