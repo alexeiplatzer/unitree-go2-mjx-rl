@@ -61,9 +61,11 @@ environment:
       - 2
       enabled_geom_groups:
       - 0
+      - 1
+      - 2
       gpu_id: 0
-      render_batch_size: 512
-      render_height: 64
+      render_batch_size: 256
+      render_height: 128
       render_width: 128
       use_rasterizer: false
 model:
@@ -71,28 +73,26 @@ model:
     dense:
       layer_sizes:
       - 256
-      - 256
     filter_sizes:
+    - 16
     - 32
-    - 64
     - 64
   encoder_obs_key: pixels/terrain/depth
   encoder_supersteps: 16
-  latent_encoding_size: 16
+  latent_encoding_size: 256
   model_class: TeacherStudentVision
   policy:
     layer_sizes:
-    - 128
+    - 256
     - 128
   policy_obs_key: proprioceptive
   student:
     dense:
       layer_sizes:
       - 256
-      - 256
     filter_sizes:
+    - 16
     - 32
-    - 64
     - 64
   student_obs_key: pixels/frontal_ego/rgb_adjusted
   value:
@@ -101,14 +101,12 @@ model:
     - 256
   value_obs_key: proprioceptive
 terrain:
-  base_scene_file: scene_mjx_cylinders.xml
-  randomization_config:
-    obstacle_names:
-    - cylinder_0
-    - cylinder_1
-    offset_max: 3.0
-    offset_min: -3.0
-  terrain_class: SimpleObstacle
+  base_scene_file: scene_mjx_empty_arena.xml
+  n_flat_tiles: 4
+  n_stripe_tiles: 4
+  randomization_config: null
+  square_size: 1.0
+  terrain_class: StripeTiles
 training:
   action_repeat: 1
   augment_pixels: false
@@ -123,7 +121,7 @@ training:
   num_minibatches: 4
   num_resets_per_eval: 0
   num_timesteps: 100000
-  num_updates_per_batch: 8
+  num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0

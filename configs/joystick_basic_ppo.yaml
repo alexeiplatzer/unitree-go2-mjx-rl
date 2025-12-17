@@ -61,9 +61,11 @@ environment:
       - 2
       enabled_geom_groups:
       - 0
+      - 1
+      - 2
       gpu_id: 0
-      render_batch_size: 512
-      render_height: 64
+      render_batch_size: 256
+      render_height: 128
       render_width: 128
       use_rasterizer: false
 model:
@@ -74,9 +76,11 @@ model:
     - 128
     - 128
     - 128
+    - 128
   policy_obs_key: proprioceptive
   value:
     layer_sizes:
+    - 256
     - 256
     - 256
     - 256

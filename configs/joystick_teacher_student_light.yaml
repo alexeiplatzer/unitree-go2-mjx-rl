@@ -62,28 +62,30 @@ environment:
       - 2
       enabled_geom_groups:
       - 0
+      - 1
+      - 2
       gpu_id: 0
-      render_batch_size: 512
-      render_height: 64
+      render_batch_size: 256
+      render_height: 128
       render_width: 128
       use_rasterizer: false
 model:
   encoder:
     layer_sizes:
-    - 256
+    - 128
     - 256
   encoder_obs_key: environment_privileged
   encoder_supersteps: 16
-  latent_encoding_size: 16
+  latent_encoding_size: 256
   model_class: TeacherStudent
   policy:
     layer_sizes:
-    - 128
+    - 256
     - 128
   policy_obs_key: proprioceptive
   student:
     layer_sizes:
-    - 256
+    - 512
     - 256
   student_obs_key: proprioceptive_history
   value:

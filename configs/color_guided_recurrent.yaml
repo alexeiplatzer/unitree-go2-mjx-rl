@@ -53,9 +53,11 @@ environment:
       - 2
       enabled_geom_groups:
       - 0
+      - 1
+      - 2
       gpu_id: 0
-      render_batch_size: 512
-      render_height: 64
+      render_batch_size: 256
+      render_height: 128
       render_width: 128
       use_rasterizer: false
 model:
@@ -63,19 +65,17 @@ model:
     dense:
       layer_sizes:
       - 256
-      - 256
     filter_sizes:
     - 16
-    - 16
-    - 16
+    - 32
+    - 32
   encoder_obs_key: privileged_terrain_map
   encoder_supersteps: 16
-  latent_encoding_size: 16
+  latent_encoding_size: 256
   model_class: TeacherStudentRecurrent
   policy:
     layer_sizes:
-    - 128
-    - 128
+    - 256
     - 128
     - 128
   policy_obs_key: proprioceptive
@@ -84,28 +84,26 @@ model:
       dense:
         layer_sizes:
         - 128
-        - 128
         - 64
       filter_sizes:
-      - 32
+      - 16
       - 32
       - 32
     proprioceptive_preprocessing:
       layer_sizes:
-      - 64
+      - 128
       - 64
     recurrent:
       dense:
         layer_sizes:
-        - 16
-      recurrent_size: 16
+        - 128
+      recurrent_size: 128
   student_encoder_supersteps: 4
   student_obs_key: pixels/frontal_ego/rgb_adjusted
   student_proprio_obs_key: proprioceptive
   student_recurrent_backpropagation_steps: 64
   value:
     layer_sizes:
-    - 256
     - 256
     - 256
     - 256
@@ -123,7 +121,7 @@ terrain:
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 256
+  batch_size: 16
   deterministic_eval: false
   episode_length: 50
   log_training_metrics: false
@@ -133,8 +131,8 @@ training:
   num_evals: 10
   num_minibatches: 32
   num_resets_per_eval: 0
-  num_timesteps: 1000000
-  num_updates_per_batch: 8
+  num_timesteps: 10000000
+  num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0
