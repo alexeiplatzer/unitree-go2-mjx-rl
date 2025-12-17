@@ -16,6 +16,7 @@ from quadruped_mjx_rl.domain_randomization import (
 )
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig, StripesTile
+from quadruped_mjx_rl.terrain_gen.elements import add_cylinders, add_goal_sphere, add_lights
 from quadruped_mjx_rl.physics_pipeline import load_to_spec, spec_to_model, EnvModel
 
 
@@ -156,10 +157,16 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
         default_factory=ColorMapRandomizationConfig
     )
     num_colors: int = 2
+    goal_location: list[float] = field(default_factory=lambda: [10, 0, 0.5])
+    goal_size: float = 0.5
 
     @classmethod
     def config_class_key(cls) -> str:
         return "ColorMap"
+
+    def create_in_spec(self, spec: mj.MjSpec) -> None:
+        add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
+        super().create_in_spec(spec)
 
 
 @dataclass

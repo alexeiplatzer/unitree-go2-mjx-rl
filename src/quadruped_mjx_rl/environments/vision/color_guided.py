@@ -69,7 +69,8 @@ class ColorGuidedVisionWrapper(VisionWrapper):
         The rgba table and friction and stiffness tables are stored in the env and set
         to the correct values with the Terrain Map wrapper."""
         # flat_rgba = terrain_rgba.reshape(-1, terrain_rgba.shape[-1])
-        return jax.vmap(
+        # TODO vmap over correct axes
+        return jax.vmap(jax.vmap(
             lambda rgba: jnp.stack(
                 color_meaning_fn(
                     rgba=rgba,
@@ -78,7 +79,7 @@ class ColorGuidedVisionWrapper(VisionWrapper):
                     stiffness_table=self._stiffness_table,
                 )
             )
-        )(terrain_rgba)
+        ))(terrain_rgba)
         # return jnp.stack([terrain_friction, terrain_stiffness], axis=-1).reshape(
         #     terrain_rgba.shape[:-1] + (2,)
         # )

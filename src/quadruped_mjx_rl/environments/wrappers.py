@@ -469,7 +469,7 @@ class TerrainMapWrapper(Wrapper):
             )
             return env.reset(rng)
 
-        state = jax.vmap(reset, in_axes=[self._in_axes, 0])(
+        state = jax.vmap(reset, in_axes=[self._in_axes, 0, 0, 0, 0])(
             self._sys_v,
             self._rgba_table_v,
             self._friction_table_v,
@@ -495,7 +495,7 @@ class TerrainMapWrapper(Wrapper):
             )
             return env.step(state_local, action_local)
 
-        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(
+        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0, 0, 0, 0])(
             self._sys_v,
             self._rgba_table_v,
             self._friction_table_v,

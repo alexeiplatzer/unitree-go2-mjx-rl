@@ -8,8 +8,9 @@
 - [X] add config writing for complicated visual and recurrent envs
 - [X] add scripts for envs with more complicated terrains
 - [X] add vision support to the universal script
-- [ ] swap the substep configs into the model config
-- [ ] check correctness of vision obs handling
+- [X] swap the substep configs into the model config
+- [X] check correctness of vision obs handling
+- [ ] obstacle env has some nan issues, check rewards calcs
 - [ ] check correctness of recurrency handling
 - [ ] debug dry run on cpu locally all the envs
 - [ ] update the notebooks, especially the universal one

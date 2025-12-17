@@ -108,6 +108,11 @@ model:
   value_obs_key: proprioceptive
 terrain:
   base_scene_file: scene_mjx_empty_arena.xml
+  goal_location:
+  - 10
+  - 0
+  - 0.5
+  goal_size: 0.5
   n_columns: 4
   n_rows: 4
   num_colors: 2
@@ -145,5 +150,5 @@ training:
   seed: 0
   training_class: PPO_RecurrentStudent
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 4
   use_vision: true

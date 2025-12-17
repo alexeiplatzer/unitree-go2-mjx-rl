@@ -71,7 +71,7 @@ class TrainingWithVisionConfig(TrainingConfig):
     batch_size: int = 16
     num_minibatches: int = 32
     num_updates_per_batch: int = 4
-    unroll_length = 4
+    unroll_length: int = 4
     episode_length: int = 50
     num_timesteps: int = 10_000_000
     optimizer: TeacherStudentOptimizerConfig = field(
@@ -104,7 +104,7 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
     unroll_length: int = 4
-    num_updates_per_batch = 1
+    num_updates_per_batch: int = 1
 
     def check_validity(self):
         super().check_validity()

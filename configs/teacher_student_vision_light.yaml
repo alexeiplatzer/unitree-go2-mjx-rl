@@ -1,17 +1,17 @@
 environment:
   command:
     ranges:
-      ang_vel_yaw_max: 0.7
-      ang_vel_yaw_min: -0.7
+      ang_vel_yaw_max: 0.0
+      ang_vel_yaw_min: 0.0
       lin_vel_x_max: 1.5
-      lin_vel_x_min: -0.6
-      lin_vel_y_max: 0.8
-      lin_vel_y_min: -0.8
+      lin_vel_x_min: 0.0
+      lin_vel_y_max: 0.0
+      lin_vel_y_min: 0.0
     resampling_time: 500
   control:
     action_scale: 0.3
   domain_rand:
-    apply_kicks: true
+    apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
   environment_class: JoystickBase
@@ -136,5 +136,5 @@ training:
   seed: 0
   training_class: PPO_Vision
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 4
   use_vision: true
