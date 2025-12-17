@@ -138,5 +138,5 @@ training:
   seed: 0
   training_class: PPO_Vision
   training_metrics_steps: null
-  unroll_length: 20
+  unroll_length: 4
   use_vision: true
