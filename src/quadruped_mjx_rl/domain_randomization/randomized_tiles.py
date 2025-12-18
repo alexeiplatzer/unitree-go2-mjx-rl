@@ -14,12 +14,11 @@ from quadruped_mjx_rl.domain_randomization.types import TerrainMapRandomizationC
 
 def color_meaning_fn(
     rgba: jax.Array,
-    *,
     rgba_table: jax.Array,
     friction_table: jax.Array,
     stiffness_table: jax.Array,
 ) -> tuple[jax.Array, jax.Array]:
-    idx = jnp.argmin(jnp.sum(jnp.abs(rgba_table - rgba), axis=-1))
+    idx = jnp.argmin(jnp.sum(jnp.abs(rgba_table[..., :-1] - rgba), axis=-1))
     return friction_table[idx], stiffness_table[idx]
 
 

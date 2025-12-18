@@ -175,7 +175,7 @@ def train(
     # Discard the batch axes over devices and envs.
     obs = env_state.obs
     if vision:
-        vision_obs = jax.jit(jax.vmap(jax.vmap(env.get_vision_obs)))(
+        vision_obs = jax.jit(jax.vmap(env.get_vision_obs))(
             env_state.pipeline_state, env_state.info
         )
         obs = obs | vision_obs

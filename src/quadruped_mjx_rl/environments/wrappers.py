@@ -11,6 +11,7 @@ from quadruped_mjx_rl.domain_randomization import (
 from quadruped_mjx_rl.physics_pipeline import PipelineModel, EnvModel
 from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
 from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.environments.vision_domain_wrappers import TerrainMapWrapper
 
 
 def wrap_for_training(
@@ -423,84 +424,84 @@ def _supplement_vision_randomization_fn(
     return pipeline_model, in_axes, *rest_outputs
 
 
-class TerrainMapWrapper(Wrapper):
-    """Wrapper for domain randomization with colored terrain, preserving the terrain info."""
-
-    def __init__(
-        self,
-        env: Env,
-        randomization_fn,
-        key_envs: jax.Array,
-        num_envs: int,
-    ):
-        super().__init__(env)
-        (
-            self._sys_v,
-            self._in_axes,
-            (self._rgba_table_v, self._friction_table_v, self._stiffness_table_v),
-        ) = randomization_fn(
-            pipeline_model=self.pipeline_model,
-            env_model=self.env_model,
-            key=key_envs,
-            num_worlds=num_envs,
-        )
-
-    def _env_fn(
-        self,
-        pipeline_model: PipelineModel,
-        rgba_table: jax.Array,
-        friction_table: jax.Array,
-        stiffness_table: jax.Array,
-    ) -> Env:
-        env = self.env
-        env.unwrapped._pipeline_model = pipeline_model
-        env.unwrapped._rgba_table = rgba_table
-        env.unwrapped._friction_table = friction_table
-        env.unwrapped._stiffness_table = stiffness_table
-        return env
-
-    def reset(self, rng: jax.Array) -> State:
-        def reset(pipeline_model, rgba_table, friction_table, stiffness_table, rng):
-            env = self._env_fn(
-                pipeline_model=pipeline_model,
-                rgba_table=rgba_table,
-                friction_table=friction_table,
-                stiffness_table=stiffness_table,
-            )
-            return env.reset(rng)
-
-        state = jax.vmap(reset, in_axes=[self._in_axes, 0, 0, 0, 0])(
-            self._sys_v,
-            self._rgba_table_v,
-            self._friction_table_v,
-            self._stiffness_table_v,
-            rng,
-        )
-        return state
-
-    def step(self, state: State, action: jax.Array) -> State:
-        def step(
-            pipeline_model,
-            rgba_table,
-            friction_table,
-            stiffness_table,
-            state_local,
-            action_local,
-        ):
-            env = self._env_fn(
-                pipeline_model=pipeline_model,
-                rgba_table=rgba_table,
-                friction_table=friction_table,
-                stiffness_table=stiffness_table,
-            )
-            return env.step(state_local, action_local)
-
-        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0, 0, 0, 0])(
-            self._sys_v,
-            self._rgba_table_v,
-            self._friction_table_v,
-            self._stiffness_table_v,
-            state,
-            action,
-        )
-        return res
+# class TerrainMapWrapper(Wrapper):
+#     """Wrapper for domain randomization with colored terrain, preserving the terrain info."""
+#
+#     def __init__(
+#         self,
+#         env: Env,
+#         randomization_fn,
+#         key_envs: jax.Array,
+#         num_envs: int,
+#     ):
+#         super().__init__(env)
+#         (
+#             self._sys_v,
+#             self._in_axes,
+#             (self._rgba_table_v, self._friction_table_v, self._stiffness_table_v),
+#         ) = randomization_fn(
+#             pipeline_model=self.pipeline_model,
+#             env_model=self.env_model,
+#             key=key_envs,
+#             num_worlds=num_envs,
+#         )
+#
+#     def _env_fn(
+#         self,
+#         pipeline_model: PipelineModel,
+#         rgba_table: jax.Array,
+#         friction_table: jax.Array,
+#         stiffness_table: jax.Array,
+#     ) -> Env:
+#         env = self.env
+#         env.unwrapped._pipeline_model = pipeline_model
+#         env.unwrapped._rgba_table = rgba_table
+#         env.unwrapped._friction_table = friction_table
+#         env.unwrapped._stiffness_table = stiffness_table
+#         return env
+#
+#     def reset(self, rng: jax.Array) -> State:
+#         def reset(pipeline_model, rgba_table, friction_table, stiffness_table, rng):
+#             env = self._env_fn(
+#                 pipeline_model=pipeline_model,
+#                 rgba_table=rgba_table,
+#                 friction_table=friction_table,
+#                 stiffness_table=stiffness_table,
+#             )
+#             return env.reset(rng)
+#
+#         state = jax.vmap(reset, in_axes=[self._in_axes, 0, 0, 0, 0])(
+#             self._sys_v,
+#             self._rgba_table_v,
+#             self._friction_table_v,
+#             self._stiffness_table_v,
+#             rng,
+#         )
+#         return state
+#
+#     def step(self, state: State, action: jax.Array) -> State:
+#         def step(
+#             pipeline_model,
+#             rgba_table,
+#             friction_table,
+#             stiffness_table,
+#             state_local,
+#             action_local,
+#         ):
+#             env = self._env_fn(
+#                 pipeline_model=pipeline_model,
+#                 rgba_table=rgba_table,
+#                 friction_table=friction_table,
+#                 stiffness_table=stiffness_table,
+#             )
+#             return env.step(state_local, action_local)
+#
+#         res = jax.vmap(step, in_axes=[self._in_axes, 0, 0, 0, 0, 0])(
+#             self._sys_v,
+#             self._rgba_table_v,
+#             self._friction_table_v,
+#             self._stiffness_table_v,
+#             state,
+#             action,
+#         )
+#         return res

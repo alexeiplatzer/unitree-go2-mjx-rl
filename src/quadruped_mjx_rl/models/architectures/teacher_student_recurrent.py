@@ -90,7 +90,7 @@ class TeacherStudentRecurrentNetworks(
         """Make teacher-student network with preprocessor."""
         self.student_encoder_obs_key = model_config.student_obs_key
         self.student_proprio_obs_key = model_config.student_proprio_obs_key
-        self.student_encoder_module = model_config.encoder.create(
+        self.student_encoder_module = model_config.student.create(
             activation_fn=activation,
             activate_final=True,
             extra_final_layer_size=model_config.latent_encoding_size,
