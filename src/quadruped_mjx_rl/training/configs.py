@@ -102,6 +102,7 @@ class TrainingWithVisionConfig(TrainingConfig):
         return "PPO_Vision"
 
 
+@dataclass
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
     unroll_length: int = 4
     num_updates_per_batch: int = 2
