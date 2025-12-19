@@ -201,8 +201,9 @@ class MixedModeRNN(linen.RNNCellBase):
     def apply_recurrent_step(self, carry, data):
         """Applies a single step of the recurrent module and resets the carry if done."""
         recurrent_carry, key = carry
-        key, init_key = jax.random.split(key)
-        init_carry = self.initialize_carry(init_key)
+        key, init_key = jnp.moveaxis(jax.vmap(jax.random.split)(key), 1, 0)
+        # key, init_key = jax.random.split(key)
+        init_carry = jax.vmap(self.initialize_carry)(init_key)
         current_input, current_done = data
         current_output, next_carry = self.recurrent_module(current_input, recurrent_carry)
 
@@ -225,19 +226,19 @@ class MixedModeRNN(linen.RNNCellBase):
         the recurrent module, also prepares the compressed done for carry resets."""
         # Should result in Batch x (Time*Substeps*L)
         proprioceptive_vector = jnp.reshape(
-            proprioceptive_data, (proprioceptive_data.shape[:-2], -1)
+            proprioceptive_data, proprioceptive_data.shape[:-2] + (-1,)
         )
         proprioceptive_latent = self.proprioceptive_preprocessing_module(proprioceptive_vector)
 
         # Should result in Batch x H x W x (C*Time)
         visual_data = jnp.moveaxis(visual_data, -4, -1)
-        visual_data = jnp.reshape(visual_data, (visual_data.shape[:-2], -1))
+        visual_data = jnp.reshape(visual_data, visual_data.shape[:-2] + (-1,))
         visual_latent = self.convolutional_module(visual_data)
 
         recurrent_input = jnp.concatenate([proprioceptive_latent, visual_latent], axis=-1)
 
         # Compress the done values for all the proprioceptive steps
-        current_done = jnp.any(current_done, axis=-2)
+        current_done = jnp.any(current_done, axis=-1)
 
         return recurrent_input, current_done
 
@@ -245,7 +246,7 @@ class MixedModeRNN(linen.RNNCellBase):
         self,
         visual_data: jax.Array,  # Batch x Time x H x W x C
         proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
-        current_done: jax.Array,  # Batch x (Time*Substeps) x 1
+        current_done: jax.Array,  # Batch x (Time*Substeps)
         carry: tuple[jax.Array, jax.Array],  # Batch
         init_carry_key: jax.Array,  # Batch x KeySize
     ) -> tuple[jax.Array, tuple[jax.Array, jax.Array]]:
@@ -269,7 +270,7 @@ class MixedModeRNN(linen.RNNCellBase):
         current_done: jax.Array,  # Batch x (Time*Substeps) x 1
         first_carry: tuple[jax.Array, jax.Array],  # Batch
         recurrent_buffer: jax.Array,  # Batch x BufferSize x LatentSize
-        done_buffer: jax.Array,  # Batch x BufferSize x 1
+        done_buffer: jax.Array,  # Batch x BufferSize
         init_carry_key: jax.Array,  # Batch x KeySize
     ) -> tuple[jax.Array, tuple[jax.Array, jax.Array], jax.Array, jax.Array]:
         """Applies the network with BPTT using the buffers
@@ -279,17 +280,23 @@ class MixedModeRNN(linen.RNNCellBase):
             visual_data, proprioceptive_data, current_done
         )
 
+        recurrent_buffer = jnp.moveaxis(recurrent_buffer, -2, 0)
+        done_buffer = jnp.moveaxis(done_buffer, -1, 0)
+
         (first_carry, init_carry_key), _ = self.apply_recurrent_step(
             (first_carry, init_carry_key), (recurrent_buffer[0], done_buffer[0])
         )
         recurrent_buffer = (
-            jnp.roll(recurrent_buffer, shift=-1, axis=-2).at[-1].set(recurrent_input)
+            jnp.roll(recurrent_buffer, shift=-1, axis=0).at[-1].set(recurrent_input)
         )
-        done_buffer = jnp.roll(done_buffer, shift=-1, axis=-1).at[-1].set(current_done)
+        done_buffer = jnp.roll(done_buffer, shift=-1, axis=0).at[-1].set(current_done)
         _, outputs = jax.lax.scan(
-            self.apply_one_step, (first_carry, init_carry_key), (recurrent_buffer, done_buffer)
+            self.apply_recurrent_step,
+            (first_carry, init_carry_key),
+            (recurrent_buffer, done_buffer),
         )
-
+        done_buffer = jnp.moveaxis(done_buffer, 0, -1)
+        recurrent_buffer = jnp.moveaxis(recurrent_buffer, 0, -2)
         return outputs[-1], first_carry, recurrent_buffer, done_buffer
 
     @linen.nowrap

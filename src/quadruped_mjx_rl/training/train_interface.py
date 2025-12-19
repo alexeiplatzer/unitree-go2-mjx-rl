@@ -137,7 +137,7 @@ def train(
     global_key, local_key = jax.random.split(key)
     del key
     local_key = jax.random.fold_in(local_key, process_id)
-    local_key, key_env, wrapping_key, eval_key, agent_key = jax.random.split(local_key, 5)
+    local_key, batch_key, wrapping_key, eval_key = jax.random.split(local_key, 4)
 
     if num_envs % device_count != 0:
         raise ValueError(
@@ -160,15 +160,16 @@ def train(
         else training_env
     )
 
-    # TODO deal with the reusage of these key envs in backend
-    key_envs = jax.random.split(key_env, num_envs // process_count)
-    key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
-    # key_envs, key_agent_states = jax.random.split(key_envs)
+    batch_key = jax.random.split(batch_key, num_envs // process_count)
+    batch_key = jnp.reshape(batch_key, (local_devices_to_use, -1) + batch_key.shape[1:])
+    keyandrs = jax.vmap(jax.vmap(jax.random.split))(batch_key)
+    key_envs, key_agent_states = keyandrs[:, :, 0], keyandrs[:, :, 1]
 
     num_device_envs = num_envs // process_count // local_devices_to_use
     state_shape = (local_devices_to_use, num_device_envs)
 
     reset_fn = jax.jit(jax.vmap(env.reset))
+    # TODO deal with the reusage of these key envs in backend
     env_state = reset_fn(key_envs)
 
     # Shapes of different observation tensors
@@ -208,7 +209,7 @@ def train(
 
     if recurrent:
         assert isinstance(ppo_networks, TeacherStudentRecurrentNetworks)
-        agent_state = ppo_networks.init_agent_state(shape=state_shape, key=agent_key)
+        agent_state = jax.vmap(jax.vmap(ppo_networks.init_agent_state))(key_agent_states)
 
     # Initialize model params and training state.
     network_init_params = ppo_networks.initialize(global_key)

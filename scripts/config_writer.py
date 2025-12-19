@@ -126,6 +126,7 @@ if __name__ == "__main__":
     # Randomized terrain tiles Depth-teacher Recurrent Student
     terrain_config = terrain_gen.ColorMapTerrainConfig()
     env_config = environments.QuadrupedColorGuidedEnvConfig()
+    env_config.observation_noise.history_length = 1
     model_config = models.TeacherStudentRecurrentConfig()
     training_config = training.TrainingWithRecurrentStudentConfig()
     cfg.save_configs(

@@ -69,14 +69,16 @@ def train(
     xt = time.time()
 
     def sgd_step(
-        carry: tuple[OptimizerState, AgentNetworkParams, PRNGKey, RecurrentAgentState],
+        carry: tuple[OptimizerState, AgentNetworkParams, PRNGKey],
         _,
         data: types.Transition,
+        agent_state: RecurrentAgentState,
         normalizer_params: running_statistics.RunningStatisticsState,
     ) -> tuple[
-        tuple[OptimizerState, AgentNetworkParams, PRNGKey, RecurrentAgentState], types.Metrics
+        tuple[OptimizerState, AgentNetworkParams, PRNGKey],
+        tuple[RecurrentAgentState, types.Metrics],
     ]:
-        opt_state, network_params, key, agent_state = carry
+        opt_state, network_params, key = carry
         key, key_perm, key_grad = jax.random.split(key, 3)
 
         if training_config.augment_pixels:
@@ -103,21 +105,21 @@ def train(
         converted_data = jax.tree_util.tree_map(convert_data, data)
         agent_state_batched = jax.tree_util.tree_map(convert_data, agent_state)
         if recurrent:
-            minibatch_carry = (opt_state, network_params, agent_state_batched, key_grad)
+            minibatch_data = (converted_data, agent_state_batched)
         else:
-            minibatch_carry = (opt_state, network_params, key_grad)
-        minibatch_carry, metrics = jax.lax.scan(
+            minibatch_data = converted_data
+        (opt_state, network_params, _), minibatch_acc = jax.lax.scan(
             functools.partial(fitter.minibatch_step, normalizer_params=normalizer_params),
-            minibatch_carry,
-            converted_data,
+            (opt_state, network_params, key_grad),
+            minibatch_data,
             length=num_minibatches,
         )
         if recurrent:
-            opt_state, network_params, agent_state_batched, _ = minibatch_carry
+            agent_state_batched, metrics = minibatch_acc
         else:
-            opt_state, network_params, _ = minibatch_carry
+            metrics = minibatch_acc
         agent_state_updated = jax.tree_util.tree_map(restore_data, agent_state_batched)
-        return (opt_state, network_params, key, agent_state_updated), metrics
+        return (opt_state, network_params, key),  (agent_state_updated, metrics)
 
     def training_step(
         carry: tuple[TrainingState, State, PRNGKey, RecurrentAgentState], _
@@ -153,17 +155,22 @@ def train(
             pmap_axis_name=_utils.PMAP_AXIS_NAME,
         )
 
-        (opt_state, network_params, ignore_key, new_agent_state), metrics = jax.lax.scan(
-            functools.partial(sgd_step, data=data, normalizer_params=normalizer_params),
+        (opt_state, network_params, _), (new_agent_states, metrics) = jax.lax.scan(
+            functools.partial(
+                sgd_step,
+                data=data,
+                agent_state=agent_state,
+                normalizer_params=normalizer_params,
+            ),
             (
                 training_state.optimizer_state,
                 training_state.agent_params.network_params,
                 key_sgd,
-                agent_state,
             ),
             (),
             length=num_updates_per_batch,
         )
+        new_agent_state = jax.tree_util.tree_map(lambda x: x[-1], new_agent_states)
 
         new_training_state = TrainingState(
             optimizer_state=opt_state,

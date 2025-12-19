@@ -10,7 +10,7 @@ environment:
   observation_noise:
     clip: 100.0
     general_noise: 0.05
-    history_length: 15
+    history_length: 1
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -113,8 +113,8 @@ terrain:
   - 0
   - 0.5
   goal_size: 0.5
-  n_columns: 4
-  n_rows: 4
+  n_columns: 20
+  n_rows: 20
   num_colors: 2
   randomization_config:
     num_colors: 2

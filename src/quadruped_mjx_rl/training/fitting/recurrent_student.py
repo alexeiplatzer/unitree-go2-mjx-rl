@@ -72,21 +72,19 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         carry: tuple[
             TeacherStudentOptimizerState,
             TeacherStudentAgentParams,
-            RecurrentAgentState,
             PRNGKey,
         ],
-        data: Transition,
+        data: tuple[Transition, RecurrentAgentState],
         normalizer_params: RunningStatisticsState,
     ) -> tuple[
         tuple[
             TeacherStudentOptimizerState,
             TeacherStudentAgentParams,
-            RecurrentAgentState,
             PRNGKey,
         ],
-        dict[str, Any],
+        tuple[RecurrentAgentState, dict[str, Any]],
     ]:
-        optimizer_state, network_params, agent_state, key = carry
+        optimizer_state, network_params, key = carry
         key, teacher_key, student_key = jax.random.split(key, 3)
         transitions, agent_state = data
         ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
@@ -99,14 +97,14 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             )
         )
         (
-            (student_loss, agent_state, student_metrics),
+            (student_loss, (agent_state, student_metrics)),
             network_params,
             student_optimizer_state,
         ) = self.student_gradient_update_fn(
             network_params,
             normalizer_params,
             agent_state,
-            data,
+            transitions,
             student_key,
             optimizer_state=optimizer_state.student_optimizer_state,
         )
@@ -115,7 +113,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             student_optimizer_state=student_optimizer_state,
         )
         metrics = teacher_metrics | student_metrics
-        return (optimizer_state, network_params, agent_state, key), metrics
+        return (optimizer_state, network_params, key), (agent_state, metrics)
 
     def make_evaluation_fn(
         self,
@@ -226,17 +224,10 @@ def compute_student_recurrent_loss(
     data: Transition,
     rng: PRNGKey,
     network: TeacherStudentRecurrentNetworks,
-) -> tuple[jax.Array, RecurrentAgentState, Metrics]:
+) -> tuple[jax.Array, tuple[RecurrentAgentState, Metrics]]:
     """Computes Adaptation module loss."""
 
-    # Put the time dimension first.
-    data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
-
     done = 1 - data.discount
-
-    teacher_latent_vector = network.apply_acting_encoder(
-        preprocessor_params, network_params, data.observation
-    )
 
     student_latent_vector, agent_state = network.apply_student_encoder(
         preprocessor_params=preprocessor_params,
@@ -244,7 +235,14 @@ def compute_student_recurrent_loss(
         observation=data.observation,
         done=done,
         recurrent_agent_state=agent_state,
-        reinitialization_key=rng,
+        key=jax.random.split(rng, done.shape[0]),
+    )
+
+    # Put the time dimension first.
+    data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
+
+    teacher_latent_vector = network.apply_acting_encoder(
+        preprocessor_params, network_params, data.observation
     )
 
     # # match the shapes
@@ -260,6 +258,6 @@ def compute_student_recurrent_loss(
     #     )
 
     teacher_latent_vector = jax.lax.stop_gradient(teacher_latent_vector)
-    total_loss = optax.squared_error(teacher_latent_vector - student_latent_vector).mean()
+    total_loss = optax.squared_error(teacher_latent_vector[-1] - student_latent_vector).mean()
 
-    return total_loss, agent_state, {"student_total_loss": total_loss}
+    return total_loss, (agent_state, {"student_total_loss": total_loss})

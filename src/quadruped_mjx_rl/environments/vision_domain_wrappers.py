@@ -125,7 +125,9 @@ class TerrainMapWrapper(Wrapper):
     #     )
 
     def get_vision_obs(
-        self, pipeline_state: PipelineState, state_info: dict[str, Any],
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, Any],
     ) -> Observation:
         def get_vision_obs(
             pipeline_model,
@@ -142,6 +144,7 @@ class TerrainMapWrapper(Wrapper):
                 stiffness_table=stiffness_table,
             )
             return env.get_vision_obs(local_pipeline_state, local_state_info)
+
         return jax.vmap(get_vision_obs, in_axes=[self._in_axes, 0, 0, 0, 0, 0])(
             self._sys_v,
             self._rgba_table_v,

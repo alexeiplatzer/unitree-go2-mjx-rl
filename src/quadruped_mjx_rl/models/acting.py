@@ -102,7 +102,7 @@ def vision_actor_step(
     )
 
     # update the vision observations
-    next_vision_obs = jax.vmap(env.get_vision_obs)(next_state.pipeline_state, next_state.info)
+    next_vision_obs = env.get_vision_obs(next_state.pipeline_state, next_state.info)
     # next_state = next_state.replace(obs=dict(next_state.obs) | dict(vision_obs))
     return next_state, next_vision_obs, transitions
 
@@ -123,21 +123,34 @@ def recurrent_actor_step(
 ) -> tuple[State, RecurrentCarry, jax.Array, Transition]:
     enriched_policy = functools.partial(policy, latent_encoding=initial_encoding)
     if vision_substeps > 0:
+        initial_vision_obs = env.get_vision_obs(env_state.pipeline_state, env_state.info)
+        carry = (env_state, initial_vision_obs, key)
         step_fn = functools.partial(vision_actor_step, proprio_substeps=proprio_substeps)
         n_substeps = vision_substeps
     else:
+        carry = (env_state, key)
         step_fn = actor_step
         n_substeps = proprio_substeps
-    (next_state, final_key), transitions = jax.lax.scan(
+    (next_state, *_, final_key), transitions = jax.lax.scan(
         functools.partial(step_fn, env=env, policy=enriched_policy, extra_fields=extra_fields),
-        (env_state, key),
+        carry,
         (),
         length=n_substeps,
+    )
+    recurrent_key = jax.random.split(final_key, initial_encoding.shape[0])
+    transitions = jax.tree_util.tree_map(
+        lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), transitions
+    )
+    transitions = jax.tree_util.tree_map(
+        lambda x: jnp.swapaxes(x, 0, 1), transitions
     )
     next_encoding, recurrent_carry = recurrent_encoder(
         observation=transitions.observation,
         done=1 - transitions.discount,
-        key=final_key,
+        key=recurrent_key,
         recurrent_carry=recurrent_carry,
+    )
+    transitions = jax.tree_util.tree_map(
+        lambda x: jnp.swapaxes(x, 0, 1), transitions
     )
     return next_state, recurrent_carry, next_encoding, transitions

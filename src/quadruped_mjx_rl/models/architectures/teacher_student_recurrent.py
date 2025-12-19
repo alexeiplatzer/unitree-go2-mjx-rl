@@ -121,8 +121,10 @@ class TeacherStudentRecurrentNetworks(
         student_params_key, student_dummy_key, student_agent_key = jax.random.split(
             student_key, 3
         )
-        dummy_agent_state = self.init_agent_state((1,), jax.random.PRNGKey(0))
-        dummy_done = jnp.zeros((1, 1))
+        dummy_agent_state = jax.tree_util.tree_map(
+            lambda x: jnp.expand_dims(x, axis=0), self.init_agent_state(jax.random.PRNGKey(0))
+        )
+        dummy_done = jnp.zeros((1,))
         return TeacherStudentNetworkParams(
             policy=self.policy_module.init(
                 policy_key,
@@ -141,34 +143,37 @@ class TeacherStudentRecurrentNetworks(
             ),
             student_encoder=self.student_encoder_module.init(
                 student_params_key,
-                self.dummy_obs[self.student_encoder_obs_key],
-                self.dummy_obs[self.student_proprio_obs_key],
-                dummy_done,
+                jnp.repeat(
+                    jnp.expand_dims(self.dummy_obs[self.student_encoder_obs_key], 1),
+                    self.student_encoder_supersteps,
+                    axis=1,
+                ),
+                jnp.repeat(
+                    jnp.expand_dims(self.dummy_obs[self.student_proprio_obs_key], 1),
+                    self.student_encoder_supersteps * self.encoder_supersteps,
+                    axis=1,
+                ),
+                jnp.repeat(
+                    jnp.expand_dims(dummy_done, 1),
+                    self.student_encoder_supersteps * self.encoder_supersteps,
+                    axis=1,
+                ),
                 dummy_agent_state.recurrent_carry,
                 dummy_agent_state.recurrent_buffer,
                 dummy_agent_state.done_buffer,
-                student_dummy_key,
+                jnp.expand_dims(student_dummy_key, 0),
             ),
         )
 
     def init_student_carry(self, init_carry_key: PRNGKey) -> RecurrentCarry:
         return self.student_encoder_module.initialize_carry(init_carry_key)
 
-    def init_agent_state(self, shape: tuple[int, ...], key: PRNGKey) -> RecurrentAgentState:
-        # TODO check vmapping
-        init_carry_keys = jax.random.split(key, shape)
-        recurrent_carry = self.init_student_carry(init_carry_keys)
-        # recurrent_carry = jax.vmap(self.init_student_carry, in_axes=shape)(init_carry_keys)
+    def init_agent_state(self, key: PRNGKey) -> RecurrentAgentState:
+        recurrent_carry = self.init_student_carry(key)
         return RecurrentAgentState(
             recurrent_carry=recurrent_carry,
-            recurrent_buffer=jnp.zeros(
-                (
-                    *shape,
-                    self.buffers_length,
-                    self.recurrent_input_size,
-                )
-            ),
-            done_buffer=jnp.ones((*shape, self.buffers_length, 1)),
+            recurrent_buffer=jnp.zeros((self.buffers_length, self.recurrent_input_size)),
+            done_buffer=jnp.ones((self.buffers_length,)),
         )
 
     def apply_student_encoder(
@@ -178,7 +183,7 @@ class TeacherStudentRecurrentNetworks(
         observation: Observation,
         done: jax.Array,
         recurrent_agent_state: RecurrentAgentState,
-        reinitialization_key: PRNGKey,
+        key: PRNGKey,
     ) -> tuple[jax.Array, RecurrentAgentState]:
         observation = self.preprocess_obs(preprocessor_params, observation)
         encoding, recurrent_carry, recurrent_buffer, done_buffer = (
@@ -190,7 +195,7 @@ class TeacherStudentRecurrentNetworks(
                 recurrent_agent_state.recurrent_carry,
                 recurrent_agent_state.recurrent_buffer,
                 recurrent_agent_state.done_buffer,
-                reinitialization_key,
+                key,
             )
         )
         return encoding, RecurrentAgentState(recurrent_carry, recurrent_buffer, done_buffer)
@@ -202,7 +207,7 @@ class TeacherStudentRecurrentNetworks(
         observation: Observation,
         done: jax.Array,
         recurrent_carry: RecurrentCarry,
-        reinitialization_key: PRNGKey,
+        key: PRNGKey,
     ) -> tuple[jax.Array, RecurrentCarry]:
         observation = self.preprocess_obs(preprocessor_params, observation)
         encoding, recurrent_carry = self.student_encoder_module.apply(
@@ -211,7 +216,7 @@ class TeacherStudentRecurrentNetworks(
             observation[self.student_proprio_obs_key],
             done,
             recurrent_carry,
-            reinitialization_key,
+            key,
             method="encode",
         )
         return encoding, recurrent_carry
@@ -224,6 +229,11 @@ class TeacherStudentRecurrentNetworks(
     ) -> GenerateUnrollFn:
         policy = self.policy_metafactory(self.apply_policy_with_latents)(
             agent_params, deterministic
+        )
+        recurrent_encoder = functools.partial(
+            self.apply_student_acting_encoder,
+            preprocessor_params=agent_params.preprocessor_params,
+            network_params=agent_params.network_params,
         )
         if not self.vision:
             vision_substeps = 0
@@ -240,8 +250,9 @@ class TeacherStudentRecurrentNetworks(
             extra_fields: Sequence[str] = (),
         ) -> tuple[State, Transition]:
             key, init_carry_key = jax.random.split(key)
-            # TODO: vmap?
-            init_carry = self.init_student_carry(init_carry_key)
+            num_envs = env_state.done.shape[0] if env_state.done.shape else 1
+            init_carry_keys = jax.random.split(init_carry_key, num_envs)
+            init_carry = jax.vmap(self.init_student_carry)(init_carry_keys)
             (env_state, _, _, _), transitions = jax.lax.scan(
                 functools.partial(
                     recurrent_actor_step,
@@ -250,8 +261,9 @@ class TeacherStudentRecurrentNetworks(
                     extra_fields=extra_fields,
                     vision_substeps=vision_substeps,
                     proprio_substeps=proprio_substeps,
+                    recurrent_encoder=recurrent_encoder,
                 ),
-                (env_state, init_carry, self.dummy_latent, key),
+                (env_state, init_carry, jnp.repeat(self.dummy_latent, num_envs, axis=0), key),
                 (),
                 length=unroll_length,
             )

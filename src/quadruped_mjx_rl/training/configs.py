@@ -104,14 +104,20 @@ class TrainingWithVisionConfig(TrainingConfig):
 
 class TrainingWithRecurrentStudentConfig(TrainingWithVisionConfig):
     unroll_length: int = 4
-    num_updates_per_batch: int = 1
+    num_updates_per_batch: int = 2
+    num_minibatches: int = 16
 
     def check_validity(self):
         super().check_validity()
-        if self.num_updates_per_batch != 1:
+        # if self.num_updates_per_batch != 1:
+        #     raise ValueError(
+        #         "Recurrent training must have num_updates_per_batch == 1. Repeated updates on "
+        #         "the same batch will break the recurrent buffers."
+        #     )
+        if self.batch_size * self.num_minibatches != self.num_envs:
             raise ValueError(
-                "Recurrent training must have num_updates_per_batch == 1. Repeated updates on "
-                "the same batch will break the recurrent buffers."
+                "Total batch size must be equal to number of environments, for the consistency"
+                "of sequential updates to the recurrent buffers."
             )
         # if (
         #     self.unroll_length

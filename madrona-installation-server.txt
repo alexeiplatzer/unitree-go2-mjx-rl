@@ -24,3 +24,16 @@ grep -R "/lib64/libm.so.6" "$CONDA_PREFIX" 2>/dev/null
 /usr/lib/x86_64-linux-gnu/libc_nonshared.a
 /lib/x86_64-linux-gnu/libm.so.6
 /usr/lib/x86_64-linux-gnu/libmvec.so.1
+
+
+Version 2
+
+conda install \
+  --override-channels --strict-channel-priority \
+  -c nvidia/label/cuda-12.4.0 -c nvidia -c conda-forge -c defaults \
+  "cuda-toolkit=12.4.*" cmake
+
+conda install \
+  --override-channels --strict-channel-priority \
+  -c nvidia/label/cudnn-9.10.2 -c nvidia -c conda-forge -c defaults \
+  "cudnn=9.10.2*" "cuda-version=12"

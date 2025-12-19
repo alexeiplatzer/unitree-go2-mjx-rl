@@ -10,7 +10,7 @@ environment:
   observation_noise:
     clip: 100.0
     general_noise: 0.05
-    history_length: 15
+    history_length: 1
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -113,8 +113,8 @@ terrain:
   - 0
   - 0.5
   goal_size: 0.5
-  n_columns: 4
-  n_rows: 4
+  n_columns: 20
+  n_rows: 20
   num_colors: 2
   randomization_config:
     num_colors: 2
@@ -124,7 +124,7 @@ terrain:
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 4
+  batch_size: 7
   deterministic_eval: false
   episode_length: 5
   log_training_metrics: false
@@ -132,7 +132,7 @@ training:
   num_envs: 7
   num_eval_envs: 7
   num_evals: 4
-  num_minibatches: 7
+  num_minibatches: 1
   num_resets_per_eval: 0
   num_timesteps: 100_000
   num_updates_per_batch: 1
@@ -150,5 +150,5 @@ training:
   seed: 0
   training_class: PPO_RecurrentStudent
   training_metrics_steps: null
-  unroll_length: 3
+  unroll_length: 4
   use_vision: true

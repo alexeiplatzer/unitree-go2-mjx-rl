@@ -257,9 +257,7 @@ class ActorCriticEnrichedNetworks(
             unroll_length: int,
             extra_fields: Sequence[str] = (),
         ) -> tuple[State, Transition]:
-            first_vision_obs = jax.vmap(env.get_vision_obs)(
-                env_state.pipeline_state, env_state.info
-            )
+            first_vision_obs = env.get_vision_obs(env_state.pipeline_state, env_state.info)
             (env_state, _, _), transitions = jax.lax.scan(
                 functools.partial(
                     vision_actor_step,

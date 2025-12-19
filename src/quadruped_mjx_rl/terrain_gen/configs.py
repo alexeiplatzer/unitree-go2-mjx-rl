@@ -111,7 +111,7 @@ def make_arena(empty_arena_spec: mj.MjSpec, tiles: list[list[TerrainTileConfig]]
         for j in range(len(tiles[0])):
             tiles[i][j].create_tile(
                 spec=spec,
-                grid_loc=[j * 2 * square_side, (i + row_offset) * 2 * square_side],
+                grid_loc=[j * 2 * square_side, (i - row_offset) * 2 * square_side],
                 name=f"tile_{i}_{j}",
             )
 
@@ -135,8 +135,8 @@ class FlatTiledTerrainConfig(TerrainConfig):
     Useful for domain-randomizing their properties"""
 
     base_scene_file: str = "scene_mjx_empty_arena.xml"
-    n_rows: int = 4
-    n_columns: int = 4
+    n_rows: int = 20
+    n_columns: int = 20
     square_size: float = 1.0
 
     @classmethod
