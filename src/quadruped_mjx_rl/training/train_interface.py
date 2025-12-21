@@ -145,6 +145,7 @@ def train(
             f"({device_count})."
         )
 
+    logging.info("Wrapping the training environment...")
     env = (
         wrap_for_training(
             env=training_env,
@@ -165,9 +166,7 @@ def train(
     keyandrs = jax.vmap(jax.vmap(jax.random.split))(batch_key)
     key_envs, key_agent_states = keyandrs[:, :, 0], keyandrs[:, :, 1]
 
-    num_device_envs = num_envs // process_count // local_devices_to_use
-    state_shape = (local_devices_to_use, num_device_envs)
-
+    logging.info("Instantiating environment states...")
     reset_fn = jax.jit(jax.vmap(env.reset))
     # TODO deal with the reusage of these key envs in backend
     env_state = reset_fn(key_envs)
@@ -208,10 +207,11 @@ def train(
     recurrent = isinstance(training_config, TrainingWithRecurrentStudentConfig)
 
     if recurrent:
+        logging.info("Initializing recurrent agent state...")
         assert isinstance(ppo_networks, TeacherStudentRecurrentNetworks)
         agent_state = jax.vmap(jax.vmap(ppo_networks.init_agent_state))(key_agent_states)
 
-    # Initialize model params and training state.
+    logging.info("Initializing model params and training state...")
     network_init_params = ppo_networks.initialize(global_key)
 
     obs_shape = jax.tree_util.tree_map(
@@ -238,10 +238,12 @@ def train(
     if num_timesteps == 0:
         return training_state.agent_params
 
+    logging.info("Distributing training state to devices...")
     training_state = jax.device_put_replicated(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
 
+    logging.info("Wrapping the evaluation environment...")
     eval_env = (
         env
         if vision or not wrap_env
@@ -257,6 +259,7 @@ def train(
         )
     )
 
+    logging.info("Setting up evaluation functions...")
     run_evaluations, eval_times = fitter.make_evaluation_fn(
         eval_env=eval_env,
         eval_key=eval_key,

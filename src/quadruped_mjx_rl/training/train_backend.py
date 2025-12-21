@@ -248,6 +248,7 @@ def train(
     policy_params_fn(current_step, params)
     # Run initial eval
     if process_id == 0 and num_evals > 1:
+        logging.info("Running initial eval...")
         run_evaluations(current_step, params, training_metrics={})
 
     for it in range(num_evals_after_init):
