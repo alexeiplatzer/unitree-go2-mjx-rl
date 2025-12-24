@@ -132,22 +132,22 @@ def render_policy_rollout(
     # if vision:
     #     demo_env = MadronaWrapper(demo_env, num_worlds=1)
 
-    render_fn = functools.partial(
-        render_rollout,
-        env=demo_env,
-        render_config=render_config,
-    )
-    if isinstance(ppo_inference_fn, dict):
-        for name, inference_fn in ppo_inference_fn.items():
-            frames, fps = render_fn(
-                inference_fn=inference_fn,
-            )
-            video_maker(frames, fps)
-    else:
-        frames, fps = render_fn(
-            inference_fn=ppo_inference_fn,
-        )
-        video_maker(frames, fps)
+    # render_fn = functools.partial(
+    #     render_rollout,
+    #     env=demo_env,
+    #     render_config=render_config,
+    # )
+    # if isinstance(ppo_inference_fn, dict):
+    #     for name, inference_fn in ppo_inference_fn.items():
+    #         frames, fps = render_fn(
+    #             inference_fn=inference_fn,
+    #         )
+    #         video_maker(frames, fps)
+    # else:
+    #     frames, fps = render_fn(
+    #         inference_fn=ppo_inference_fn,
+    #     )
+    #     video_maker(frames, fps)
 
 
 def render_rollout(
