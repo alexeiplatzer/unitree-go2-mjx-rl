@@ -161,6 +161,20 @@ if __name__ == "__main__":
         training_config,
     )
 
+    # Randomized terrain tiles, but blind
+    terrain_config = terrain_gen.ColorMapTerrainConfig()
+    env_config = environments.QuadrupedColorGuidedEnvConfig()
+    env_config.observation_noise.history_length = 15
+    model_config = models.ActorCriticConfig()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "randomized_tiles_blind.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config,
+    )
+
     # Example rendering config
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "render_basic_example.yaml",
