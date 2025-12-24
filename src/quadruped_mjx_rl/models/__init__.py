@@ -1,5 +1,6 @@
 from quadruped_mjx_rl.models.architectures import (
     ActorCriticConfig,
+    ActorCriticEnrichedConfig,
     ModelConfig,
     TeacherStudentConfig,
     TeacherStudentVisionConfig,

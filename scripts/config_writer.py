@@ -147,6 +147,20 @@ if __name__ == "__main__":
         training_config,
     )
 
+    # Randomized terrain tiles with privileged terrain map encoder, without a student
+    terrain_config = terrain_gen.ColorMapTerrainConfig()
+    env_config = environments.QuadrupedColorGuidedEnvConfig()
+    env_config.observation_noise.history_length = 15
+    model_config = models.ActorCriticEnrichedConfig(encoder_obs_key="privileged_terrain_map")
+    training_config = training.TrainingWithVisionConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "randomized_tiles_vision.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config,
+    )
+
     # Example rendering config
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "render_basic_example.yaml",
