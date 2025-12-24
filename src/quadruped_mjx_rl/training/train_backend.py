@@ -143,7 +143,7 @@ def train(
             return jnp.reshape(x, (-1,) + x.shape[2:])
 
 
-        data = jax.tree_util.tree_map(lambda x: convert_data(x))
+        data = jax.tree_util.tree_map(lambda x: convert_data(x), data)
         assert data.discount.shape[-1] % unroll_length == 0  # without the substeps
 
         # Update normalization params and normalize observations.

@@ -44,7 +44,7 @@ def unroll_factory(
         key: PRNGKey,
         env: Env,
         unroll_length: int,
-        extra_keys: Sequence[str] = (),
+        extra_fields: Sequence[str] = (),
     ):
         def roll(
             carry: tuple[State, ..., PRNGKey], _
@@ -52,7 +52,7 @@ def unroll_factory(
             *args, key = carry
             key, next_key = jax.random.split(key)
             next_state, *next_carry, output = fun(
-                *args, key=next_key, env=env, extra_keys=extra_keys, **kwargs
+                *args, key=next_key, env=env, extra_fields=extra_fields, **kwargs
             )
             return (next_state, *next_carry, next_key), output
 
