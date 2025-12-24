@@ -10,7 +10,7 @@ from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.environments.vision import VisionWrapper
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn, vision_actor_step
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn, vision_unroll_factory
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticConfig,
     ActorCriticNetworkParams,
@@ -231,10 +231,14 @@ class ActorCriticEnrichedNetworks(
         deterministic: bool = False,
         policy_factory: PolicyFactory | None = None,
         apply_encoder_fn: Callable | None = None,
+        accumulate_pipeline_states: bool = False,
     ) -> GenerateUnrollFn:
         if not self.vision:
             return super().make_unroll_fn(
-                agent_params, deterministic=deterministic, policy_factory=policy_factory
+                agent_params,
+                deterministic=deterministic,
+                policy_factory=policy_factory,
+                accumulate_pipeline_states=accumulate_pipeline_states,
             )
 
         if policy_factory is None:
@@ -250,30 +254,9 @@ class ActorCriticEnrichedNetworks(
             repeat_output=False,
         )
 
-        def generate_unroll(
-            env_state: State,
-            key: PRNGKey,
-            env: Env,
-            unroll_length: int,
-            extra_fields: Sequence[str] = (),
-        ) -> tuple[State, Transition]:
-            first_vision_obs = env.get_vision_obs(env_state.pipeline_state, env_state.info)
-            (env_state, _, _), transitions = jax.lax.scan(
-                functools.partial(
-                    vision_actor_step,
-                    env=env,
-                    policy=acting_policy,
-                    vision_encoder=vision_encoder,
-                    extra_fields=extra_fields,
-                    proprio_substeps=self.encoder_supersteps,
-                ),
-                (env_state, first_vision_obs, key),
-                (),
-                length=unroll_length,
-            )
-            transitions = jax.tree_util.tree_map(
-                lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), transitions
-            )
-            return env_state, transitions
-
-        return generate_unroll
+        return vision_unroll_factory(
+            policy=acting_policy,
+            vision_encoder=vision_encoder,
+            proprio_substeps=self.encoder_supersteps,
+            accumulate_pipeline_states=accumulate_pipeline_states,
+        )

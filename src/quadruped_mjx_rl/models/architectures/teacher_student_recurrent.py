@@ -7,7 +7,7 @@ from flax import linen
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.physics_pipeline import Env, State
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn, recurrent_actor_step
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn, recurrent_unroll_factory
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedNetworks,
 )
@@ -226,6 +226,7 @@ class TeacherStudentRecurrentNetworks(
         agent_params: TeacherStudentAgentParams,
         *,
         deterministic: bool = False,
+        accumulate_pipeline_states: bool = False,
     ) -> GenerateUnrollFn:
         policy = self.policy_metafactory(self.apply_policy_with_latents)(
             agent_params, deterministic
@@ -242,31 +243,12 @@ class TeacherStudentRecurrentNetworks(
             vision_substeps = self.student_encoder_supersteps
             proprio_substeps = self.encoder_supersteps
 
-        def generate_unroll(
-            env_state: State,
-            key: PRNGKey,
-            env: Env,
-            unroll_length: int,
-            extra_fields: Sequence[str] = (),
-        ) -> tuple[State, Transition]:
-            key, init_carry_key = jax.random.split(key)
-            num_envs = env_state.done.shape[0] if env_state.done.shape else 1
-            init_carry_keys = jax.random.split(init_carry_key, num_envs)
-            init_carry = jax.vmap(self.init_student_carry)(init_carry_keys)
-            (env_state, _, _, _), transitions = jax.lax.scan(
-                functools.partial(
-                    recurrent_actor_step,
-                    env=env,
-                    policy=policy,
-                    extra_fields=extra_fields,
-                    vision_substeps=vision_substeps,
-                    proprio_substeps=proprio_substeps,
-                    recurrent_encoder=recurrent_encoder,
-                ),
-                (env_state, init_carry, jnp.repeat(self.dummy_latent, num_envs, axis=0), key),
-                (),
-                length=unroll_length,
-            )
-            return env_state, transitions
-
-        return generate_unroll
+        return recurrent_unroll_factory(
+            policy=policy,
+            recurrent_encoder=recurrent_encoder,
+            encoding_size=self.dummy_latent.shape[-1],
+            init_carry_fn=self.init_student_carry,
+            vision_substeps=vision_substeps,
+            proprio_substeps=proprio_substeps,
+            accumulate_pipeline_states=accumulate_pipeline_states,
+        )

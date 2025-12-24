@@ -7,10 +7,36 @@ import mediapy as media
 import numpy as np
 from etils.epath import PathLike
 from jax import numpy as jnp
+import functools
+from typing import Protocol
 
+from etils.epath import PathLike
+
+from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.models import io
+from quadruped_mjx_rl.models.architectures import (
+    TeacherStudentAgentParams,
+    ActorCriticConfig,
+    ModelConfig,
+    TeacherStudentConfig,
+    TeacherStudentVisionConfig,
+    TeacherStudentRecurrentConfig,
+    TeacherStudentNetworks,
+    TeacherStudentRecurrentNetworks,
+)
+from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
+from quadruped_mjx_rl.models.types import (
+    AgentNetworkParams,
+    identity_observation_preprocessor,
+    PreprocessObservationFn,
+)
+from quadruped_mjx_rl.types import ObservationSize
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.environments import PipelineEnv
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
+from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
+from quadruped_mjx_rl.models.types import Params
+
 
 # from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
 
@@ -54,17 +80,49 @@ def save_video(frames: Sequence[np.ndarray], fps: float, save_path: PathLike):
 
 def render_policy_rollout(
     env: PipelineEnv,
-    ppo_inference_fn,
+    model_config: ModelConfig,
+    model_params: Params,
     render_config: RenderConfig,
+    normalize_observations: bool = False,
     # animation_save_path: PathLike | dict[str, PathLike] | None,
-    video_maker: PolicyRenderingFn = show_video,
-    vision: bool = False,
-):
-    # Inference function
-    # ppo_inference_fn = load_inference_fn(
-    #     trained_model_path, model_config, action_size=env.action_size
-    # )
-
+    # video_maker: PolicyRenderingFn = show_video,
+    # vision: bool = False,
+) -> tuple[Sequence[np.ndarray], float]:
+    model_class = type(model_config).get_model_class()
+    if not isinstance(model_params, model_class.agent_params_class()):
+        raise ValueError(
+            f"The provided params have the wrong type: {type(model_params)}"
+            f" - while {model_class.agent_params_class()} were expected!"
+        )
+    network_factory = get_networks_factory(model_config)
+    preprocess_fn = (
+        running_statistics.normalize
+        if normalize_observations
+        else lambda x, y: x
+    )
+    network = network_factory(
+        observation_size={
+                "proprioceptive": 1,
+                "proprioceptive_history": 1,
+                "environment_privileged": 1,
+                "pixels/terrain/depth": 1,
+                "pixels/frontal_ego/rgb": 1,
+                "pixels/frontal_ego/rgb_adjusted": 1,
+                "privileged_terrain_map": 1,
+            },
+        action_size=env.action_size,
+        preprocess_observations_fn=preprocess_fn,
+    )
+    # TODO: finish implementing
+    unroll_factories = {"training_acting_policy": network.make_unroll_fn(model_params)}
+    if isinstance(network, TeacherStudentRecurrentNetworks):
+        pass
+    elif isinstance(network, TeacherStudentNetworks):
+        unroll_fn = network.make_unroll_fn(model_params)
+        unroll_factories = {
+            "teacher": network.get_acting_policy_factory(),
+            "student": network.get_student_policy_factory(),
+        }
     demo_env = EpisodeWrapper(
         env,
         episode_length=render_config.episode_length,

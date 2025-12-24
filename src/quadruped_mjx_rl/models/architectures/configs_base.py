@@ -7,7 +7,7 @@ from typing import Generic
 import jax
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.models.acting import actor_step, GenerateUnrollFn
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn, proprioceptive_unroll_factory
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory
 from quadruped_mjx_rl.physics_pipeline import Env, State
@@ -64,26 +64,11 @@ class ComponentNetworksArchitecture(ABC, Generic[AgentNetworkParams]):
         *,
         deterministic: bool = False,
         policy_factory: PolicyFactory | None = None,
+        accumulate_pipeline_states: bool = False,
     ) -> GenerateUnrollFn:
         if policy_factory is None:
             policy_factory = self.get_acting_policy_factory()
         acting_policy = policy_factory(agent_params, deterministic)
-
-        def generate_unroll(
-            env_state: State,
-            key: PRNGKey,
-            env: Env,
-            unroll_length: int,
-            extra_fields: Sequence[str] = (),
-        ) -> tuple[State, Transition]:
-            (env_state, _), transitions = jax.lax.scan(
-                functools.partial(
-                    actor_step, env=env, policy=acting_policy, extra_fields=extra_fields
-                ),
-                (env_state, key),
-                (),
-                length=unroll_length,
-            )
-            return env_state, transitions
-
-        return generate_unroll
+        return proprioceptive_unroll_factory(
+            acting_policy, accumulate_pipeline_states=accumulate_pipeline_states
+        )

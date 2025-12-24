@@ -10,7 +10,7 @@ from flax.struct import dataclass as flax_dataclass
 from quadruped_mjx_rl import running_statistics, types
 from quadruped_mjx_rl.physics_pipeline import Env, State
 from quadruped_mjx_rl.models import AgentParams
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn, wrap_roll
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.types import RecurrentAgentState, AgentNetworkParams
 from quadruped_mjx_rl.training import (
     pmap,
@@ -127,25 +127,23 @@ def train(
         training_state, state, key, agent_state = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
+        unroll_repeat = batch_size * num_minibatches // num_envs
         generate_unroll = generate_unroll_factory(training_state.agent_params)
-        roll = functools.partial(
-            wrap_roll(generate_unroll),
+        state, data = generate_unroll(
+            env_state=state,
+            key=key_generate_unroll,
             env=env,
-            unroll_length=unroll_length,
+            unroll_length=unroll_length * unroll_repeat,
             extra_fields=("truncation", "episode_metrics", "episode_done"),
         )
-
-        (state, ignore_key), data = jax.lax.scan(
-            roll,
-            (state, key_generate_unroll),
-            (),
-            length=batch_size * num_minibatches // num_envs,
-        )
-
-        # TODO: agent state is per-env, should be updated similarly, no multiple unrolls per env should be allowed
         # Have leading dimensions (batch_size * num_minibatches, unroll_length)
-        data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 1, 2), data)
-        data = jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data)
+        def convert_data(x: jax.Array):
+            x = jnp.reshape(x, (unroll_repeat, unroll_length) + x.shape[1:])
+            x = jnp.swapaxes(x, 1, 2)
+            return jnp.reshape(x, (-1,) + x.shape[2:])
+
+
+        data = jax.tree_util.tree_map(lambda x: convert_data(x))
         assert data.discount.shape[-1] % unroll_length == 0  # without the substeps
 
         # Update normalization params and normalize observations.
