@@ -138,7 +138,7 @@ def train(
         )
         # Have leading dimensions (batch_size * num_minibatches, unroll_length)
         def convert_data(x: jax.Array):
-            x = jnp.reshape(x, (unroll_repeat, unroll_length) + x.shape[1:])
+            x = jnp.reshape(x, (unroll_repeat, -1) + x.shape[1:])
             x = jnp.swapaxes(x, 1, 2)
             return jnp.reshape(x, (-1,) + x.shape[2:])
 

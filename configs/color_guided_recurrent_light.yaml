@@ -132,7 +132,7 @@ training:
   num_envs: 4
   num_eval_envs: 4
   num_evals: 5
-  num_minibatches: 4
+  num_minibatches: 1
   num_resets_per_eval: 0
   num_timesteps: 100000
   num_updates_per_batch: 2
