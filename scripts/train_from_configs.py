@@ -22,7 +22,8 @@ from quadruped_mjx_rl.training.train_interface import train as train_ppo
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
+    headless = True
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
@@ -68,13 +69,14 @@ if __name__ == "__main__":
     init_scene_path = paths.RESOURCES_DIRECTORY / robot_name / terrain_config.base_scene_file
     env_model = make_terrain(init_scene_path, terrain_config)
 
+    if not headless:
     # Render the environment model
-    image = render_model(
-        env_model,
-        initial_keyframe=robot_config.initial_keyframe,
-        camera=large_overview_camera(),
-    )
-    save_image(image=image, save_path=experiment_dir / "environment_view")
+        image = render_model(
+            env_model,
+            initial_keyframe=robot_config.initial_keyframe,
+            camera=large_overview_camera(),
+        )
+        save_image(image=image, save_path=experiment_dir / "environment_view")
 
     # Prepare the environment factory
     vision = isinstance(training_config, TrainingWithVisionConfig)
@@ -108,7 +110,7 @@ if __name__ == "__main__":
         training_env=training_env,
         evaluation_env=evaluation_env,
         randomization_config=terrain_config.randomization_config,
-        show_outputs=False,
+        show_outputs=not headless,
         run_in_cell=False,
         save_plots_path=training_plots_dir,
     )
