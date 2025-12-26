@@ -2,15 +2,18 @@
 
 ## Short term
 
-- [X] check correctness of recurrency handling
-- [X] debug dry run on cpu locally all the envs
+- [ ] add separation of environment+terrain and model+training configs
 - [ ] update the notebooks, especially the universal one
-- [ ] tryout runs with the notebooks on colab
-- [ ] tryout runs on the chair server
-- [ ] check server results and plan further action
-- [ ] check GPU utilization
+- [X] tryout runs with the notebooks on colab
+- [X] tryout runs on the chair server
+- [X] check server results and plan further action
+- [X] check GPU utilization
 - [ ] check how multiple GPUs can be used for vision setups
-- [ ] implement visualisation rollouts for recurrent support
+- [X] implement visualisation rollouts for recurrent support
+- [ ] train a blind joystick policy on color map terrain
+- [ ] train a simple vision policy for target reaching to see if it works
+- [ ] add goal sphere observations to vision teachers
+- [ ] try training the teacher only
 
 ## Mid term
 

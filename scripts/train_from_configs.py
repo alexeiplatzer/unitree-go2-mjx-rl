@@ -44,15 +44,18 @@ if __name__ == "__main__":
 
     # Prepare configs
     robot_name = "unitree_go2"
-    config_file_path = (
-        Path(sys.argv[1])
+    config_file_paths = (
+        [Path(sys.argv[i]) for i in range(1, len(sys.argv))]
         if len(sys.argv) > 1
-        else paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml"
+        else [paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml"]
     )
     # Instead of passing full path, user can pass just the name which is assumed to be
     # relative to the config directory.
-    if not config_file_path.exists():
-        config_file_path = paths.CONFIGS_DIRECTORY / config_file_path
+    config_file_paths = [
+        config_file_path if config_file_path.exists() else paths.CONFIGS_DIRECTORY / config_file_path
+        for config_file_path in config_file_paths
+    ]
+    for config_file_path in config_file_paths:
         if not config_file_path.exists():
             raise FileNotFoundError(
                 f"Config file {config_file_path} found neither with given path nor in the "
@@ -61,7 +64,7 @@ if __name__ == "__main__":
     robot_config, terrain_config, env_config, model_config, training_config = (
         prepare_all_configs(
             paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
-            config_file_path,
+            *config_file_paths,
         )
     )
 

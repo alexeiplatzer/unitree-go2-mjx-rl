@@ -13,6 +13,7 @@ from quadruped_mjx_rl.environments.quadruped import (
     QuadrupedVisionTargetEnv,
     QuadrupedVisionTargetEnvConfig,
     TeacherStudentEnvironmentConfig,
+    QuadrupedColorJoystickEnvConfig,
 )
 from quadruped_mjx_rl.environments.factories import (
     resolve_env_class,

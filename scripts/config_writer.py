@@ -24,7 +24,7 @@ def make_training_hyperparams_lighter(training_cfg: training.TrainingConfig) -> 
 
 
 if __name__ == "__main__":
-
+    # TODO separate env+terrain from model+training
     # Joystick Basic
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()

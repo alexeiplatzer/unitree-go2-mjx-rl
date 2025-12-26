@@ -1,6 +1,7 @@
 from quadruped_mjx_rl.environments.quadruped.base import EnvironmentConfig, QuadrupedBaseEnv
 from quadruped_mjx_rl.environments.quadruped.color_guided import (
     QuadrupedColorGuidedEnvConfig,
+    QuadrupedColorJoystickEnvConfig,
 )
 from quadruped_mjx_rl.environments.quadruped.gait_tracking import (
     QuadrupedGaitTrackingEnv,
