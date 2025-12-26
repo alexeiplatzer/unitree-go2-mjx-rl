@@ -119,7 +119,7 @@ def train(
         else:
             metrics = minibatch_acc
         agent_state_updated = jax.tree_util.tree_map(restore_data, agent_state_batched)
-        return (opt_state, network_params, key),  (agent_state_updated, metrics)
+        return (opt_state, network_params, key), (agent_state_updated, metrics)
 
     def training_step(
         carry: tuple[TrainingState, State, PRNGKey, RecurrentAgentState], _
@@ -136,12 +136,12 @@ def train(
             unroll_length=unroll_length * unroll_repeat,
             extra_fields=("truncation", "episode_metrics", "episode_done"),
         )
+
         # Have leading dimensions (batch_size * num_minibatches, unroll_length)
         def convert_data(x: jax.Array):
             x = jnp.reshape(x, (unroll_repeat, -1) + x.shape[1:])
             x = jnp.swapaxes(x, 1, 2)
             return jnp.reshape(x, (-1,) + x.shape[2:])
-
 
         data = jax.tree_util.tree_map(lambda x: convert_data(x), data)
         assert data.discount.shape[-1] % unroll_length == 0  # without the substeps

@@ -7,40 +7,20 @@ import mediapy as media
 import numpy as np
 from etils.epath import PathLike
 from jax import numpy as jnp
-import functools
-from typing import Protocol
-
-from etils.epath import PathLike
 
 from quadruped_mjx_rl import running_statistics
-from quadruped_mjx_rl.models import io
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
+from quadruped_mjx_rl.environments import PipelineEnv
+from quadruped_mjx_rl.environments.wrappers import _vmap_wrap_with_randomization
+from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
+from quadruped_mjx_rl.models import get_networks_factory, ModelConfig
 from quadruped_mjx_rl.models.architectures import (
     TeacherStudentAgentParams,
-    ActorCriticConfig,
-    ModelConfig,
-    TeacherStudentConfig,
-    TeacherStudentVisionConfig,
-    TeacherStudentRecurrentConfig,
     TeacherStudentNetworks,
     TeacherStudentRecurrentNetworks,
 )
-from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
-from quadruped_mjx_rl.models.types import (
-    AgentNetworkParams,
-    identity_observation_preprocessor,
-    PreprocessObservationFn,
-)
-from quadruped_mjx_rl.types import ObservationSize
-from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import PipelineEnv
-from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
-from quadruped_mjx_rl.models import ModelConfig, get_networks_factory
 from quadruped_mjx_rl.models.types import Params
-
-
-# from quadruped_mjx_rl.environments.wrappers import MadronaWrapper
-
-# TODO this all probably outdated, see todos
+from quadruped_mjx_rl.domain_randomization import DomainRandomizationConfig
 
 
 @dataclass
@@ -49,6 +29,7 @@ class RenderConfig(Configuration):
     render_every: int = 2
     seed: int = 0
     n_steps: int = 500
+    cameras: list[str] = field(default_factory=lambda: ["track"])
     command: dict[str, float] = field(
         default_factory=lambda: {
             "x_vel": 0.5,
@@ -84,10 +65,8 @@ def render_policy_rollout(
     model_params: Params,
     render_config: RenderConfig,
     normalize_observations: bool = False,
-    # animation_save_path: PathLike | dict[str, PathLike] | None,
-    # video_maker: PolicyRenderingFn = show_video,
-    # vision: bool = False,
-) -> tuple[Sequence[np.ndarray], float]:
+    domain_rand_config: DomainRandomizationConfig | None = None,
+) -> tuple[dict[str, dict[str, Sequence[np.ndarray]]], float]:
     model_class = type(model_config).get_model_class()
     if not isinstance(model_params, model_class.agent_params_class()):
         raise ValueError(
@@ -95,69 +74,79 @@ def render_policy_rollout(
             f" - while {model_class.agent_params_class()} were expected!"
         )
     network_factory = get_networks_factory(model_config)
-    preprocess_fn = (
-        running_statistics.normalize
-        if normalize_observations
-        else lambda x, y: x
-    )
+    preprocess_fn = running_statistics.normalize if normalize_observations else lambda x, y: x
     network = network_factory(
         observation_size={
-                "proprioceptive": 1,
-                "proprioceptive_history": 1,
-                "environment_privileged": 1,
-                "pixels/terrain/depth": 1,
-                "pixels/frontal_ego/rgb": 1,
-                "pixels/frontal_ego/rgb_adjusted": 1,
-                "privileged_terrain_map": 1,
-            },
+            "proprioceptive": 1,
+            "proprioceptive_history": 1,
+            "environment_privileged": 1,
+            "pixels/terrain/depth": 1,
+            "pixels/frontal_ego/rgb": 1,
+            "pixels/frontal_ego/rgb_adjusted": 1,
+            "privileged_terrain_map": 1,
+        },
         action_size=env.action_size,
         preprocess_observations_fn=preprocess_fn,
     )
-    # TODO: finish implementing
-    unroll_factories = {"training_acting_policy": network.make_unroll_fn(model_params)}
+    unroll_factories = {
+        "training_acting_policy": network.make_unroll_fn(
+            model_params, deterministic=True, accumulate_pipeline_states=True
+        )
+    }
     if isinstance(network, TeacherStudentRecurrentNetworks):
-        pass
+        assert isinstance(model_params, TeacherStudentAgentParams)
+        unroll_factories["student_policy"] = network.make_student_unroll_fn(
+            model_params, deterministic=True, accumulate_pipeline_states=True
+        )
     elif isinstance(network, TeacherStudentNetworks):
-        unroll_fn = network.make_unroll_fn(model_params)
-        unroll_factories = {
-            "teacher": network.get_acting_policy_factory(),
-            "student": network.get_student_policy_factory(),
-        }
+        unroll_factories["student_policy"] = network.make_unroll_fn(
+            model_params,
+            policy_factory=network.get_student_policy_factory() if not network.vision else None,
+            apply_encoder_fn=network.apply_student_encoder,
+            deterministic=True,
+            accumulate_pipeline_states=True,
+        )
+    if hasattr(network, "vision") and getattr(network, "vision"):
+        env = _vmap_wrap_with_randomization(
+            env,
+            vision=True,
+            worlds_random_key=jax.random.key(render_config.seed),
+            randomization_config=domain_rand_config,
+        )
+    elif domain_rand_config is not None:
+        env = _vmap_wrap_with_randomization(
+            env,
+            vision=False,
+            worlds_random_key=jax.random.key(render_config.seed),
+            randomization_config=domain_rand_config,
+        )
     demo_env = EpisodeWrapper(
         env,
         episode_length=render_config.episode_length,
         action_repeat=1,
     )
-    # TODO update
-    # if vision:
-    #     demo_env = MadronaWrapper(demo_env, num_worlds=1)
 
-    # render_fn = functools.partial(
-    #     render_rollout,
-    #     env=demo_env,
-    #     render_config=render_config,
-    # )
-    # if isinstance(ppo_inference_fn, dict):
-    #     for name, inference_fn in ppo_inference_fn.items():
-    #         frames, fps = render_fn(
-    #             inference_fn=inference_fn,
-    #         )
-    #         video_maker(frames, fps)
-    # else:
-    #     frames, fps = render_fn(
-    #         inference_fn=ppo_inference_fn,
-    #     )
-    #     video_maker(frames, fps)
+    render_fn = functools.partial(
+        render_rollout,
+        env=demo_env,
+        render_config=render_config,
+    )
+    fps = 1.0 / (env.dt.item() * render_config.render_every)
+    return {
+        name: render_fn(unroll_factory=unroll_factory)
+        for name, unroll_factory in unroll_factories.items()
+    }, fps
 
 
 def render_rollout(
     env: PipelineEnv,
-    inference_fn: Callable,
+    unroll_factory: Callable,
     render_config: RenderConfig,
-) -> tuple[Sequence[np.ndarray], float]:
+) -> dict[str, Sequence[np.ndarray]]:
     reset_fn = jax.jit(env.reset)
-    step_fn = jax.jit(env.step)
-    act_fn = jax.jit(inference_fn)
+    unroll_fn = jax.jit(
+        functools.partial(unroll_factory, env=env, unroll_length=render_config.n_steps)
+    )
     command = jnp.array(
         [
             render_config.command["x_vel"],
@@ -167,18 +156,20 @@ def render_rollout(
     )
     render_every = render_config.render_every
 
-    rng = jax.random.key(render_config.seed)
-    state = reset_fn(rng)
-    state.info["command"] = command
-    rollout = [state.pipeline_state]
+    reset_key, unroll_key = jax.random.split(jax.random.PRNGKey(render_config.seed), 2)
+    state = reset_fn(jax.random.split(reset_key, 1))
+    # TODO vmap
+    # state.info["command"] = command
+    rollout = [jax.tree_util.tree_map(lambda x: x[0], state.pipeline_state)]
 
-    for i in range(render_config.n_steps):
-        act_rng, rng = jax.random.split(rng)
-        ctrl, _ = act_fn(state.obs, act_rng)
-        state = step_fn(state, ctrl)
-        if i % render_every == 0:
-            rollout.append(state.pipeline_state)
-
-    frames = env.render(rollout, camera="track")
-    fps = 1.0 / (env.dt.item() * render_every)
-    return frames, fps
+    _, transitions = unroll_fn(
+        env_state=state,
+        key=unroll_key,
+    )
+    rollout += [
+        jax.tree_util.tree_map(
+            lambda x: x[i * render_every, 0], transitions.extras["pipeline_states"]
+        )
+        for i in range(1, render_config.n_steps // render_every)
+    ]
+    return {camera: env.render(rollout, camera=camera) for camera in render_config.cameras}

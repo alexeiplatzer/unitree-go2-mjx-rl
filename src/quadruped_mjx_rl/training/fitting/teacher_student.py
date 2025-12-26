@@ -149,7 +149,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 agent_params=params,
                 deterministic=training_config.deterministic_eval,
                 policy_factory=(
-                    self.network.get_acting_policy_factory()
+                    self.network.get_student_policy_factory()
                     if not self.network.vision
                     else None
                 ),

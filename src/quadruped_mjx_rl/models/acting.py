@@ -2,23 +2,19 @@
 
 import functools
 from collections.abc import Callable, Sequence
-from typing import Protocol, Any
+from typing import Any, Protocol
 
 import jax
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.physics_pipeline import Env, State, PipelineState
 from quadruped_mjx_rl.environments.vision.vision_wrappers import VisionWrapper
 from quadruped_mjx_rl.models.types import (
     Policy,
     RecurrentCarry,
     RecurrentEncoder,
 )
-from quadruped_mjx_rl.types import (
-    PRNGKey,
-    Transition,
-    Observation,
-)
+from quadruped_mjx_rl.physics_pipeline import Env, State
+from quadruped_mjx_rl.types import Observation, PRNGKey, Transition
 
 
 class GenerateUnrollFn(Protocol):
@@ -129,9 +125,7 @@ def _vision_actor_step(
     next_state, transitions = generate_proprioceptive_unroll(
         env_state, key, env, proprio_substeps, extra_fields
     )
-    vision_obs = jax.tree_util.tree_map(
-        lambda x: jnp.expand_dims(x, axis=0), vision_obs
-    )
+    vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), vision_obs)
     # add vision observations to transitions
     transitions = Transition(
         observation=transitions.observation | vision_obs,
@@ -190,18 +184,14 @@ def _recurrent_actor_step(
     key, recurrent_key = jax.random.split(key)
     next_state, transitions = generate_unroll(env_state, key, env, n_substeps, extra_fields)
     recurrent_key = jax.random.split(recurrent_key, initial_encoding.shape[0])
-    transitions = jax.tree_util.tree_map(
-        lambda x: jnp.swapaxes(x, 0, 1), transitions
-    )
+    transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
     next_encoding, recurrent_carry = recurrent_encoder(
         observation=transitions.observation,
         done=1 - transitions.discount,
         key=recurrent_key,
         recurrent_carry=recurrent_carry,
     )
-    transitions = jax.tree_util.tree_map(
-        lambda x: jnp.swapaxes(x, 0, 1), transitions
-    )
+    transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
     return next_state, recurrent_carry, next_encoding, transitions
 
 
@@ -241,8 +231,7 @@ def recurrent_unroll_factory(
             remove_roll_axis=True,
             accumulate_pipeline_states=accumulate_pipeline_states,
         )
-        env_state, transitions = gen_unroll(
-            env_state, key, env, unroll_length, extra_fields
-        )
+        env_state, transitions = gen_unroll(env_state, key, env, unroll_length, extra_fields)
         return env_state, transitions
+
     return generate_unroll

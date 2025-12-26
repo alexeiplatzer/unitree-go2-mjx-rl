@@ -70,7 +70,7 @@ if __name__ == "__main__":
     env_model = make_terrain(init_scene_path, terrain_config)
 
     if not headless:
-    # Render the environment model
+        # Render the environment model
         image = render_model(
             env_model,
             initial_keyframe=robot_config.initial_keyframe,

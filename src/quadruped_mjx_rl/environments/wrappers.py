@@ -5,12 +5,14 @@ from flax import struct as flax_struct
 from jax import numpy as jnp
 
 from quadruped_mjx_rl.domain_randomization import (
+    ColorMapRandomizationConfig,
     DomainRandomizationConfig,
     TerrainMapRandomizationConfig,
 )
 from quadruped_mjx_rl.physics_pipeline import PipelineModel, EnvModel
 from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
 from quadruped_mjx_rl.types import PRNGKey
+from quadruped_mjx_rl.environments.vision import ColorGuidedVisionWrapper
 from quadruped_mjx_rl.environments.vision_domain_wrappers import TerrainMapWrapper
 
 
@@ -74,10 +76,14 @@ def _vmap_wrap_with_randomization(
     assert vision or randomization_config is not None
     assert not randomization_config or worlds_random_key is not None
 
-    if isinstance(randomization_config, TerrainMapRandomizationConfig):
+    if isinstance(randomization_config, TerrainMapRandomizationConfig) or isinstance(
+        env, ColorGuidedVisionWrapper
+    ):
         # let the randomization function have the same interface as in the single color case
         # randomization_fn = functools.partial(randomization_fn, num_colors=num_terrain_colors)
         wrapper = TerrainMapWrapper
+        if randomization_config is None:
+            randomization_config = ColorMapRandomizationConfig()
     else:
         wrapper = DomainRandomizationVmapWrapper
 
