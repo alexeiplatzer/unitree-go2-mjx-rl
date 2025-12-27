@@ -2,7 +2,8 @@
 
 ## Short term
 
-- [ ] add separation of environment+terrain and model+training configs
+- [X] add separation of environment+terrain and model+training configs
+- [ ] add proprioceptive history, piped directly to the actor-critic
 - [ ] update the notebooks, especially the universal one
 - [X] tryout runs with the notebooks on colab
 - [X] tryout runs on the chair server

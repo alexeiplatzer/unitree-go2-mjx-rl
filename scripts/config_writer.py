@@ -25,53 +25,24 @@ def make_training_hyperparams_lighter(training_cfg: training.TrainingConfig) -> 
 
 if __name__ == "__main__":
     # TODO separate env+terrain from model+training
-    # Joystick Basic
+    # --- ENVIRONMENTS ---
+    # Joystick basic
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
-    model_config = models.ActorCriticConfig()
-    training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "joystick_basic_ppo.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_basic.yaml", terrain_config, env_config
     )
 
-    make_model_hyperparams_lighter(model_config)
-    make_training_hyperparams_lighter(training_config)
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
-    )
-
-    # Joystick Teacher-Student Proprioceptive
+    # Joystick with proprioceptive privileged observations
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.TeacherStudentEnvironmentConfig()
-    model_config = models.TeacherStudentConfig()
-    training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
         terrain_config,
         env_config,
-        model_config,
-        training_config,
     )
 
-    make_model_hyperparams_lighter(model_config)
-    make_training_hyperparams_lighter(training_config)
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "joystick_teacher_student_light.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
-    )
-
-    # Joystick Depth-vision Teacher with RGB-vision Student
+    # Forward moving joystick with rough terrain
     terrain_config = terrain_gen.StripeTilesTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
     env_config.domain_rand.apply_kicks = False
@@ -80,59 +51,50 @@ if __name__ == "__main__":
     env_config.command.ranges.ang_vel_yaw_max = 0.0
     env_config.command.ranges.ang_vel_yaw_min = 0.0
     env_config.command.ranges.lin_vel_x_min = 0.0
-    model_config = models.TeacherStudentVisionConfig()
-    training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_rough_tiles.yaml",
         terrain_config,
         env_config,
-        model_config,
-        training_config,
     )
 
-    make_model_hyperparams_lighter(model_config)
-    make_training_hyperparams_lighter(training_config)
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "teacher_student_vision_light.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
-    )
-
-    # Obstacle-avoiding Depth-teacher RGB-student
+    # Target-reaching and obstacle-avoiding
     terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
     env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
-    model_config = models.TeacherStudentVisionConfig()
-    training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "obstacle_avoiding_vision.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
         terrain_config,
         env_config,
-        model_config,
-        training_config,
     )
 
-    make_model_hyperparams_lighter(model_config)
-    make_training_hyperparams_lighter(training_config)
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "obstacle_avoiding_vision_light.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
-    )
-
-    # Randomized terrain tiles Depth-teacher Recurrent Student
+    # Colored terrain map
     terrain_config = terrain_gen.ColorMapTerrainConfig()
     env_config = environments.QuadrupedColorGuidedEnvConfig()
     env_config.observation_noise.history_length = 1
-    model_config = models.TeacherStudentRecurrentConfig()
-    training_config = training.TrainingWithRecurrentStudentConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "color_guided_recurrent.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
         terrain_config,
         env_config,
+    )
+
+    # --- MODELS ---
+    # Actor-Critic proprioceptive
+    model_config = models.ActorCriticConfig()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml", model_config, training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "basic_light.yaml", model_config, training_config,
+    )
+
+    # Teacher-Student proprioceptive
+    model_config = models.TeacherStudentConfig()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
         model_config,
         training_config,
     )
@@ -140,37 +102,50 @@ if __name__ == "__main__":
     make_model_hyperparams_lighter(model_config)
     make_training_hyperparams_lighter(training_config)
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "color_guided_recurrent_light.yaml",
-        terrain_config,
-        env_config,
+        paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student_light.yaml",
+        model_config,
+        training_config,
+    )
+
+    # Depth-vision Teacher with RGB-vision Student
+    model_config = models.TeacherStudentVisionConfig()
+    training_config = training.TrainingWithVisionConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision_light.yaml",
+        model_config,
+        training_config,
+    )
+
+    # Teacher with recurrent student
+    model_config = models.TeacherStudentRecurrentConfig()
+    training_config = training.TrainingWithRecurrentStudentConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_recurrent.yaml",
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_recurrent_light.yaml",
         model_config,
         training_config,
     )
 
     # Randomized terrain tiles with privileged terrain map encoder, without a student
-    terrain_config = terrain_gen.ColorMapTerrainConfig()
-    env_config = environments.QuadrupedColorGuidedEnvConfig()
-    env_config.observation_noise.history_length = 15
     model_config = models.ActorCriticEnrichedConfig(encoder_obs_key="privileged_terrain_map")
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "randomized_tiles_vision.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
-    )
-
-    # Randomized terrain tiles, but blind
-    terrain_config = terrain_gen.ColorMapTerrainConfig()
-    env_config = environments.QuadrupedColorGuidedEnvConfig()
-    env_config.observation_noise.history_length = 15
-    model_config = models.ActorCriticConfig()
-    training_config = training.TrainingConfig()
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "randomized_tiles_blind.yaml",
-        terrain_config,
-        env_config,
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",
         model_config,
         training_config,
     )

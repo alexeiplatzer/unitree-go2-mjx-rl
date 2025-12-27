@@ -1,4 +1,6 @@
 render:
+  cameras:
+  - track
   command:
     ang_vel: 0.0
     x_vel: 0.5

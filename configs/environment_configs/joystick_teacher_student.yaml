@@ -1,0 +1,79 @@
+environment:
+  command:
+    ranges:
+      ang_vel_yaw_max: 0.7
+      ang_vel_yaw_min: -0.7
+      lin_vel_x_max: 1.5
+      lin_vel_x_min: -0.6
+      lin_vel_y_max: 0.8
+      lin_vel_y_min: -0.8
+    resampling_time: 500
+  control:
+    action_scale: 0.3
+  domain_rand:
+    apply_kicks: true
+    kick_interval: 10
+    kick_vel: 0.05
+  environment_class: TeacherStudent
+  observation_noise:
+    clip: 100.0
+    extended_history_length: 45
+    general_noise: 0.05
+    history_length: 15
+  rewards:
+    reward_clip_max: 10000.0
+    reward_clip_min: -100.0
+    scales:
+      action_rate: -0.01
+      ang_vel_xy: -0.05
+      feet_air_time: 0.2
+      foot_slip: -0.1
+      lin_vel_z: -2.0
+      orientation: -5.0
+      stand_still: -0.5
+      termination: -1.0
+      torques: -0.0002
+      tracking_ang_vel: 0.8
+      tracking_lin_vel: 1.5
+    termination_body_height: 0.18
+    tracking_sigma: 0.25
+  sim:
+    ctrl_dt: 0.02
+    override:
+      Kd: 0.5
+      Kp: 35.0
+    sim_dt: 0.004
+  vision_env_config:
+    brightness:
+    - 0.75
+    - 2.0
+    camera_inputs:
+    - name: frontal_ego
+      use_actual_rgb: false
+      use_brightness_randomized_rgb: true
+      use_depth: false
+    - name: terrain
+      use_actual_rgb: false
+      use_brightness_randomized_rgb: false
+      use_depth: true
+    vision_config:
+      enabled_cameras:
+      - 1
+      - 2
+      enabled_geom_groups:
+      - 0
+      - 1
+      - 2
+      gpu_id: 0
+      render_batch_size: 256
+      render_height: 128
+      render_width: 128
+      use_rasterizer: false
+terrain:
+  base_scene_file: scene_mjx.xml
+  randomization_config:
+    friction_max: 1.4
+    friction_min: 0.6
+    gain_max: 5.0
+    gain_min: -5.0
+  terrain_class: Flat
