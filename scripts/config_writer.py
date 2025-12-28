@@ -115,6 +115,16 @@ if __name__ == "__main__":
         training_config,
     )
 
+    training_config.num_envs = 1024
+    training_config.num_eval_envs = 1024
+    training_config.batch_size = 64
+    training_config.num_minibatches = 16
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "basic_lighter.yaml",
+        model_config,
+        training_config,
+    )
+
     make_model_hyperparams_lighter(model_config)
     make_training_hyperparams_lighter(training_config)
     cfg.save_configs(

@@ -37,7 +37,9 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 terrain:
+  add_goal: true
   base_scene_file: scene_mjx_empty_arena.xml
+  column_offset: 0
   goal_location:
   - 10
   - 0
