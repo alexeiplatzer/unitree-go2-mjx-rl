@@ -7,12 +7,10 @@ from quadruped_mjx_rl.environments.quadruped import (
     QuadrupedGaitTrackingEnv,
     QuadrupedGaitTrackingEnvConfig,
     QuadrupedJoystickBaseEnv,
-    QuadrupedJoystickTeacherStudentEnv,
     QuadrupedObstacleAvoidingEnv,
     QuadrupedObstacleAvoidingEnvConfig,
     QuadrupedVisionTargetEnv,
     QuadrupedVisionTargetEnvConfig,
-    TeacherStudentEnvironmentConfig,
     QuadrupedColorJoystickEnvConfig,
 )
 from quadruped_mjx_rl.environments.factories import (

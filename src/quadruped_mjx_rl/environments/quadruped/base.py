@@ -30,6 +30,8 @@ class EnvironmentConfig(Configuration):
         general_noise: float | None = 0.05
         clip: float | None = 100.0
         history_length: int = 15
+        extended_history_length: int | None = None
+        add_privileged_obs: bool = False
 
     observation_noise: ObservationConfig = field(default_factory=ObservationConfig)
 
@@ -300,7 +302,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         pipeline_state = self.pipeline_step(state.pipeline_state, motor_targets)
         return pipeline_state
 
-    def _compute_kick(self, step_count: jnp.int32, kick_noise: jax.Array) -> jax.Array:
+    def _compute_kick(self, step_count: int, kick_noise: jax.Array) -> jax.Array:
         """Computes the vector representing the kick."""
         kick_interval = self._kick_interval
         kick_theta = jax.random.uniform(kick_noise, maxval=2 * jnp.pi)
@@ -321,7 +323,19 @@ class QuadrupedBaseEnv(PipelineEnv):
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
     ) -> Observation:
-        return {"proprioceptive": self._init_proprioceptive_obs(pipeline_state, state_info)}
+        obs_state = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
+        obs_history = jnp.zeros(obs_state.size * self._obs_config.history_length)
+        obs_history = self._update_obs_history(obs_history=obs_history, current_obs=obs_state)
+        obs = {"proprioceptive": obs_history}
+        if self._obs_config.extended_history_length is not None:
+            long_history = jnp.zeros(obs_state.size * self._obs_config.extended_history_length)
+            long_history = self._update_obs_history(
+                obs_history=long_history, current_obs=obs_state
+            )
+            obs["proprioceptive_history"] = long_history
+        if self._obs_config.add_privileged_obs:
+            obs["environment_privileged"] = jnp.concatenate(self._get_privileged_obs_list())
+        return obs
 
     def _get_obs(
         self,
@@ -329,30 +343,18 @@ class QuadrupedBaseEnv(PipelineEnv):
         state_info: dict[str, Any],
         previous_obs: Observation,
     ) -> Observation:
-        return {
-            "proprioceptive": self._get_proprioceptive_obs(
-                pipeline_state, state_info, previous_obs["proprioceptive"]
+        obs_state = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
+        obs_history = self._update_obs_history(
+            obs_history=previous_obs["proprioceptive"], current_obs=obs_state
+        )
+        obs = {"proprioceptive": obs_history}
+        if self._obs_config.extended_history_length is not None:
+            long_history = self._update_obs_history(
+                obs_history=previous_obs["proprioceptive_history"], current_obs=obs_state
             )
-        }
-
-    def _init_proprioceptive_obs(
-        self,
-        pipeline_state: PipelineState,
-        state_info: dict[str, Any],
-    ) -> jax.Array:
-        obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
-        obs_history = jnp.zeros(obs.size * self._obs_config.history_length)
-        obs = self._update_obs_history(obs_history=obs_history, current_obs=obs)
-        return obs
-
-    def _get_proprioceptive_obs(
-        self,
-        pipeline_state: PipelineState,
-        state_info: dict[str, Any],
-        previous_obs: jax.Array,
-    ) -> jax.Array:
-        obs = self._get_proprioceptive_obs_vector(pipeline_state, state_info)
-        obs = self._update_obs_history(obs_history=previous_obs, current_obs=obs)
+            obs["proprioceptive_history"] = long_history
+        if self._obs_config.add_privileged_obs:
+            obs["environment_privileged"] = previous_obs["environment_privileged"]
         return obs
 
     def _update_obs_history(self, obs_history: jax.Array, current_obs: jax.Array) -> jax.Array:
@@ -395,6 +397,13 @@ class QuadrupedBaseEnv(PipelineEnv):
             state_info["last_act"],  # last action
         ]
         return obs_list
+
+    def _get_privileged_obs_list(self) -> list[jax.Array]:
+        return [
+            jnp.reshape(self._pipeline_model.model.geom_friction, -1),
+            jnp.reshape(self._pipeline_model.model.actuator_gainprm, -1),
+            jnp.reshape(self._pipeline_model.model.actuator_biasprm, -1),
+        ]
 
     def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
         """Checks if the current state is defined as a terminal state. This is when:

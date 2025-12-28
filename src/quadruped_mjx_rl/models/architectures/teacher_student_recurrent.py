@@ -41,6 +41,8 @@ from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transi
 @dataclass
 class TeacherStudentRecurrentConfig(TeacherStudentVisionConfig):
 
+    policy_obs_key: str = "proprioceptive_history"
+    value_obs_key: str = "proprioceptive_history"
     encoder_obs_key: str = "privileged_terrain_map"
     student_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
     student_proprio_obs_key: str = "proprioceptive"

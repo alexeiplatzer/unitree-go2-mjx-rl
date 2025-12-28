@@ -24,7 +24,6 @@ def make_training_hyperparams_lighter(training_cfg: training.TrainingConfig) -> 
 
 
 if __name__ == "__main__":
-    # TODO separate env+terrain from model+training
     # --- ENVIRONMENTS ---
     # Joystick basic
     terrain_config = terrain_gen.FlatTerrainConfig()
@@ -35,7 +34,9 @@ if __name__ == "__main__":
 
     # Joystick with proprioceptive privileged observations
     terrain_config = terrain_gen.FlatTerrainConfig()
-    env_config = environments.TeacherStudentEnvironmentConfig()
+    env_config = environments.JoystickBaseEnvConfig()
+    env_config.observation_noise.extended_history_length = 45
+    env_config.add_privileged_obs = True
     cfg.save_configs(
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
         terrain_config,
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     # Target-reaching and obstacle-avoiding
     terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
     env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
+    env_config.domain_rand.apply_kicks = False
     cfg.save_configs(
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
         terrain_config,
@@ -69,12 +71,17 @@ if __name__ == "__main__":
     # Colored terrain map
     terrain_config = terrain_gen.ColorMapTerrainConfig()
     env_config = environments.QuadrupedColorGuidedEnvConfig()
+    env_config.domain_rand.apply_kicks = False
     env_config.observation_noise.history_length = 1
+    env_config.observation_noise.extended_history_length = 15
     cfg.save_configs(
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
         terrain_config,
         env_config,
     )
+
+    # Colored terrain map, but joystick
+    # TODO: implement
 
     # --- MODELS ---
     # Actor-Critic proprioceptive
@@ -142,7 +149,10 @@ if __name__ == "__main__":
     )
 
     # Randomized terrain tiles with privileged terrain map encoder, without a student
-    model_config = models.ActorCriticEnrichedConfig(encoder_obs_key="privileged_terrain_map")
+    model_config = models.ActorCriticEnrichedConfig()
+    model_config.policy_obs_key = "proprioceptive_history"
+    model_config.value_obs_key = "proprioceptive_history"
+    model_config.encoder_obs_key = "privileged_terrain_map"
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",

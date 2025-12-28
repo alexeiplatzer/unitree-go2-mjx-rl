@@ -21,7 +21,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     register_environment_config_class,
 )
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.types import Action, PRNGKey
+from quadruped_mjx_rl.types import Action, Observation, PRNGKey
 
 
 @dataclass
@@ -135,15 +135,15 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
         return state
 
-    def _init_proprioceptive_obs(
+    def _init_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
-    ) -> jax.Array:
+    ) -> Observation:
         """Resamples the command in addition to initializing observation arrays."""
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
         state_info["command"] = self.sample_command(command_key)
-        return super()._init_proprioceptive_obs(pipeline_state, state_info)
+        return super()._init_obs(pipeline_state, state_info)
 
     def _get_proprioceptive_obs_list(
         self, pipeline_state: PipelineState, state_info: dict[str, Any]
