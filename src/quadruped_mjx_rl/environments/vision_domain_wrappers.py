@@ -1,6 +1,8 @@
 import functools
 from typing import Any
+from collections.abc import Sequence
 
+import numpy as np
 import jax
 from flax import struct as flax_struct
 from jax import numpy as jnp
@@ -10,6 +12,7 @@ from quadruped_mjx_rl.domain_randomization import (
     TerrainMapRandomizationConfig,
 )
 from quadruped_mjx_rl.physics_pipeline import PipelineModel, EnvModel, PipelineState
+from quadruped_mjx_rl.domain_randomization.randomized_tiles import collect_tile_ids
 from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
 from quadruped_mjx_rl.types import PRNGKey, Observation
 from quadruped_mjx_rl.environments.vision import VisionWrapper, ColorGuidedVisionWrapper
@@ -97,33 +100,6 @@ class TerrainMapWrapper(Wrapper):
         )
         return res
 
-    # def init_vision_obs(
-    #     self, pipeline_state: PipelineState, state_info: dict[str, Any]
-    # ) -> None:
-    #     def init_vision_obs(
-    #         pipeline_model,
-    #         rgba_table,
-    #         friction_table,
-    #         stiffness_table,
-    #         local_pipeline_state,
-    #         local_state_info,
-    #     ):
-    #         env = self._env_fn(
-    #             pipeline_model=pipeline_model,
-    #             rgba_table=rgba_table,
-    #             friction_table=friction_table,
-    #             stiffness_table=stiffness_table,
-    #         )
-    #         return env.init_vision_obs(local_pipeline_state, local_state_info)
-    #     jax.vmap(init_vision_obs, in_axes=[self._in_axes, 0, 0, 0, 0, 0])(
-    #         self._sys_v,
-    #         self._rgba_table_v,
-    #         self._friction_table_v,
-    #         self._stiffness_table_v,
-    #         pipeline_state,
-    #         state_info,
-    #     )
-
     def get_vision_obs(
         self,
         pipeline_state: PipelineState,
@@ -153,3 +129,18 @@ class TerrainMapWrapper(Wrapper):
             pipeline_state,
             state_info,
         )
+
+
+    def render(
+        self,
+        trajectory: list[PipelineState],
+        camera: str | None = None,
+        width: int = 240,
+        height: int = 320,
+    ) -> Sequence[np.ndarray]:
+        """Renders the trajectory. Updates the CPU MuJoCo model with the randomized
+        tile colors from the GPU mjx model before rendering."""
+
+        # tile_ids = collect_tile_ids(self.env_model, tile_body_prefix="tile_")
+        self.env.unwrapped._env_model.geom_rgba = self._sys_v.model.geom_rgba[0]
+        return self.env.render(trajectory, camera=camera, width=width, height=height)

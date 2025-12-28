@@ -10,7 +10,7 @@ from jax import numpy as jnp
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import PipelineEnv
+from quadruped_mjx_rl.environments import PipelineEnv, QuadrupedJoystickBaseEnv
 from quadruped_mjx_rl.environments.wrappers import _vmap_wrap_with_randomization
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
 from quadruped_mjx_rl.models import get_networks_factory, ModelConfig
@@ -158,8 +158,8 @@ def render_rollout(
 
     reset_key, unroll_key = jax.random.split(jax.random.PRNGKey(render_config.seed), 2)
     state = reset_fn(jax.random.split(reset_key, 1))
-    # TODO vmap
-    # state.info["command"] = command
+    if isinstance(env.unwrapped, QuadrupedJoystickBaseEnv):
+        state.info["command"] = jnp.expand_dims(command, 0)
     rollout = [jax.tree_util.tree_map(lambda x: x[0], state.pipeline_state)]
 
     _, transitions = unroll_fn(

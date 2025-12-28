@@ -2,13 +2,12 @@
 
 ## Short term
 
-- [X] add proprioceptive history, piped directly to the actor-critic
-- [X] adapt the color terrain for joystick policies - remove the ball and place robot in center
 - [ ] train a blind joystick policy on color map terrain
 - [ ] train a simple vision policy for target reaching to see if it works
 - [ ] add goal sphere observations to vision teachers
 - [ ] try training the teacher only
-- [ ] add tile coloring to the env model for mujoco rendering
+- [X] add tile coloring to the env model for mujoco rendering
+- [ ] check rendering with tile coloring
 
 ## Mid term
 
