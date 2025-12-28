@@ -11,6 +11,7 @@ from quadruped_mjx_rl.domain_randomization.randomized_tiles import color_meaning
 from quadruped_mjx_rl.environments.vision.vision_wrappers import (
     VisionWrapper,
     VisionWrapperConfig,
+    register_vision_wrapper_config_class,
 )
 from quadruped_mjx_rl.types import Observation
 
@@ -80,3 +81,6 @@ class ColorGuidedVisionWrapper(VisionWrapper):
             -3,
             -1,
         )
+
+
+register_vision_wrapper_config_class(ColorGuidedEnvConfig)
