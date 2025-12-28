@@ -34,14 +34,14 @@ if __name__ == "__main__":
 
     # Prepare configs
     robot_name = "unitree_go2"
-    robot_config, terrain_config, env_config, model_config, training_config = (
+    robot_config, terrain_config, env_config, vision_wrapper_config, model_config, training_config = (
         prepare_all_configs(
             paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
             paths.CONFIGS_DIRECTORY / f"{experiment_name}.yaml",
         )
     )
     render_config = RenderConfig(
-        episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal", "privileged"]
+        episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal"]
     )
 
     # Prepare environment model
@@ -49,19 +49,19 @@ if __name__ == "__main__":
     env_model = make_terrain(init_scene_path, terrain_config)
 
     # Render the environment model
-    image = render_model(
-        env_model,
-        initial_keyframe=robot_config.initial_keyframe,
-        camera=large_overview_camera(),
+    render_cam = functools.partial(
+        render_model, env_model=env_model, initial_keyframe=robot_config.initial_keyframe
     )
-    save_image(image=image, save_path=experiment_dir / "environment_view")
+    for i, camera in enumerate([large_overview_camera(), "track", "ego_frontal", "privileged"]):
+        image = render_cam(camera=camera)
+        save_image(image=image, save_path=experiment_dir / f"environment_view_{i}.png")
 
     # Prepare the environment factory
     vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
         functools.partial(
             get_renderer,
-            vision_config=env_config.vision_env_config.renderer_config,
+            vision_config=vision_wrapper_config.renderer_config,
             debug=debug,
         )
         if vision
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         environment_config=env_config,
         env_model=env_model,
         customize_model=True,
-        use_vision=vision,
+        vision_wrapper_config=vision_wrapper_config if vision else None,
         renderer_maker=renderer_maker,
     )
 

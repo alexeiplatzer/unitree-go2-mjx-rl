@@ -91,6 +91,8 @@ if __name__ == "__main__":
 
     # Colored terrain map, but joystick
     terrain_config = terrain_gen.ColorMapTerrainConfig()
+    terrain_config.add_goal = False
+    terrain_config.column_offset = 5  # for occasional backwards movements
     env_config = environments.JoystickBaseEnvConfig()
     env_config.domain_rand.apply_kicks = False
     env_config.observation_noise.history_length = 1

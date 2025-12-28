@@ -2,19 +2,13 @@
 
 ## Short term
 
-- [X] add separation of environment+terrain and model+training configs
-- [ ] add proprioceptive history, piped directly to the actor-critic
-- [ ] update the notebooks, especially the universal one
-- [X] tryout runs with the notebooks on colab
-- [X] tryout runs on the chair server
-- [X] check server results and plan further action
-- [X] check GPU utilization
-- [ ] check how multiple GPUs can be used for vision setups
-- [X] implement visualisation rollouts for recurrent support
+- [X] add proprioceptive history, piped directly to the actor-critic
+- [X] adapt the color terrain for joystick policies - remove the ball and place robot in center
 - [ ] train a blind joystick policy on color map terrain
 - [ ] train a simple vision policy for target reaching to see if it works
 - [ ] add goal sphere observations to vision teachers
 - [ ] try training the teacher only
+- [ ] add tile coloring to the env model for mujoco rendering
 
 ## Mid term
 
@@ -23,9 +17,11 @@
 - [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] try to train with a simple MLP model
 - [ ] draft a plan for the final paper
+- [ ] check how multiple GPUs can be used for vision setups
 
 ## Long term
 
+- [ ] update the notebooks, especially the universal one
 - [ ] obstacle env has some nan issues, check rewards calcs
 - [ ] standardize and make configurable observation-related keywords
 - [ ] add obstacle position randomization into the vision env reset

@@ -92,7 +92,9 @@ def check_tiles(tiles: list[list[TerrainTileConfig]]) -> bool:
     return True
 
 
-def make_arena(empty_arena_spec: mj.MjSpec, tiles: list[list[TerrainTileConfig]]) -> None:
+def make_arena(
+    empty_arena_spec: mj.MjSpec, tiles: list[list[TerrainTileConfig]], column_offset: int = 0
+) -> None:
     """Adds some lights and the listed tiles in a grid pattern to the provided spec"""
     spec = empty_arena_spec
 
@@ -111,7 +113,9 @@ def make_arena(empty_arena_spec: mj.MjSpec, tiles: list[list[TerrainTileConfig]]
         for j in range(len(tiles[0])):
             tiles[i][j].create_tile(
                 spec=spec,
-                grid_loc=[j * 2 * square_side, (i - row_offset) * 2 * square_side],
+                grid_loc=[
+                    (j - column_offset) * 2 * square_side, (i - row_offset) * 2 * square_side
+                ],
                 name=f"tile_{i}_{j}",
             )
 
@@ -138,6 +142,7 @@ class FlatTiledTerrainConfig(TerrainConfig):
     n_rows: int = 20
     n_columns: int = 20
     square_size: float = 1.0
+    column_offset: int = 0
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -148,7 +153,7 @@ class FlatTiledTerrainConfig(TerrainConfig):
             [FlatTile(square_side=self.square_size) for _ in range(self.n_columns)]
             for _ in range(self.n_rows)
         ]
-        make_arena(spec, tiles)
+        make_arena(spec, tiles, self.column_offset)
 
 
 @dataclass
@@ -157,6 +162,7 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
         default_factory=ColorMapRandomizationConfig
     )
     num_colors: int = 2
+    add_goal: bool = True
     goal_location: list[float] = field(default_factory=lambda: [10, 0, 0.5])
     goal_size: float = 0.5
 
@@ -165,7 +171,8 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
         return "ColorMap"
 
     def create_in_spec(self, spec: mj.MjSpec) -> None:
-        add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
+        if self.add_goal:
+            add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
         super().create_in_spec(spec)
 
 
