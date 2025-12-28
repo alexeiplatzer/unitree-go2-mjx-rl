@@ -17,7 +17,7 @@ from quadruped_mjx_rl.environments.rendering import (
 )
 from quadruped_mjx_rl.environments.wrappers import wrap_for_training
 from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import RendererConfig
 from quadruped_mjx_rl.robots import predefined_robot_configs
 from quadruped_mjx_rl.terrain_gen.factories import make_plain_tiled_terrain
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     enabled_geom_groups = [0, 1, 2]  # @param
     render_width = 64  # @param {"type":"integer"}
     render_height = 64  # @param {"type":"integer"}
-    vision_config = VisionConfig(
+    vision_config = RendererConfig(
         render_batch_size=num_envs,
         enabled_cameras=enabled_cameras,
         enabled_geom_groups=enabled_geom_groups,

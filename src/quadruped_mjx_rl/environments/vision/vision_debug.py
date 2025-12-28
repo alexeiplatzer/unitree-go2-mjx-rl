@@ -6,7 +6,7 @@ from typing import Any
 
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.physics_pipeline import load_to_model, PipelineState, State
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import RendererConfig
 from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
@@ -14,7 +14,7 @@ class VisionDebugEnv(PipelineEnv):
     def __init__(
         self,
         init_scene_path: PathLike,
-        vision_config: VisionConfig,
+        vision_config: RendererConfig,
     ):
         env_model = load_to_model(init_scene_path)
         super().__init__(env_model)

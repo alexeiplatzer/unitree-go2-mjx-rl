@@ -52,7 +52,11 @@ if __name__ == "__main__":
     # Instead of passing full path, user can pass just the name which is assumed to be
     # relative to the config directory.
     config_file_paths = [
-        config_file_path if config_file_path.exists() else paths.CONFIGS_DIRECTORY / config_file_path
+        (
+            config_file_path
+            if config_file_path.exists()
+            else paths.CONFIGS_DIRECTORY / config_file_path
+        )
         for config_file_path in config_file_paths
     ]
     for config_file_path in config_file_paths:
@@ -61,10 +65,9 @@ if __name__ == "__main__":
                 f"Config file {config_file_path} found neither with given path nor in the "
                 f"config directory."
             )
-    robot_config, terrain_config, env_config, model_config, training_config = (
+    robot_config, terrain_config, env_config, vision_wrapper_config, model_config, training_config = (
         prepare_all_configs(
-            paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
-            *config_file_paths,
+            paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", *config_file_paths
         )
     )
 
@@ -85,7 +88,9 @@ if __name__ == "__main__":
     vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
         functools.partial(
-            get_renderer, vision_config=env_config.vision_env_config.vision_config, debug=debug
+            get_renderer,
+            vision_config=vision_wrapper_config.renderer_config,
+            debug=debug,
         )
         if vision
         else None
@@ -95,7 +100,7 @@ if __name__ == "__main__":
         environment_config=env_config,
         env_model=env_model,
         customize_model=True,
-        use_vision=vision,
+        vision_wrapper_config=vision_wrapper_config if vision else None,
         renderer_maker=renderer_maker,
     )
 

@@ -10,23 +10,27 @@ from quadruped_mjx_rl.environments.base import Env
 from quadruped_mjx_rl.domain_randomization.randomized_tiles import color_meaning_fn
 from quadruped_mjx_rl.environments.vision.vision_wrappers import (
     VisionWrapper,
-    VisionEnvConfig,
+    VisionWrapperConfig,
 )
 from quadruped_mjx_rl.types import Observation
 
 
 @dataclass
-class ColorGuidedEnvConfig(VisionEnvConfig):
+class ColorGuidedEnvConfig(VisionWrapperConfig):
     """Configuration for a Color Guided Vision Environment."""
 
-    camera_inputs: list[VisionEnvConfig.CameraInputConfig] = field(
+    camera_inputs: list[VisionWrapperConfig.CameraInputConfig] = field(
         default_factory=lambda: [
-            VisionEnvConfig.CameraInputConfig(
+            VisionWrapperConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionEnvConfig.CameraInputConfig(name="terrain", use_actual_rgb=True),
+            VisionWrapperConfig.CameraInputConfig(name="terrain", use_actual_rgb=True),
         ]
     )
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "ColorGuidedWrapper"
 
     @classmethod
     def get_vision_wrapper_class(cls) -> type["VisionWrapper"]:
@@ -37,7 +41,7 @@ class ColorGuidedVisionWrapper(VisionWrapper):
     def __init__(
         self,
         env: Env,
-        vision_env_config: VisionEnvConfig,
+        vision_env_config: VisionWrapperConfig,
         renderer_maker: Callable[[PipelineModel], Any],
     ):
         super().__init__(env, vision_env_config, renderer_maker)
@@ -45,13 +49,6 @@ class ColorGuidedVisionWrapper(VisionWrapper):
         self._rgba_table = jnp.array(())
         self._friction_table = jnp.array(())
         self._stiffness_table = jnp.array(())
-
-    # def init_vision_obs(
-    #     self, pipeline_state: PipelineState, state_info: dict[str, Any]
-    # ) -> tuple[Observation, dict[str, Any]]:
-    #     obs, state_info = super().init_vision_obs(pipeline_state, state_info)
-    #     obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
-    #     return obs, state_info
 
     def get_vision_obs(
         self,
@@ -68,7 +65,6 @@ class ColorGuidedVisionWrapper(VisionWrapper):
         So we get from (WxHx4) to (WxHx2), 4 is for rgba, 2 is for friction and stiffness.
         The rgba table and friction and stiffness tables are stored in the env and set
         to the correct values with the Terrain Map wrapper."""
-        # flat_rgba = terrain_rgba.reshape(-1, terrain_rgba.shape[-1])
         return jnp.moveaxis(
             jnp.stack(
                 jax.vmap(
@@ -84,16 +80,3 @@ class ColorGuidedVisionWrapper(VisionWrapper):
             -3,
             -1,
         )
-        # return jax.vmap(jax.vmap(
-        #     lambda rgba: jnp.stack(
-        #         color_meaning_fn(
-        #             rgba=rgba,
-        #             rgba_table=self._rgba_table,
-        #             friction_table=self._friction_table,
-        #             stiffness_table=self._stiffness_table,
-        #         )
-        #     )
-        # ))(terrain_rgba)
-        # return jnp.stack([terrain_friction, terrain_stiffness], axis=-1).reshape(
-        #     terrain_rgba.shape[:-1] + (2,)
-        # )

@@ -3,6 +3,7 @@ from typing import Any
 
 from etils.epath import PathLike
 
+from quadruped_mjx_rl.environments.vision import VisionWrapperConfig
 from quadruped_mjx_rl.physics_pipeline import (
     EnvModel,
     load_to_model,
@@ -34,12 +35,12 @@ def get_env_factory(
     environment_config: EnvironmentConfig,
     env_model: EnvModel,
     customize_model: bool = True,
-    use_vision: bool = False,
+    vision_wrapper_config: VisionWrapperConfig | None = None,
     renderer_maker: Callable[[PipelineModel], Any] | None = None,
 ) -> Callable[[], type(QuadrupedBaseEnv)]:
     """
-    Prepares parameters to instantiate an environment. For vision environments, also wraps
-    the environment with a vision wrapper.
+    Prepares parameters to instantiate an environment. Also wraps
+    the environment with a vision wrapper if it is provided.
     """
     env_class = resolve_env_class(environment_config)
     if customize_model:
@@ -47,13 +48,13 @@ def get_env_factory(
     env_factory = lambda: env_class(
         robot_config=robot_config, environment_config=environment_config, env_model=env_model
     )
-    if use_vision:
+    if vision_wrapper_config is not None:
         if renderer_maker is None:
             raise ValueError("Vision rendering requires a renderer_maker.")
         _env_factory = env_factory
-        env_factory = lambda: environment_config.vision_env_config.get_vision_wrapper_class()(
+        env_factory = lambda: vision_wrapper_config.get_vision_wrapper_class()(
             env=_env_factory(),
-            vision_env_config=environment_config.vision_env_config,
+            vision_env_config=vision_wrapper_config,
             renderer_maker=renderer_maker,
         )
     return env_factory

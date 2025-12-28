@@ -28,8 +28,12 @@ if __name__ == "__main__":
     # Joystick basic
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
+    vision_wrapper_config = environments.VisionWrapperConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_basic.yaml", terrain_config, env_config
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_basic.yaml",
+        terrain_config,
+        env_config,
+        vision_wrapper_config,
     )
 
     # Joystick with proprioceptive privileged observations
@@ -41,6 +45,7 @@ if __name__ == "__main__":
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
         terrain_config,
         env_config,
+        vision_wrapper_config,
     )
 
     # Forward moving joystick with rough terrain
@@ -56,6 +61,7 @@ if __name__ == "__main__":
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_rough_tiles.yaml",
         terrain_config,
         env_config,
+        vision_wrapper_config,
     )
 
     # Target-reaching and obstacle-avoiding
@@ -66,35 +72,53 @@ if __name__ == "__main__":
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
         terrain_config,
         env_config,
+        vision_wrapper_config,
     )
 
-    # Colored terrain map
+    # Colored terrain map with target goal
     terrain_config = terrain_gen.ColorMapTerrainConfig()
-    env_config = environments.QuadrupedColorGuidedEnvConfig()
+    env_config = environments.QuadrupedVisionTargetEnvConfig()
     env_config.domain_rand.apply_kicks = False
     env_config.observation_noise.history_length = 1
     env_config.observation_noise.extended_history_length = 15
+    vision_wrapper_config = environments.ColorGuidedEnvConfig()
     cfg.save_configs(
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
         terrain_config,
         env_config,
+        vision_wrapper_config,
     )
 
     # Colored terrain map, but joystick
-    # TODO: implement
+    terrain_config = terrain_gen.ColorMapTerrainConfig()
+    env_config = environments.JoystickBaseEnvConfig()
+    env_config.domain_rand.apply_kicks = False
+    env_config.observation_noise.history_length = 1
+    env_config.observation_noise.extended_history_length = 15
+    vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    cfg.save_configs(
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
+        terrain_config,
+        env_config,
+        vision_wrapper_config,
+    )
 
     # --- MODELS ---
     # Actor-Critic proprioceptive
     model_config = models.ActorCriticConfig()
     training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml", model_config, training_config,
+        paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml",
+        model_config,
+        training_config,
     )
 
     make_model_hyperparams_lighter(model_config)
     make_training_hyperparams_lighter(training_config)
     cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "basic_light.yaml", model_config, training_config,
+        paths.MODEL_CONFIGS_DIRECTORY / "basic_light.yaml",
+        model_config,
+        training_config,
     )
 
     # Teacher-Student proprioceptive

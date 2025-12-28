@@ -16,7 +16,9 @@ environment:
     kick_vel: 0.05
   environment_class: JoystickBase
   observation_noise:
+    add_privileged_obs: false
     clip: 100.0
+    extended_history_length: null
     general_noise: 0.05
     history_length: 15
   rewards:
@@ -42,32 +44,6 @@ environment:
       Kd: 0.5
       Kp: 35.0
     sim_dt: 0.004
-  vision_env_config:
-    brightness:
-    - 0.75
-    - 2.0
-    camera_inputs:
-    - name: frontal_ego
-      use_actual_rgb: false
-      use_brightness_randomized_rgb: true
-      use_depth: false
-    - name: terrain
-      use_actual_rgb: false
-      use_brightness_randomized_rgb: false
-      use_depth: true
-    vision_config:
-      enabled_cameras:
-      - 1
-      - 2
-      enabled_geom_groups:
-      - 0
-      - 1
-      - 2
-      gpu_id: 0
-      render_batch_size: 256
-      render_height: 128
-      render_width: 128
-      use_rasterizer: false
 terrain:
   base_scene_file: scene_mjx.xml
   randomization_config:
@@ -76,3 +52,30 @@ terrain:
     gain_max: 5.0
     gain_min: -5.0
   terrain_class: Flat
+vision_wrapper:
+  brightness:
+  - 0.75
+  - 2.0
+  camera_inputs:
+  - name: frontal_ego
+    use_actual_rgb: false
+    use_brightness_randomized_rgb: true
+    use_depth: false
+  - name: terrain
+    use_actual_rgb: false
+    use_brightness_randomized_rgb: false
+    use_depth: true
+  renderer_config:
+    enabled_cameras:
+    - 1
+    - 2
+    enabled_geom_groups:
+    - 0
+    - 1
+    - 2
+    gpu_id: 0
+    render_batch_size: 256
+    render_height: 128
+    render_width: 128
+    use_rasterizer: false
+  vision_wrapper_class: VisionBaseWrapper

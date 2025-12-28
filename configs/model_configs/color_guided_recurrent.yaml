@@ -16,7 +16,7 @@ model:
     - 256
     - 128
     - 128
-  policy_obs_key: proprioceptive
+  policy_obs_key: proprioceptive_history
   student:
     convolutional:
       dense:
@@ -45,7 +45,7 @@ model:
     - 256
     - 256
     - 256
-  value_obs_key: proprioceptive
+  value_obs_key: proprioceptive_history
 training:
   action_repeat: 1
   augment_pixels: false

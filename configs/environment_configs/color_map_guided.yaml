@@ -6,9 +6,11 @@ environment:
     apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: QuadrupedColorGuided
+  environment_class: QuadrupedVisionTarget
   observation_noise:
+    add_privileged_obs: false
     clip: 100.0
+    extended_history_length: 15
     general_noise: 0.05
     history_length: 1
   rewards:
@@ -34,32 +36,6 @@ environment:
       Kd: 0.5
       Kp: 35.0
     sim_dt: 0.004
-  vision_env_config:
-    brightness:
-    - 0.75
-    - 2.0
-    camera_inputs:
-    - name: frontal_ego
-      use_actual_rgb: false
-      use_brightness_randomized_rgb: true
-      use_depth: false
-    - name: terrain
-      use_actual_rgb: true
-      use_brightness_randomized_rgb: false
-      use_depth: false
-    vision_config:
-      enabled_cameras:
-      - 1
-      - 2
-      enabled_geom_groups:
-      - 0
-      - 1
-      - 2
-      gpu_id: 0
-      render_batch_size: 256
-      render_height: 128
-      render_width: 128
-      use_rasterizer: false
 terrain:
   base_scene_file: scene_mjx_empty_arena.xml
   goal_location:
@@ -75,3 +51,30 @@ terrain:
     tile_body_prefix: tile_
   square_size: 1.0
   terrain_class: ColorMap
+vision_wrapper:
+  brightness:
+  - 0.75
+  - 2.0
+  camera_inputs:
+  - name: frontal_ego
+    use_actual_rgb: false
+    use_brightness_randomized_rgb: true
+    use_depth: false
+  - name: terrain
+    use_actual_rgb: true
+    use_brightness_randomized_rgb: false
+    use_depth: false
+  renderer_config:
+    enabled_cameras:
+    - 1
+    - 2
+    enabled_geom_groups:
+    - 0
+    - 1
+    - 2
+    gpu_id: 0
+    render_batch_size: 256
+    render_height: 128
+    render_width: 128
+    use_rasterizer: false
+  vision_wrapper_class: ColorGuidedWrapper

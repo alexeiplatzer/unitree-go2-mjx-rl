@@ -8,7 +8,7 @@ from quadruped_mjx_rl.physics_pipeline import PipelineModel
 
 
 @dataclass
-class VisionConfig:
+class RendererConfig:
     gpu_id: int = 0
     render_batch_size: int = 256
     render_width: int = 128
@@ -18,12 +18,12 @@ class VisionConfig:
     enabled_cameras: list[int] = field(default_factory=lambda: [1, 2])
 
 
-def get_renderer_maker(vision_config: VisionConfig):
+def get_renderer_maker(vision_config: RendererConfig):
     return functools.partial(get_renderer, vision_config=vision_config)
 
 
 def get_renderer(
-    pipeline_model: PipelineModel, vision_config: VisionConfig, debug: bool = False
+    pipeline_model: PipelineModel, vision_config: RendererConfig, debug: bool = False
 ):
     if debug:
         return MockRenderer(vision_config)
@@ -45,7 +45,7 @@ def get_renderer(
 
 
 class MockRenderer:
-    def __init__(self, vision_config: VisionConfig):
+    def __init__(self, vision_config: RendererConfig):
         self.batch_size = vision_config.render_batch_size
         self.width = vision_config.render_width
         self.height = vision_config.render_height

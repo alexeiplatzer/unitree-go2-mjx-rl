@@ -60,7 +60,9 @@ if __name__ == "__main__":
     vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
         functools.partial(
-            get_renderer, vision_config=env_config.vision_env_config.vision_config, debug=debug
+            get_renderer,
+            vision_config=env_config.vision_env_config.renderer_config,
+            debug=debug,
         )
         if vision
         else None
@@ -91,5 +93,5 @@ if __name__ == "__main__":
             save_video(
                 frames=camera_frames,
                 fps=fps,
-                save_path=experiment_dir / f"{rollout_name}_rollout_{camera_name}_camera.gif"
+                save_path=experiment_dir / f"{rollout_name}_rollout_{camera_name}_camera.gif",
             )

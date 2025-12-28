@@ -10,8 +10,9 @@ from quadruped_mjx_rl.physics_pipeline import (
     PipelineModel,
     PipelineState,
 )
+from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
-from quadruped_mjx_rl.environments.vision.robotic_vision import VisionConfig
+from quadruped_mjx_rl.environments.vision.robotic_vision import RendererConfig
 from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 
@@ -21,8 +22,8 @@ def adjust_brightness(img, scale):
 
 
 @dataclass
-class VisionEnvConfig:
-    vision_config: VisionConfig = field(default_factory=VisionConfig)
+class VisionWrapperConfig(Configuration):
+    renderer_config: RendererConfig = field(default_factory=RendererConfig)
     brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
     @dataclass
@@ -34,16 +35,37 @@ class VisionEnvConfig:
 
     camera_inputs: list[CameraInputConfig] = field(
         default_factory=lambda: [
-            VisionEnvConfig.CameraInputConfig(
+            VisionWrapperConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionEnvConfig.CameraInputConfig(name="terrain", use_depth=True),
+            VisionWrapperConfig.CameraInputConfig(name="terrain", use_depth=True),
         ]
     )
 
     @classmethod
+    def config_base_class_key(cls) -> str:
+        return "vision_wrapper"
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "VisionBaseWrapper"
+
+    @classmethod
     def get_vision_wrapper_class(cls) -> type["VisionWrapper"]:
         return VisionWrapper
+
+    @classmethod
+    def _get_config_class_dict(cls) -> dict[str, type["Configuration"]]:
+        return _vision_wrapper_config_classes
+
+
+register_config_base_class(VisionWrapperConfig)
+
+_vision_wrapper_config_classes = {}
+
+register_vision_wrapper_config_class = VisionWrapperConfig.make_register_config_class()
+
+register_vision_wrapper_config_class(VisionWrapperConfig)
 
 
 class VisionWrapper(Wrapper):
@@ -54,7 +76,7 @@ class VisionWrapper(Wrapper):
     def __init__(
         self,
         env: Env,
-        vision_env_config: VisionEnvConfig,
+        vision_env_config: VisionWrapperConfig,
         renderer_maker: Callable[[PipelineModel], Any],
     ):
         super().__init__(env)
@@ -75,12 +97,6 @@ class VisionWrapper(Wrapper):
         # to update the state info
         self.init_vision_obs(state.pipeline_state, state.info)
         return state
-
-    # def step(self, state: State, action: Action) -> State:
-    #     # TODO check that this works as expected: keeps old vision obs
-    #     old_obs = state.obs
-    #     next_state = self.env.step(state, action)
-    #     return state.replace(obs=dict(old_obs) | dict(next_state.obs))
 
     def init_vision_obs(
         self, pipeline_state: PipelineState, state_info: dict[str, Any]
