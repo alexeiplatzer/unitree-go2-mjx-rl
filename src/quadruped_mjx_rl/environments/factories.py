@@ -36,7 +36,7 @@ def get_env_factory(
     env_model: EnvModel,
     customize_model: bool = True,
     vision_wrapper_config: VisionWrapperConfig | None = None,
-    renderer_maker: Callable[[PipelineModel], Any] | None = None,
+    renderer_maker: Callable[[PipelineModel, list[int]], Any] | None = None,
 ) -> Callable[[], type(QuadrupedBaseEnv)]:
     """
     Prepares parameters to instantiate an environment. Also wraps

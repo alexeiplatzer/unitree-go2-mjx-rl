@@ -7,7 +7,7 @@ import numpy as np
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
-from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
+from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.environments.rendering import (
     large_overview_camera,

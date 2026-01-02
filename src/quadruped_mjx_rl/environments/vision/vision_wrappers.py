@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 import jax
 from jax import numpy as jnp
+import mujoco
 from mujoco import mjx
 
 from quadruped_mjx_rl.physics_pipeline import (
@@ -12,8 +13,7 @@ from quadruped_mjx_rl.physics_pipeline import (
 )
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.physics_pipeline import Env, State, Wrapper
-from quadruped_mjx_rl.environments.vision.robotic_vision import RendererConfig
-from quadruped_mjx_rl.types import Observation, Action, PRNGKey
+from quadruped_mjx_rl.types import Observation, PRNGKey
 
 
 def adjust_brightness(img, scale):
@@ -23,7 +23,6 @@ def adjust_brightness(img, scale):
 
 @dataclass
 class VisionWrapperConfig(Configuration):
-    renderer_config: RendererConfig = field(default_factory=RendererConfig)
     brightness: list[float] = field(default_factory=lambda: [0.75, 2.0])
 
     @dataclass
@@ -77,7 +76,7 @@ class VisionWrapper(Wrapper):
         self,
         env: Env,
         vision_env_config: VisionWrapperConfig,
-        renderer_maker: Callable[[PipelineModel], Any],
+        renderer_maker: Callable[[PipelineModel, list[int]], Any],
     ):
         super().__init__(env)
         if vision_env_config is None:
@@ -85,12 +84,18 @@ class VisionWrapper(Wrapper):
         self._brightness_scaling = vision_env_config.brightness
         self._camera_inputs_config = vision_env_config.camera_inputs
 
+        enabled_cameras = [
+            mujoco.mj_name2id(self.env_model, mujoco.mjtObj.mjOBJ_CAMERA, camera_input.name)
+            for camera_input in self._camera_inputs_config
+        ]
+        enabled_cameras = list(sorted(set(enabled_cameras)))
+
         # Execute one environment step to initialize mjx before madrona
         mjx_model = mjx.put_model(self.env_model)
         mjx_data = mjx.make_data(mjx_model)
         _ = mjx.forward(mjx_model, mjx_data)
 
-        self.renderer = renderer_maker(self.pipeline_model)
+        self.renderer = renderer_maker(self.pipeline_model, enabled_cameras)
 
     def reset(self, rng: PRNGKey) -> State:
         state = self.env.reset(rng)

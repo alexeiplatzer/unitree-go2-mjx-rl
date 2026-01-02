@@ -1,6 +1,8 @@
 """This module adds simple geometric bodies directly to the environment spec, bypassing the
 tiled terrain approach."""
 
+from dataclasses import dataclass, field
+
 import mujoco as mj
 import numpy as np
 
@@ -75,26 +77,79 @@ def add_world_camera(
     )
 
 
+@dataclass
+class CameraConfig:
+    name: str = "default_camera"
+    mode: str = "fixed"  # or "track"
+    location: list[float] = field(default_factory=lambda: [0, 0, 0])
+    xyaxes: list[float] = field(default_factory=lambda: [0, 0, 1, 0, -1, 0])
+    orthographic: bool = False
+    fovy: float = 45.0
+
+    def to_mj_cam_light(self) -> mj.mjtCamLight:
+        return {
+            "fixed": mj.mjtCamLight.mjCAMLIGHT_FIXED,
+            "track": mj.mjtCamLight.mjCAMLIGHT_TRACK,
+            "trackcom": mj.mjtCamLight.mjCAMLIGHT_TRACKCOM,
+        }[self.mode]
+
+
 def add_robot_camera(
     spec: EnvSpec,
-    name: str,
     robot_config: RobotConfig,
-    mode: str = "fixed",  # or "track"
-    location: list[float] | None = None,
-    xyaxes: list[float] | None = None,
-    orthographic: bool = False,
-    fovy: float = 45.0,
+    camera_config: CameraConfig,
 ):
     """Adds a camera to the robot's torso/main body."""
-    modes = {
-        "fixed": mj.mjtCamLight.mjCAMLIGHT_FIXED,
-        "track": mj.mjtCamLight.mjCAMLIGHT_TRACK,
-    }
     spec.body(robot_config.main_body_name).add_camera(
-        name=name,
-        mode=modes[mode],
-        pos=location or [0, 0, 0],
-        xyaxes=xyaxes or [0, 0, 1, 0, -1, 0],
-        orthographic=orthographic,
-        fovy=fovy,
+        name=camera_config.name,
+        mode=camera_config.to_mj_cam_light(),
+        pos=camera_config.location,
+        xyaxes=camera_config.xyaxes,
+        orthographic=camera_config.orthographic,
+        fovy=camera_config.fovy,
     )
+
+
+# For the Unitree Go2 robot
+predefined_camera_configs = {
+    "ego_frontal": CameraConfig(
+        name="ego_frontal",
+        mode="fixed",
+        location=[0.3, 0.0, 0.1],
+        xyaxes=[0, -1, 0, 0, 0, 1],
+        orthographic=False,
+        fovy=80,
+    ),
+    "terrain_map": CameraConfig(
+        name="terrain_map",
+        mode="track",
+        location=[2, 0, 2],
+        xyaxes=[0, -1, 0, 1, 0, 0],
+        orthographic=True,
+        fovy=5,
+    ),
+    "high_above": CameraConfig(
+        name="high_above",
+        mode="track",
+        location=[0, 0, 10],
+        xyaxes=[0, -1, 0, 1, 0, 0],
+        orthographic=True,
+        fovy=10,
+    ),
+    "large_overview": CameraConfig(
+        name="large_overview",
+        mode="track",
+        location=[0, -16, 9],
+        xyaxes=[1, 0, 0, 0, 0.5, 1],
+        orthographic=False,
+        fovy=90,
+    ),
+    "follow_behind": CameraConfig(
+        name="follow_behind",
+        mode="track",
+        location=[-3, 0, 1],
+        xyaxes=[0, -1, 0.2, 0, 0, 1],
+        orthographic=False,
+        fovy=90,
+    )
+}

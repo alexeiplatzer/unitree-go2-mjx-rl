@@ -6,7 +6,7 @@ from typing import Any
 
 from quadruped_mjx_rl.environments.base import PipelineEnv
 from quadruped_mjx_rl.physics_pipeline import load_to_model, PipelineState, State
-from quadruped_mjx_rl.environments.vision.robotic_vision import RendererConfig
+from quadruped_mjx_rl.robotic_vision import RendererConfig
 from quadruped_mjx_rl.types import Observation, Action, PRNGKey
 
 

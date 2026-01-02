@@ -11,7 +11,7 @@ from quadruped_mjx_rl.environments.rendering import (
     render_model,
     save_image,
 )
-from quadruped_mjx_rl.environments.vision.robotic_vision import get_renderer
+from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.models.io import load_params
 from quadruped_mjx_rl.policy_rendering import render_policy_rollout, RenderConfig, save_video
 from quadruped_mjx_rl.terrain_gen import make_terrain
