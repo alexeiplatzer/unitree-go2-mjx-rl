@@ -5,11 +5,21 @@ import numpy as np
 import jax
 
 import paths
+from quadruped_mjx_rl import running_statistics
+from quadruped_mjx_rl.models import get_networks_factory
+from quadruped_mjx_rl.models.architectures import (
+    TeacherStudentAgentParams,
+    TeacherStudentNetworks, TeacherStudentRecurrentNetworks,
+)
+from quadruped_mjx_rl.policy_rendering import render_rollout, save_video
 from quadruped_mjx_rl.configs import prepare_all_configs
 from quadruped_mjx_rl.environments import get_env_factory
+from quadruped_mjx_rl.environments.wrappers import _vmap_wrap_with_randomization, EpisodeWrapper
+from quadruped_mjx_rl.models.io import load_params
 from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.policy_rendering import RenderConfig
 from quadruped_mjx_rl.terrain_gen import make_terrain
+from quadruped_mjx_rl.training import TrainingConfig, TrainingWithVisionConfig
 
 if __name__ == "__main__":
     debug = False
@@ -39,8 +49,8 @@ if __name__ == "__main__":
         paths.MODEL_CONFIGS_DIRECTORY / f"basic_lighter.yaml",
         paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"color_guided_joystick.yaml",
     )
+    assert isinstance(training_config, TrainingWithVisionConfig)
     training_config.check_validity()
-    vision_wrapper_config.renderer_config.render_batch_size = training_config.num_envs
     render_config = RenderConfig(
         episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal"]
     )
@@ -52,20 +62,8 @@ if __name__ == "__main__":
         robot_config=robot_config,
     )
 
-    # # Render the environment model
-    # render_cam = functools.partial(
-    #     render_model, env_model=env_model, initial_keyframe=robot_config.initial_keyframe
-    # )
-    # for i, camera in enumerate([large_overview_camera(), "track", "ego_frontal", "privileged"]):
-    #     image = render_cam(camera=camera)
-    #     save_image(image=image, save_path=experiment_dir / f"environment_view_{i}.png")
-
     # Prepare the environment factory
-    renderer_maker = functools.partial(
-        get_renderer,
-        vision_config=vision_wrapper_config.renderer_config,
-        debug=debug,
-    )
+    renderer_maker = (training_config.get_renderer_factory(gpu_id=0, debug=debug))
     env_factory = get_env_factory(
         robot_config=robot_config,
         environment_config=env_config,
@@ -80,23 +78,78 @@ if __name__ == "__main__":
 
     # Prepare the random keys
     key = jax.random.PRNGKey(render_config.seed)
+    wrapping_key, _ = jax.random.split(key, 2)
 
-    # # Load params
-    # params = load_params(experiment_dir / "trained_policy")
-    #
-    # logging.info("Params loaded. Rendering policy rollout.")
-    # rollouts, fps = render_policy_rollout(
-    #     env=env_factory(),
-    #     model_config=model_config,
-    #     model_params=params,
-    #     render_config=render_config,
-    #     normalize_observations=training_config.normalize_observations,
-    #     domain_rand_config=terrain_config.randomization_config,
-    # )
-    # for rollout_name, frames in rollouts.items():
-    #     for camera_name, camera_frames in frames.items():
-    #         save_video(
-    #             frames=camera_frames,
-    #             fps=fps,
-    #             save_path=experiment_dir / f"{rollout_name}_rollout_{camera_name}_camera.gif",
-    #         )
+    env = _vmap_wrap_with_randomization(
+        env,
+        vision=True,
+        worlds_random_key=wrapping_key,
+        randomization_config=terrain_config.randomization_config,
+    )
+    demo_env = EpisodeWrapper(
+        env,
+        episode_length=render_config.episode_length,
+        action_repeat=1,
+    )
+
+    # Prepare env
+    env = env_factory()
+
+    # Load params
+    params = load_params(experiment_dir / "trained_policy")
+    network_factory = get_networks_factory(model_config)
+    preprocess_fn = (
+        running_statistics.normalize
+        if training_config.normalize_observations else lambda x, y: x
+    )
+    network = network_factory(
+        observation_size={
+            "proprioceptive": 1,
+            "proprioceptive_history": 1,
+            "environment_privileged": 1,
+            "pixels/terrain/depth": 1,
+            "pixels/frontal_ego/rgb": 1,
+            "pixels/frontal_ego/rgb_adjusted": 1,
+            "privileged_terrain_map": 1,
+        },
+        action_size=env.action_size,
+        preprocess_observations_fn=preprocess_fn,
+    )
+    unroll_factories = {
+        "training_acting_policy": network.make_unroll_fn(
+            params, deterministic=True, accumulate_pipeline_states=True
+        )
+    }
+    if isinstance(network, TeacherStudentRecurrentNetworks):
+        assert isinstance(params, TeacherStudentAgentParams)
+        unroll_factories["student_policy"] = network.make_student_unroll_fn(
+            params, deterministic=True, accumulate_pipeline_states=True
+        )
+    elif isinstance(network, TeacherStudentNetworks):
+        unroll_factories["student_policy"] = network.make_unroll_fn(
+            params,
+            policy_factory=network.get_student_policy_factory() if not network.vision else None,
+            apply_encoder_fn=network.apply_student_encoder,
+            deterministic=True,
+            accumulate_pipeline_states=True,
+        )
+
+    logging.info("Params loaded. Rendering policy rollout.")
+    render_fn = functools.partial(
+        render_rollout,
+        env=demo_env,
+        render_config=render_config,
+    )
+    fps = 1.0 / (env.dt.item() * render_config.render_every)
+    for unroll_name, unroll_factory in unroll_factories.items():
+        frames = render_rollout(
+            env=demo_env,
+            render_config=render_config,
+            unroll_factory=unroll_factory,
+        )
+        for camera_name, camera_frames in frames.items():
+            save_video(
+                frames=camera_frames,
+                fps=fps,
+                save_path=experiment_dir / f"{unroll_name}_rollout_{camera_name}_camera.gif",
+            )
