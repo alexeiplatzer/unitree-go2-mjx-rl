@@ -37,7 +37,7 @@ if __name__ == "__main__":
     ) = prepare_all_configs(
         paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
         paths.MODEL_CONFIGS_DIRECTORY / f"basic_lighter.yaml",
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"color_guided_joystick.yaml"
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"color_guided_joystick.yaml",
     )
     training_config.check_validity()
     vision_wrapper_config.renderer_config.render_batch_size = training_config.num_envs

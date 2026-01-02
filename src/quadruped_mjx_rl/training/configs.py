@@ -1,9 +1,10 @@
+import functools
 from dataclasses import dataclass, field
 
 import jax
 
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.robotic_vision import RendererConfig, get_renderer_maker
+from quadruped_mjx_rl.robotic_vision import RendererConfig, get_renderer
 from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 
@@ -86,18 +87,18 @@ class TrainingWithVisionConfig(TrainingConfig):
     vision_frame_width: int = 64
     vision_frame_height: int = 64
 
-    def get_renderer_factory(
-        self, gpu_id: int = 0
-    ):
-        return get_renderer_maker(
-            RendererConfig(
+    def get_renderer_factory(self, gpu_id: int = 0, debug: bool = False):
+        return functools.partial(
+            get_renderer,
+            renderer_config=RendererConfig(
                 gpu_id=gpu_id,
                 render_batch_size=self.num_envs // jax.local_device_count(),  # TODO: configure
                 render_width=self.vision_frame_width,
                 render_height=self.vision_frame_height,
                 use_rasterizer=False,
                 enabled_geom_groups=[0, 1, 2],
-            )
+            ),
+            debug=debug,
         )
 
     def check_validity(self):

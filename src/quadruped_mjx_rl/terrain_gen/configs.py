@@ -17,8 +17,14 @@ from quadruped_mjx_rl.domain_randomization import (
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig, StripesTile
 from quadruped_mjx_rl.terrain_gen.elements import (
-    add_camera_to_body, add_cylinders, add_goal_sphere, add_lights,
-    add_robot_camera, add_world_camera, CameraConfig, predefined_camera_configs,
+    add_camera_to_body,
+    add_cylinders,
+    add_goal_sphere,
+    add_lights,
+    add_robot_camera,
+    add_world_camera,
+    CameraConfig,
+    predefined_camera_configs,
 )
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.physics_pipeline import load_to_spec, spec_to_model, EnvModel

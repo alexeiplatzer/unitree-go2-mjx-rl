@@ -110,6 +110,7 @@ def add_camera_to_body(
         fovy=camera_config.fovy,
     )
 
+
 # For the Unitree Go2 robot
 predefined_camera_configs = {
     "ego_frontal": CameraConfig(
@@ -151,5 +152,5 @@ predefined_camera_configs = {
         xyaxes=[0, -1, 0.2, 0, 0, 1],
         orthographic=False,
         fovy=90,
-    )
+    ),
 }

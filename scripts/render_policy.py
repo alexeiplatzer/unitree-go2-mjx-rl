@@ -2,6 +2,7 @@ import functools
 import logging
 
 import numpy as np
+import mujoco
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
@@ -44,7 +45,7 @@ if __name__ == "__main__":
     ) = prepare_all_configs(
         paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
         paths.MODEL_CONFIGS_DIRECTORY / f"basic_lighter.yaml",
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"color_guided_joystick.yaml"
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"color_guided_joystick.yaml",
     )
     render_config = RenderConfig(
         episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal"]
@@ -58,22 +59,23 @@ if __name__ == "__main__":
     )
 
     # Render the environment model
-    render_cam = functools.partial(
-        render_model, env_model=env_model, initial_keyframe=robot_config.initial_keyframe
-    )
-    for i, camera in enumerate([large_overview_camera(), "track", "ego_frontal", "privileged"]):
-        image = render_cam(camera=camera)
-        save_image(image=image, save_path=experiment_dir / f"environment_view_{i}.png")
+    camera_list = [
+        mujoco.mj_id2name(env_model, mujoco.mjtObj.mjOBJ_CAMERA, idx)
+        for idx in range(env_model.ncam)
+    ]
+    for camera_name in camera_list:
+        image = render_model(
+            env_model,
+            initial_keyframe=robot_config.initial_keyframe,
+            camera=camera_name,
+        )
+        save_image(image=image, save_path=experiment_dir / f"environment_view_{camera_name}")
 
     # Prepare the environment factory
     vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
-        functools.partial(
-            get_renderer,
-            vision_config=vision_wrapper_config.renderer_config,
-            debug=debug,
-        )
-        if vision
+        training_config.get_renderer_factory(gpu_id=0, debug=debug)
+        if isinstance(training_config, TrainingWithVisionConfig)
         else None
     )
     env_factory = get_env_factory(

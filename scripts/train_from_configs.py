@@ -85,22 +85,21 @@ if __name__ == "__main__":
 
     if not headless:
         # Render the environment model
-        image = render_model(
-            env_model,
-            initial_keyframe=robot_config.initial_keyframe,
-            camera=large_overview_camera(),
-        )
-        save_image(image=image, save_path=experiment_dir / "environment_view")
+        for camera_name in terrain_config.visualization_cameras:
+            image = render_model(
+                env_model,
+                initial_keyframe=robot_config.initial_keyframe,
+                camera=camera_name,
+            )
+            save_image(
+                image=image, save_path=experiment_dir / f"environment_view_{camera_name}"
+            )
 
     # Prepare the environment factory
     vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
-        functools.partial(
-            get_renderer,
-            vision_config=vision_wrapper_config.renderer_config,
-            debug=debug,
-        )
-        if vision
+        training_config.get_renderer_factory(gpu_id=0, debug=debug)
+        if isinstance(training_config, TrainingWithVisionConfig)
         else None
     )
     env_factory = get_env_factory(

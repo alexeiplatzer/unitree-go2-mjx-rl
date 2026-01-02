@@ -17,10 +17,6 @@ class RendererConfig:
     enabled_geom_groups: list[int] = field(default_factory=lambda: [0, 1, 2])
 
 
-def get_renderer_maker(renderer_config: RendererConfig):
-    return functools.partial(get_renderer, renderer_config=renderer_config)
-
-
 def get_renderer(
     pipeline_model: PipelineModel,
     enabled_cameras: list[int],
