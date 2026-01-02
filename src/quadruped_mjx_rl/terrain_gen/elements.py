@@ -62,21 +62,6 @@ def add_goal_sphere(
     )
 
 
-def add_world_camera(
-    spec: EnvSpec,
-    name: str,
-    location: list[float] | None = None,
-    xyaxes: list[float] | None = None,
-):
-    """Adds a fixed camera attached to the world body to the environment spec."""
-    spec.worldbody.add_camera(
-        name=name,
-        mode=mj.mjtCamLight.mjCAMLIGHT_FIXED,
-        pos=location or [0, 0, 0],
-        xyaxes=xyaxes or [0, 0, 1, 0, -1, 0],
-    )
-
-
 @dataclass
 class CameraConfig:
     name: str = "default_camera"
@@ -94,13 +79,29 @@ class CameraConfig:
         }[self.mode]
 
 
+def add_world_camera(
+    spec: EnvSpec,
+    camera_config: CameraConfig,
+) -> None:
+    """Adds a fixed camera attached to the world body to the environment spec."""
+    add_camera_to_body(spec.worldbody, camera_config)
+
+
 def add_robot_camera(
     spec: EnvSpec,
     robot_config: RobotConfig,
     camera_config: CameraConfig,
-):
+) -> None:
     """Adds a camera to the robot's torso/main body."""
-    spec.body(robot_config.main_body_name).add_camera(
+    add_camera_to_body(spec.body(robot_config.main_body_name), camera_config)
+
+
+def add_camera_to_body(
+    body,
+    camera_config: CameraConfig,
+) -> None:
+    """Adds camera to the given mj spec body."""
+    body.add_camera(
         name=camera_config.name,
         mode=camera_config.to_mj_cam_light(),
         pos=camera_config.location,
@@ -108,7 +109,6 @@ def add_robot_camera(
         orthographic=camera_config.orthographic,
         fovy=camera_config.fovy,
     )
-
 
 # For the Unitree Go2 robot
 predefined_camera_configs = {

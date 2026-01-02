@@ -3,9 +3,9 @@ It has several functions with example tilings."""
 
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 import mujoco as mj
-from etils.epath import PathLike
 
 from quadruped_mjx_rl.domain_randomization import (
     DomainRandomizationConfig,
@@ -16,7 +16,11 @@ from quadruped_mjx_rl.domain_randomization import (
 )
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
 from quadruped_mjx_rl.terrain_gen.obstacles import FlatTile, TerrainTileConfig, StripesTile
-from quadruped_mjx_rl.terrain_gen.elements import add_cylinders, add_goal_sphere, add_lights
+from quadruped_mjx_rl.terrain_gen.elements import (
+    add_camera_to_body, add_cylinders, add_goal_sphere, add_lights,
+    add_robot_camera, add_world_camera, CameraConfig, predefined_camera_configs,
+)
+from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.physics_pipeline import load_to_spec, spec_to_model, EnvModel
 
 
@@ -24,10 +28,18 @@ from quadruped_mjx_rl.physics_pipeline import load_to_spec, spec_to_model, EnvMo
 class TerrainConfig(Configuration, ABC):
     """Configuration class describing the terrain of the environment."""
 
-    base_scene_file: str = "scene_mjx.xml"
+    base_scene_file: str = "scene_mjx_vision.xml"
     randomization_config: DomainRandomizationConfig | TerrainMapRandomizationConfig | None = (
         None
     )
+    egocentric_camera: CameraConfig = field(
+        default_factory=predefined_camera_configs["ego_frontal"]
+    )
+
+    @property
+    def visualization_cameras(self) -> dict[str, CameraConfig]:
+        visualization_cameras = ["high_above", "large_overview", "follow_behind"]
+        return {name: predefined_camera_configs[name] for name in visualization_cameras}
 
     @classmethod
     def config_base_class_key(cls) -> str:
@@ -43,9 +55,11 @@ class TerrainConfig(Configuration, ABC):
         return _terrain_config_classes
 
     @abstractmethod
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         """Creates the terrain in the MuJoCo spec."""
-        pass
+        add_robot_camera(spec, robot_config=robot_config, camera_config=self.egocentric_camera)
+        for camera_config in self.visualization_cameras.values():
+            add_world_camera(spec, camera_config=camera_config)
 
 
 register_config_base_class(TerrainConfig)
@@ -55,10 +69,14 @@ _terrain_config_classes = {}
 register_terrain_config_class = TerrainConfig.make_register_config_class()
 
 
-def make_terrain(init_scene_path: PathLike, terrain_config: TerrainConfig) -> EnvModel:
+def make_terrain(
+    resources_directory: Path, terrain_config: TerrainConfig, robot_config: RobotConfig
+) -> EnvModel:
     """Creates a model with the given terrain configuration."""
-    spec = load_to_spec(init_scene_path)
-    terrain_config.create_in_spec(spec)
+    spec = load_to_spec(
+        resources_directory / robot_config.robot_name / terrain_config.base_scene_file
+    )
+    terrain_config.create_in_spec(spec, robot_config)
     return spec_to_model(spec)
 
 
@@ -75,7 +93,7 @@ class FlatTerrainConfig(TerrainConfig):
     def config_class_key(cls) -> str:
         return "Flat"
 
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         return None
 
 
@@ -144,14 +162,14 @@ class FlatTiledTerrainConfig(TerrainConfig):
     n_rows: int = 20
     n_columns: int = 20
     square_size: float = 1.0
-    floor_thickness: float = 0.01
+    floor_thickness: float = 0.05
     column_offset: int = 0
 
     @classmethod
     def config_class_key(cls) -> str:
         return "FlatTiled"
 
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         tiles = [
             [
                 FlatTile(square_side=self.square_size, floor_thickness=self.floor_thickness)
@@ -172,15 +190,21 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     add_goal: bool = True
     goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
     goal_size: float = 0.5
+    terrain_map_camera: CameraConfig = field(
+        default_factory=predefined_camera_configs["terrain_map"]
+    )
 
     @classmethod
     def config_class_key(cls) -> str:
         return "ColorMap"
 
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         if self.add_goal:
             add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
-        super().create_in_spec(spec)
+        add_robot_camera(
+            spec=spec, robot_config=robot_config, camera_config=self.terrain_map_camera
+        )
+        super().create_in_spec(spec, robot_config)
 
 
 @dataclass
@@ -197,7 +221,7 @@ class StripeTilesTerrainConfig(TerrainConfig):
     def config_class_key(cls) -> str:
         return "StripeTiles"
 
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         flat_tiles = [FlatTile(square_side=self.square_size) for _ in range(self.n_flat_tiles)]
         stripe_tiles = [
             StripesTile(square_side=self.square_size) for _ in range(self.n_stripe_tiles)
@@ -220,7 +244,7 @@ class SimpleObstacleTerrainConfig(TerrainConfig):
     def config_class_key(cls) -> str:
         return "SimpleObstacle"
 
-    def create_in_spec(self, spec: mj.MjSpec) -> None:
+    def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         return None
 
 

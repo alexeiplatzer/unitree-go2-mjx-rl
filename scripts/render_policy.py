@@ -51,8 +51,11 @@ if __name__ == "__main__":
     )
 
     # Prepare environment model
-    init_scene_path = paths.RESOURCES_DIRECTORY / robot_name / terrain_config.base_scene_file
-    env_model = make_terrain(init_scene_path, terrain_config)
+    env_model = make_terrain(
+        resources_directory=paths.RESOURCES_DIRECTORY,
+        terrain_config=terrain_config,
+        robot_config=robot_config,
+    )
 
     # Render the environment model
     render_cam = functools.partial(
