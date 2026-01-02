@@ -130,7 +130,6 @@ class TerrainMapWrapper(Wrapper):
             state_info,
         )
 
-
     def render(
         self,
         trajectory: list[PipelineState],

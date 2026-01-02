@@ -71,7 +71,7 @@
       <!-- front facing egocentric camera -->
       <camera name="ego_frontal" pos="0.3 0 0.1" xyaxes="0 -1 0 0 0 1" fovy="80"/>
       <!-- down-facing camera looking from above at the robot -->
-      <camera name="privileged" pos="0 0 2" xyaxes="0 -1 0 1 0 1.5" orthographic="true" fovy="3" mode="track"/>
+      <camera name="privileged" pos="2 0 2" xyaxes="0 -1 0 1 0 0" orthographic="true" fovy="5" mode="track"/>
       <inertial pos="0.021112 0 -0.005366" quat="-0.000543471 0.713435 -0.00173769 0.700719" mass="6.921"
         diaginertia="0.107027 0.0980771 0.0244531"/>
       <freejoint/>

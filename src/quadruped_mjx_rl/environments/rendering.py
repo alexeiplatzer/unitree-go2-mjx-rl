@@ -5,7 +5,8 @@ import mujoco
 import jax
 import jax.numpy as jnp
 import numpy as np
-from etils.epath import Path, PathLike
+from pathlib import Path
+from etils.epath import PathLike
 import functools
 
 from quadruped_mjx_rl.domain_randomization import DomainRandomizationConfig
@@ -60,26 +61,20 @@ def tile_images(img: np.ndarray, d: int) -> np.ndarray:
 def render_vision_observations(
     env: Env, seed: int, domain_rand_config: DomainRandomizationConfig, num_worlds: int
 ) -> list[np.ndarray]:
-    # TODO: update
     rng_key = jax.random.PRNGKey(seed)
     domain_rand_key, reset_key = jax.random.split(rng_key, 2)
     wrapped_env = wrap_for_training(
         env=env,
+        num_envs=num_worlds,
+        randomization_config=domain_rand_config,
+        rng_key=domain_rand_key,
         vision=True,
-        num_vision_envs=num_worlds,
-        randomization_fn=functools.partial(
-            domain_rand_config=domain_rand_config,
-            env_model=env.env_model,
-            rng_key=domain_rand_key,
-            num_worlds=num_worlds,
-        ),
     )
-    jit_reset = jax.jit(wrapped_env.reset)
-    jit_step = jax.jit(wrapped_env.step)
 
     # Execute one step
-    state = jit_reset(jax.random.split(reset_key, num_worlds))
-    state = jit_step(state, jnp.zeros((num_worlds, env.action_size)))
+    state = jax.jit(wrapped_env.reset)(jax.random.split(reset_key, num_worlds))
+    state = jax.jit(wrapped_env.step)(state, jnp.zeros((num_worlds, env.action_size)))
+    vision_obs = jax.jit(wrapped_env.get_vision_obs)(state.pipeline_state, state.info)
 
     n_images, n_rows = (
         (16, 4)
@@ -87,11 +82,10 @@ def render_vision_observations(
         else (9, 3) if num_worlds >= 9 else (4, 2) if num_worlds >= 4 else (1, 1)
     )
     images = []
-    for key in state.obs:
-        if key.startswith("pixels/"):
-            view_tensor = state.obs[key]
-            view_image = tile_images(view_tensor[:n_images], n_rows)
-            images.append(view_image)
+    for key in vision_obs:
+        view_tensor = vision_obs[key]
+        view_image = tile_images(view_tensor[:n_images], n_rows)
+        images.append(view_image)
     return images
 
 

@@ -98,10 +98,11 @@ def make_arena(
     """Adds some lights and the listed tiles in a grid pattern to the provided spec"""
     spec = empty_arena_spec
 
-    # Add lights
-    for x in [-1, 1]:
-        for y in [-1, 1]:
-            spec.worldbody.add_light(pos=[x, y, 40], dir=[-x, -y, -15])
+    # TODO: maybe make lights addition a configurable option
+    # # Add lights
+    # for x in [-1, 1]:
+    #     for y in [-1, 1]:
+    #         spec.worldbody.add_light(pos=[x, y, 40], dir=[-x, -y, -15])
 
     # Sanity check
     if not check_tiles(tiles):
@@ -114,7 +115,8 @@ def make_arena(
             tiles[i][j].create_tile(
                 spec=spec,
                 grid_loc=[
-                    (j - column_offset) * 2 * square_side, (i - row_offset) * 2 * square_side
+                    (j - column_offset) * 2 * square_side,
+                    (i - row_offset) * 2 * square_side,
                 ],
                 name=f"tile_{i}_{j}",
             )
@@ -138,10 +140,11 @@ class FlatTiledTerrainConfig(TerrainConfig):
     """A terrain with a rectangular grid of featureless monochromatic flat tiles.
     Useful for domain-randomizing their properties"""
 
-    base_scene_file: str = "scene_mjx_empty_arena.xml"
+    base_scene_file: str = "scene_mjx_vision.xml"
     n_rows: int = 20
     n_columns: int = 20
     square_size: float = 1.0
+    floor_thickness: float = 0.01
     column_offset: int = 0
 
     @classmethod
@@ -150,7 +153,10 @@ class FlatTiledTerrainConfig(TerrainConfig):
 
     def create_in_spec(self, spec: mj.MjSpec) -> None:
         tiles = [
-            [FlatTile(square_side=self.square_size) for _ in range(self.n_columns)]
+            [
+                FlatTile(square_side=self.square_size, floor_thickness=self.floor_thickness)
+                for _ in range(self.n_columns)
+            ]
             for _ in range(self.n_rows)
         ]
         make_arena(spec, tiles, self.column_offset)
@@ -161,9 +167,10 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     randomization_config: ColorMapRandomizationConfig = field(
         default_factory=ColorMapRandomizationConfig
     )
-    num_colors: int = 2
+    n_rows: int = 9
+    num_colors: int = 36
     add_goal: bool = True
-    goal_location: list[float] = field(default_factory=lambda: [10, 0, 0.5])
+    goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
     goal_size: float = 0.5
 
     @classmethod

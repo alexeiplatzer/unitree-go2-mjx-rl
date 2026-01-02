@@ -65,10 +65,15 @@ if __name__ == "__main__":
                 f"Config file {config_file_path} found neither with given path nor in the "
                 f"config directory."
             )
-    robot_config, terrain_config, env_config, vision_wrapper_config, model_config, training_config = (
-        prepare_all_configs(
-            paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", *config_file_paths
-        )
+    (
+        robot_config,
+        terrain_config,
+        env_config,
+        vision_wrapper_config,
+        model_config,
+        training_config,
+    ) = prepare_all_configs(
+        paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", *config_file_paths
     )
 
     # Prepare environment model

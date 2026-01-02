@@ -8,7 +8,9 @@ from jax import numpy as jnp
 from quadruped_mjx_rl.domain_randomization.randomized_tiles import color_meaning_fn
 from quadruped_mjx_rl.environments.base import Env
 from quadruped_mjx_rl.environments.vision.vision_wrappers import (
-    register_vision_wrapper_config_class, VisionWrapper, VisionWrapperConfig,
+    register_vision_wrapper_config_class,
+    VisionWrapper,
+    VisionWrapperConfig,
 )
 from quadruped_mjx_rl.physics_pipeline import PipelineModel, PipelineState
 from quadruped_mjx_rl.types import Observation
