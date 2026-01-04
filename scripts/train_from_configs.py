@@ -22,8 +22,8 @@ from quadruped_mjx_rl.training.train_interface import train as train_ppo
 
 
 if __name__ == "__main__":
-    debug = True
-    headless = False
+    debug = False
+    headless = True
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
