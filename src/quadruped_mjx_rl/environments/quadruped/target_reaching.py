@@ -19,7 +19,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
     EnvironmentConfig,
 )
 from quadruped_mjx_rl.robots import RobotConfig
-from quadruped_mjx_rl.types import Action, PRNGKey
+from quadruped_mjx_rl.types import Action, Observation, PRNGKey
 
 
 @dataclass
@@ -75,13 +75,30 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         self._rewards_config = environment_config.rewards
         self._goal_id = self._env_model.body("goal_sphere").id
 
-    def reset(self, rng: PRNGKey) -> State:
-        state = super().reset(rng)
+    def _init_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, Any],
+    ) -> Observation:
+        obs = super()._init_obs(pipeline_state, state_info)
+        state_info["goal_xy"] = pipeline_state.data.xpos[self._goal_id, :2]
+        state_info["last_pos_xy"] = pipeline_state.x.pos[0, :2]
+        state_info["goalwards_xy"] = state_info["goal_xy"] - pipeline_state.x.pos[0, :2]
+        obs["goalwards_xy"] = state_info["goalwards_xy"]
+        return obs
 
-        state.info["goal_xy"] = state.pipeline_state.data.xpos[self._goal_id, :2]
-        state.info["last_pos_xy"] = state.pipeline_state.x.pos[0, :2]
-
-        return state
+    def _get_obs(
+        self,
+        pipeline_state: PipelineState,
+        state_info: dict[str, Any],
+        previous_obs: Observation,
+    ) -> Observation:
+        obs = super()._get_obs(
+            pipeline_state=pipeline_state, state_info=state_info, previous_obs=previous_obs
+        )
+        state_info["goalwards_xy"] = state_info["goal_xy"] - pipeline_state.x.pos[0, :2]
+        obs["goalwards_xy"] = state_info["goalwards_xy"]
+        return obs
 
     def _get_rewards(
         self,
@@ -94,7 +111,7 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
 
         x, xd = pipeline_state.x, pipeline_state.xd
 
-        goalwards_xy = state_info["goal_xy"] - x.pos[0, :2]
+        goalwards_xy = state_info["goalwards_xy"]
         last_goalwards_xy = state_info["goal_xy"] - state_info["last_pos_xy"]
 
         state_info["last_pos_xy"] = x.pos[0, :2]

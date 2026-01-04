@@ -105,7 +105,7 @@ class TeacherStudentMixedModeConfig(TeacherStudentVisionConfig):
                     dense=ModuleConfigMLP(layer_sizes=[256]),
                     obs_key="pixels/terrain/depth",
                 ),
-                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="privileged"),
+                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goalwards_xy"),
             ),
             student=default_super.student,
             latent_encoding_size=default_super.latent_encoding_size,
