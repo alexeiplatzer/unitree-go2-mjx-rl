@@ -15,43 +15,18 @@ model:
       - 32
       obs_key: privileged_terrain_map
   encoder_supersteps: 16
-  latent_encoding_size: 128
-  model_class: TeacherStudentRecurrent
+  latent_encoding_size: 256
+  model_class: ActorCriticMixedMode
   policy:
     layer_sizes:
     - 256
     - 128
-    obs_key: proprioceptive_history
-  student:
-    convolutional:
-      dense:
-        layer_sizes:
-        - 128
-        - 64
-        obs_key: null
-      filter_sizes:
-      - 16
-      - 32
-      - 32
-      obs_key: pixels/ego_frontal/rgb_adjusted
-    proprioceptive_preprocessing:
-      layer_sizes:
-      - 128
-      - 64
-      obs_key: proprioceptive
-    recurrent:
-      dense:
-        layer_sizes:
-        - 128
-        obs_key: null
-      recurrent_size: 128
-  student_encoder_supersteps: 4
-  student_recurrent_backpropagation_steps: 64
+    obs_key: proprioceptive
   value:
     layer_sizes:
     - 256
     - 256
-    obs_key: proprioceptive_history
+    obs_key: proprioceptive
 training:
   action_repeat: 1
   augment_pixels: false
@@ -66,7 +41,7 @@ training:
   num_minibatches: 4
   num_resets_per_eval: 0
   num_timesteps: 100000
-  num_updates_per_batch: 2
+  num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0004
     max_grad_norm: 1.0
@@ -79,7 +54,7 @@ training:
     normalize_advantage: true
     reward_scaling: 1
   seed: 0
-  training_class: PPO_RecurrentStudent
+  training_class: PPO_Vision
   training_metrics_steps: null
   unroll_length: 4
   use_vision: true

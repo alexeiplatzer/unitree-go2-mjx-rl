@@ -3,7 +3,7 @@ model:
     joint_processing:
       layer_sizes:
       - 256
-      obs_key: privileged
+      obs_key: goalwards_xy
     vision_preprocessing:
       dense:
         layer_sizes:

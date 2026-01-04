@@ -1,12 +1,20 @@
 environment:
-  command: {}
+  command:
+    ranges:
+      ang_vel_yaw_max: 0.7
+      ang_vel_yaw_min: -0.7
+      lin_vel_x_max: 1.5
+      lin_vel_x_min: -0.6
+      lin_vel_y_max: 0.8
+      lin_vel_y_min: -0.8
+    resampling_time: 500
   control:
     action_scale: 0.3
   domain_rand:
     apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: QuadrupedVisionTarget
+  environment_class: JoystickBase
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
@@ -21,15 +29,15 @@ environment:
       ang_vel_xy: -0.05
       feet_air_time: 0.2
       foot_slip: -0.1
-      goal_progress: 2.5
-      goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
       orientation: -5.0
-      speed_towards_goal: 2.5
+      stand_still: -0.5
       termination: -1.0
       torques: -0.0002
+      tracking_ang_vel: 0.8
+      tracking_lin_vel: 1.5
     termination_body_height: 0.18
-    yaw_alignment_threshold: 1.35
+    tracking_sigma: 0.25
   sim:
     ctrl_dt: 0.02
     override:
@@ -37,9 +45,9 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 terrain:
-  add_goal: true
+  add_goal: false
   base_scene_file: scene_mjx_vision.xml
-  column_offset: 0
+  column_offset: 5
   egocentric_camera:
     fovy: 80
     location:

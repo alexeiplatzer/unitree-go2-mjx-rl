@@ -100,7 +100,7 @@ class FlatTerrainConfig(TerrainConfig):
         return "Flat"
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
-        return None
+        super().create_in_spec(spec, robot_config)
 
 
 def check_tiles(tiles: list[list[TerrainTileConfig]]) -> bool:
@@ -176,6 +176,7 @@ class FlatTiledTerrainConfig(TerrainConfig):
         return "FlatTiled"
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
+        super().create_in_spec(spec, robot_config)
         tiles = [
             [
                 FlatTile(square_side=self.square_size, floor_thickness=self.floor_thickness)
@@ -228,6 +229,7 @@ class StripeTilesTerrainConfig(TerrainConfig):
         return "StripeTiles"
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
+        super().create_in_spec(spec, robot_config)
         flat_tiles = [FlatTile(square_side=self.square_size) for _ in range(self.n_flat_tiles)]
         stripe_tiles = [
             StripesTile(square_side=self.square_size) for _ in range(self.n_stripe_tiles)
@@ -251,7 +253,7 @@ class SimpleObstacleTerrainConfig(TerrainConfig):
         return "SimpleObstacle"
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
-        return None
+        super().create_in_spec(spec, robot_config)
 
 
 register_terrain_config_class(FlatTerrainConfig)

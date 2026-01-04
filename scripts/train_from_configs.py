@@ -22,8 +22,8 @@ from quadruped_mjx_rl.training.train_interface import train as train_ppo
 
 
 if __name__ == "__main__":
-    debug = False
-    headless = True
+    debug = True
+    headless = False
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
@@ -55,7 +55,9 @@ if __name__ == "__main__":
         (
             config_file_path
             if config_file_path.exists()
-            else paths.CONFIGS_DIRECTORY / config_file_path
+            else paths.MODEL_CONFIGS_DIRECTORY / config_file_path
+            if (paths.MODEL_CONFIGS_DIRECTORY / config_file_path).exists()
+            else paths.ENVIRONMENT_CONFIGS_DIRECTORY / config_file_path
         )
         for config_file_path in config_file_paths
     ]

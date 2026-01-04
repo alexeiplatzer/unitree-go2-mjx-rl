@@ -99,7 +99,7 @@ if __name__ == "__main__":
     env_config.observation_noise.extended_history_length = 15
     vision_wrapper_config = environments.ColorGuidedEnvConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_joystick.yaml",
         terrain_config,
         env_config,
         vision_wrapper_config,
@@ -206,6 +206,31 @@ if __name__ == "__main__":
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision_light.yaml",
+        model_config,
+        training_config,
+    )
+
+    # Actor Critic Enriched with vision
+    model_config = models.ActorCriticEnrichedConfig.default()
+    training_config = training.TrainingWithVisionConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_joystick_light.yaml",
         model_config,
         training_config,
     )

@@ -54,7 +54,7 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
             encoder=ModuleConfigCNN(
                 filter_sizes=[16, 32, 64],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
-                obs_key="pixels/frontal_ego/rgb_adjusted"
+                obs_key="privileged_terrain_map"
             ),
             latent_encoding_size=256,
             encoder_supersteps=16,
@@ -83,7 +83,7 @@ class ActorCriticMixedModeConfig(ActorCriticEnrichedConfig):
                 vision_preprocessing=ModuleConfigCNN(
                     filter_sizes=[16, 32, 32],
                     dense=ModuleConfigMLP(layer_sizes=[256]),
-                    obs_key="pixels/terrain/depth",
+                    obs_key="privileged_terrain_map",
                 ),
                 joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goalwards_xy"),
             ),
