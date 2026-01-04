@@ -46,6 +46,22 @@ environment:
     sim_dt: 0.004
 terrain:
   base_scene_file: scene_mjx_empty_arena.xml
+  egocentric_camera:
+    fovy: 80
+    location:
+    - 0.3
+    - 0.0
+    - 0.1
+    mode: fixed
+    name: ego_frontal
+    orthographic: false
+    xyaxes:
+    - 0
+    - -1
+    - 0
+    - 0
+    - 0
+    - 1
   n_flat_tiles: 4
   n_stripe_tiles: 4
   randomization_config: null
@@ -64,17 +80,4 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: false
     use_depth: true
-  renderer_config:
-    enabled_cameras:
-    - 1
-    - 2
-    enabled_geom_groups:
-    - 0
-    - 1
-    - 2
-    gpu_id: 0
-    render_batch_size: 256
-    render_height: 128
-    render_width: 128
-    use_rasterizer: false
   vision_wrapper_class: VisionBaseWrapper

@@ -45,7 +45,23 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 terrain:
-  base_scene_file: scene_mjx.xml
+  base_scene_file: scene_mjx_vision.xml
+  egocentric_camera:
+    fovy: 80
+    location:
+    - 0.3
+    - 0.0
+    - 0.1
+    mode: fixed
+    name: ego_frontal
+    orthographic: false
+    xyaxes:
+    - 0
+    - -1
+    - 0
+    - 0
+    - 0
+    - 1
   randomization_config:
     friction_max: 1.4
     friction_min: 0.6
@@ -65,17 +81,4 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: false
     use_depth: true
-  renderer_config:
-    enabled_cameras:
-    - 1
-    - 2
-    enabled_geom_groups:
-    - 0
-    - 1
-    - 2
-    gpu_id: 0
-    render_batch_size: 256
-    render_height: 128
-    render_width: 128
-    use_rasterizer: false
   vision_wrapper_class: VisionBaseWrapper

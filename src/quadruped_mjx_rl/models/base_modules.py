@@ -8,6 +8,8 @@ import jax
 import jax.numpy as jnp
 from flax import linen
 
+from quadruped_mjx_rl.types import Observation
+
 ActivationFn = Callable[[jnp.ndarray], jnp.ndarray]
 Initializer = Callable
 
@@ -32,9 +34,14 @@ class MLP(linen.Module):
     activate_final: bool = False
     bias: bool = True
     layer_norm: bool = False
+    obs_key: str | None = None
 
     @linen.compact
-    def __call__(self, data: jnp.ndarray):
+    def __call__(self, data: Observation | jax.Array, latent_input: jax.Array | None = None):
+        if self.obs_key is not None:
+            data = data[self.obs_key]
+        if latent_input is not None:
+            data = jnp.concatenate([data, latent_input], axis=-1)
         hidden = data
         for i, hidden_size in enumerate(self.layer_sizes):
             hidden = linen.Dense(
@@ -52,6 +59,7 @@ class MLP(linen.Module):
 @dataclass
 class ModuleConfigMLP(ModuleConfig):
     layer_sizes: list[int] = field(default_factory=lambda: [256, 256, 256, 256])
+    obs_key: str | None = None
 
     def create(
         self,
@@ -68,6 +76,7 @@ class ModuleConfigMLP(ModuleConfig):
             layer_sizes=layer_sizes,
             activation=activation_fn,
             activate_final=activate_final,
+            obs_key=self.obs_key,
         )
 
 
@@ -79,9 +88,12 @@ class CNN(linen.Module):
     activation: ActivationFn = linen.relu
     activate_final: bool = False
     use_bias: bool = True
+    obs_key: str | None = None
 
     @linen.compact
-    def __call__(self, data: jnp.ndarray):
+    def __call__(self, data: Observation | jax.Array):
+        if self.obs_key is not None:
+            data = data[self.obs_key]
         hidden = data
         kernel_sizes = [(3, 3)] * len(self.num_filters)
         strides = [(1, 1)] * len(self.num_filters)
@@ -110,6 +122,7 @@ class CNN(linen.Module):
 class ModuleConfigCNN(ModuleConfig):
     filter_sizes: list[int] = field(default_factory=lambda: [32, 64, 128])
     dense: ModuleConfigMLP = field(default_factory=lambda: ModuleConfigMLP)
+    obs_key: str | None = None
 
     def create(
         self,
@@ -127,6 +140,39 @@ class ModuleConfigCNN(ModuleConfig):
             dense_layer_sizes=dense_layer_sizes,
             activation=activation_fn,
             activate_final=activate_final,
+            obs_key=self.obs_key,
+        )
+
+
+class MixedModeCNN(linen.Module):
+    vision_preprocessing_module: CNN
+    joint_processing_module: MLP
+
+    def __call__(self, data: Observation) -> jax.Array:
+        visual_latent = self.vision_preprocessing_module(data)
+        return self.joint_processing_module(data, visual_latent)
+
+
+@dataclass
+class ModuleConfigMixedModeCNN(ModuleConfig):
+    vision_preprocessing: ModuleConfigCNN
+    joint_processing: ModuleConfigMLP
+
+    def create(
+        self,
+        activation_fn: ActivationFn = linen.swish,
+        activate_final: bool = True,
+        extra_final_layer_size: int | None = None,
+    ) -> MixedModeCNN:
+        return MixedModeCNN(
+            vision_preprocessing_module=self.vision_preprocessing.create(
+                activation_fn=activation_fn, activate_final=True, extra_final_layer_size=None,
+            ),
+            joint_processing_module=self.joint_processing.create(
+                activation_fn=activation_fn,
+                activate_final=activate_final,
+                extra_final_layer_size=extra_final_layer_size,
+            )
         )
 
 
@@ -218,22 +264,28 @@ class MixedModeRNN(linen.RNNCellBase):
 
     def pre_encode(
         self,
-        visual_data: jax.Array,  # Batch x Time x H x W x C
-        proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
+        data: Observation,  # Batch x (Time x H x W x C | Time*Substeps x L)
         current_done: jax.Array,  # Batch x (Time*Substeps) x 1
     ) -> tuple[jax.Array, jax.Array]:
         """Applies the visual and proprioceptive encoder modules to produce the input for
         the recurrent module, also prepares the compressed done for carry resets."""
+        # Reshape
         # Should result in Batch x (Time*Substeps*L)
-        proprioceptive_vector = jnp.reshape(
+        proprioceptive_data = data[self.proprioceptive_preprocessing_module.obs_key]
+        proprioceptive_data = jnp.reshape(
             proprioceptive_data, proprioceptive_data.shape[:-2] + (-1,)
         )
-        proprioceptive_latent = self.proprioceptive_preprocessing_module(proprioceptive_vector)
-
         # Should result in Batch x H x W x (C*Time)
+        visual_data = data[self.convolutional_module.obs_key]
         visual_data = jnp.moveaxis(visual_data, -4, -1)
         visual_data = jnp.reshape(visual_data, visual_data.shape[:-2] + (-1,))
-        visual_latent = self.convolutional_module(visual_data)
+        data = {
+            self.convolutional_module.obs_key: visual_data,
+            self.proprioceptive_preprocessing_module.obs_key: proprioceptive_data,
+        }
+
+        proprioceptive_latent = self.proprioceptive_preprocessing_module(data)
+        visual_latent = self.convolutional_module(data)
 
         recurrent_input = jnp.concatenate([proprioceptive_latent, visual_latent], axis=-1)
 
@@ -244,8 +296,7 @@ class MixedModeRNN(linen.RNNCellBase):
 
     def encode(
         self,
-        visual_data: jax.Array,  # Batch x Time x H x W x C
-        proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
+        data: Observation,  # Batch x (Time x H x W x C | Time*Substeps x L)
         current_done: jax.Array,  # Batch x (Time*Substeps)
         carry: tuple[jax.Array, jax.Array],  # Batch
         init_carry_key: jax.Array,  # Batch x KeySize
@@ -253,9 +304,7 @@ class MixedModeRNN(linen.RNNCellBase):
         """Simply updates the recurrent carry and returns the output.
         BPTT is limited to one step."""
 
-        recurrent_input, current_done = self.pre_encode(
-            visual_data, proprioceptive_data, current_done
-        )
+        recurrent_input, current_done = self.pre_encode(data, current_done)
 
         (carry, _), output = self.apply_recurrent_step(
             (carry, init_carry_key), (recurrent_input, current_done)
@@ -265,8 +314,7 @@ class MixedModeRNN(linen.RNNCellBase):
 
     def __call__(
         self,
-        visual_data: jax.Array,  # Batch x Time x H x W x C
-        proprioceptive_data: jax.Array,  # Batch x (Time*Substeps) x L
+        data: Observation,  # Batch x (Time x H x W x C | Time*Substeps x L)
         current_done: jax.Array,  # Batch x (Time*Substeps) x 1
         first_carry: tuple[jax.Array, jax.Array],  # Batch
         recurrent_buffer: jax.Array,  # Batch x BufferSize x LatentSize
@@ -276,9 +324,7 @@ class MixedModeRNN(linen.RNNCellBase):
         """Applies the network with BPTT using the buffers
         and updates the used recurrent buffers."""
 
-        recurrent_input, current_done = self.pre_encode(
-            visual_data, proprioceptive_data, current_done
-        )
+        recurrent_input, current_done = self.pre_encode(data, current_done)
 
         recurrent_buffer = jnp.moveaxis(recurrent_buffer, -2, 0)
         done_buffer = jnp.moveaxis(done_buffer, -1, 0)

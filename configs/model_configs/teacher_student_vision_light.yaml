@@ -3,11 +3,12 @@ model:
     dense:
       layer_sizes:
       - 256
+      obs_key: null
     filter_sizes:
     - 16
     - 32
     - 64
-  encoder_obs_key: pixels/terrain/depth
+    obs_key: pixels/terrain/depth
   encoder_supersteps: 16
   latent_encoding_size: 256
   model_class: TeacherStudentVision
@@ -15,21 +16,22 @@ model:
     layer_sizes:
     - 256
     - 128
-  policy_obs_key: proprioceptive
+    obs_key: proprioceptive
   student:
     dense:
       layer_sizes:
       - 256
+      obs_key: null
     filter_sizes:
     - 16
     - 32
     - 64
-  student_obs_key: pixels/frontal_ego/rgb_adjusted
+    obs_key: pixels/frontal_ego/rgb_adjusted
   value:
     layer_sizes:
     - 256
     - 256
-  value_obs_key: proprioceptive
+    obs_key: proprioceptive
 training:
   action_repeat: 1
   augment_pixels: false
@@ -61,3 +63,5 @@ training:
   training_metrics_steps: null
   unroll_length: 4
   use_vision: true
+  vision_frame_height: 64
+  vision_frame_width: 64

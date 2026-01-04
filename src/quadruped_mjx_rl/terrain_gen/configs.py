@@ -39,7 +39,7 @@ class TerrainConfig(Configuration, ABC):
         None
     )
     egocentric_camera: CameraConfig = field(
-        default_factory=predefined_camera_configs["ego_frontal"]
+        default_factory=lambda: predefined_camera_configs["ego_frontal"]
     )
 
     @property
@@ -197,7 +197,7 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
     goal_size: float = 0.5
     terrain_map_camera: CameraConfig = field(
-        default_factory=predefined_camera_configs["terrain_map"]
+        default_factory=lambda: predefined_camera_configs["terrain_map"]
     )
 
     @classmethod

@@ -5,6 +5,8 @@ from quadruped_mjx_rl.models.architectures import (
     TeacherStudentConfig,
     TeacherStudentVisionConfig,
     TeacherStudentRecurrentConfig,
+    TeacherStudentMixedModeConfig,
+    ActorCriticMixedModeConfig,
 )
 from quadruped_mjx_rl.models.base_modules import (
     ModuleConfigMLP,

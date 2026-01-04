@@ -20,7 +20,7 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
     ComponentNetworksArchitecture,
     register_model_config_class,
 )
-from quadruped_mjx_rl.models.base_modules import ActivationFn
+from quadruped_mjx_rl.models.base_modules import ActivationFn, ModuleConfigMixedModeCNN
 from quadruped_mjx_rl.models.base_modules import ModuleConfigCNN
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
 from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory
@@ -37,20 +37,28 @@ from quadruped_mjx_rl.types import ObservationSize
 
 @dataclass
 class ActorCriticEnrichedConfig(ActorCriticConfig):
-    encoder_obs_key: str = "pixels/frontal_ego/rgb_adjusted"
-    policy: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 128, 128])
-    )
-    value: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256])
-    )
-    encoder: ModuleConfigCNN = field(
-        default_factory=lambda: ModuleConfigCNN(
-            filter_sizes=[16, 32, 64], dense=ModuleConfigMLP(layer_sizes=[256])
+    encoder: ModuleConfigCNN
+    latent_encoding_size: int
+    encoder_supersteps: int
+
+    @classmethod
+    def default(cls) -> "ActorCriticEnrichedConfig":
+        default_super = ActorCriticConfig.default()
+        return ActorCriticEnrichedConfig(
+            policy=ModuleConfigMLP(
+                layer_sizes=[256, 128, 128], obs_key=default_super.policy.obs_key
+            ),
+            value=ModuleConfigMLP(
+                layer_sizes=[256, 256, 256], obs_key=default_super.value.obs_key
+            ),
+            encoder=ModuleConfigCNN(
+                filter_sizes=[16, 32, 64],
+                dense=ModuleConfigMLP(layer_sizes=[256]),
+                obs_key="pixels/frontal_ego/rgb_adjusted"
+            ),
+            latent_encoding_size=256,
+            encoder_supersteps=16,
         )
-    )
-    latent_encoding_size: int = 256
-    encoder_supersteps: int = 16
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -61,7 +69,35 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
         return ActorCriticNetworks
 
 
+@dataclass
+class ActorCriticMixedModeConfig(ActorCriticEnrichedConfig):
+    encoder: ModuleConfigMixedModeCNN
+
+    @classmethod
+    def default(cls) -> "ActorCriticMixedModeConfig":
+        default_super = ActorCriticEnrichedConfig.default()
+        return ActorCriticMixedModeConfig(
+            policy=default_super.policy,
+            value=default_super.value,
+            encoder=ModuleConfigMixedModeCNN(
+                vision_preprocessing=ModuleConfigCNN(
+                    filter_sizes=[16, 32, 32],
+                    dense=ModuleConfigMLP(layer_sizes=[256]),
+                    obs_key="pixels/terrain/depth",
+                ),
+                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="privileged"),
+            ),
+            latent_encoding_size=default_super.latent_encoding_size,
+            encoder_supersteps=default_super.encoder_supersteps,
+        )
+
+    @classmethod
+    def config_class_key(cls) -> str:
+        return "ActorCriticMixedMode"
+
+
 register_model_config_class(ActorCriticEnrichedConfig)
+register_model_config_class(ActorCriticMixedModeConfig)
 
 
 @flax_dataclass
@@ -107,7 +143,6 @@ class ActorCriticEnrichedNetworks(
         activation: ActivationFn = linen.swish,
     ):
         """Make Actor Critic networks with preprocessor."""
-        self.acting_encoder_obs_key = model_config.encoder_obs_key
         self.acting_encoder_module = model_config.encoder.create(
             activation_fn=activation,
             activate_final=True,
@@ -136,21 +171,9 @@ class ActorCriticEnrichedNetworks(
     def initialize(self, rng: PRNGKey) -> ActorCriticEnrichedNetworkParams:
         policy_key, value_key, encoder_key = jax.random.split(rng, 3)
         return ActorCriticEnrichedNetworkParams(
-            policy=self.policy_module.init(
-                policy_key,
-                jnp.concatenate(
-                    (self.dummy_obs[self.policy_obs_key], self.dummy_latent), axis=-1
-                ),
-            ),
-            value=self.value_module.init(
-                value_key,
-                jnp.concatenate(
-                    (self.dummy_obs[self.value_obs_key], self.dummy_latent), axis=-1
-                ),
-            ),
-            acting_encoder=self.acting_encoder_module.init(
-                encoder_key, self.dummy_obs[self.acting_encoder_obs_key]
-            ),
+            policy=self.policy_module.init(policy_key, self.dummy_obs, self.dummy_latent),
+            value=self.value_module.init(value_key, self.dummy_obs, self.dummy_latent),
+            acting_encoder=self.acting_encoder_module.init(encoder_key, self.dummy_obs),
         )
 
     def apply_acting_encoder(
@@ -162,7 +185,7 @@ class ActorCriticEnrichedNetworks(
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
         latent_encoding = self.acting_encoder_module.apply(
-            network_params.acting_encoder, observation[self.acting_encoder_obs_key]
+            network_params.acting_encoder, observation
         )
         if repeat_output:
             latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
@@ -176,10 +199,7 @@ class ActorCriticEnrichedNetworks(
         latent_encoding: jax.Array,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
-        input_vector = jnp.concatenate(
-            (observation[self.policy_obs_key], latent_encoding), axis=-1
-        )
-        return self.policy_module.apply(network_params.policy, input_vector)
+        return self.policy_module.apply(network_params.policy, observation, latent_encoding)
 
     def apply_value_with_latents(
         self,
@@ -189,11 +209,8 @@ class ActorCriticEnrichedNetworks(
         latent_encoding: jax.Array,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
-        input_vector = jnp.concatenate(
-            (observation[self.policy_obs_key], latent_encoding), axis=-1
-        )
         return jnp.squeeze(
-            self.value_module.apply(network_params.value, input_vector),
+            self.value_module.apply(network_params.value, observation, latent_encoding),
             axis=-1,
         )
 

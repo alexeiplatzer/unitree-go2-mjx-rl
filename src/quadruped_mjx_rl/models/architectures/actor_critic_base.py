@@ -30,14 +30,18 @@ from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Action
 
 @dataclass
 class ActorCriticConfig(ModelConfig):
-    policy_obs_key: str = "proprioceptive"
-    policy: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[128, 128, 128, 128, 128])
-    )
-    value_obs_key: str = "proprioceptive"
-    value: ModuleConfigMLP = field(
-        default_factory=lambda: ModuleConfigMLP(layer_sizes=[256, 256, 256, 256, 256])
-    )
+    policy: ModuleConfigMLP
+    value: ModuleConfigMLP
+
+    @classmethod
+    def default(cls) -> "ActorCriticConfig":
+        default_super = ModelConfig.default()
+        return ActorCriticConfig(
+            policy=default_super.policy,
+            value=ModuleConfigMLP(
+                layer_sizes=[256, 256, 256, 256, 256], obs_key="proprioceptive"
+            ),
+        )
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -99,13 +103,11 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         self.parametric_action_distribution = distributions.NormalTanhDistribution(
             event_size=action_size
         )
-        self.policy_obs_key = model_config.policy_obs_key
         self.policy_module = model_config.policy.create(
             activation_fn=activation,
             activate_final=False,
             extra_final_layer_size=self.parametric_action_distribution.param_size,
         )
-        self.value_obs_key = model_config.value_obs_key
         self.value_module = model_config.value.create(
             activation_fn=activation, activate_final=False, extra_final_layer_size=1
         )
@@ -117,8 +119,8 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
     def initialize(self, rng: PRNGKey) -> ActorCriticNetworkParams:
         policy_key, value_key = jax.random.split(rng)
         return ActorCriticNetworkParams(
-            policy=self.policy_module.init(policy_key, self.dummy_obs[self.policy_obs_key]),
-            value=self.value_module.init(value_key, self.dummy_obs[self.value_obs_key]),
+            policy=self.policy_module.init(policy_key, self.dummy_obs),
+            value=self.value_module.init(value_key, self.dummy_obs),
         )
 
     def apply_policy(
@@ -128,7 +130,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
         observation: Observation,
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
-        return self.policy_module.apply(network_params.policy, observation[self.policy_obs_key])
+        return self.policy_module.apply(network_params.policy, observation)
 
     def apply_value(
         self,
@@ -139,7 +141,7 @@ class ActorCriticNetworks(ComponentNetworksArchitecture[ActorCriticNetworkParams
     ) -> jax.Array:
         observation = self.preprocess_obs(preprocessor_params, observation)
         return jnp.squeeze(
-            self.value_module.apply(network_params.value, observation[self.value_obs_key]),
+            self.value_module.apply(network_params.value, observation),
             axis=-1,
         )
 

@@ -4,12 +4,12 @@ model:
     layer_sizes:
     - 128
     - 128
-  policy_obs_key: proprioceptive
+    obs_key: proprioceptive
   value:
     layer_sizes:
     - 256
     - 256
-  value_obs_key: proprioceptive
+    obs_key: proprioceptive
 training:
   action_repeat: 1
   augment_pixels: false

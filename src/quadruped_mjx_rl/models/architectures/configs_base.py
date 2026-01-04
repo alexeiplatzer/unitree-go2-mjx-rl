@@ -19,6 +19,15 @@ class ModelConfig(Configuration):
     policy: ModuleConfigMLP
 
     @classmethod
+    def default(cls) -> "ModelConfig":
+        return ModelConfig(
+            policy=ModuleConfigMLP(
+                layer_sizes=[128, 128, 128, 128, 128],
+                obs_key="proprioceptive"
+            )
+        )
+
+    @classmethod
     def config_base_class_key(cls) -> str:
         return "model"
 

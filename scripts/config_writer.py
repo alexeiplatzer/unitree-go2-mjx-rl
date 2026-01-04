@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     # --- MODELS ---
     # Actor-Critic proprioceptive
-    model_config = models.ActorCriticConfig()
+    model_config = models.ActorCriticConfig.default()
     training_config = training.TrainingConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml",
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     )
 
     # Teacher-Student proprioceptive
-    model_config = models.TeacherStudentConfig()
+    model_config = models.TeacherStudentConfig.default()
     training_config = training.TrainingConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
@@ -151,7 +151,7 @@ if __name__ == "__main__":
     )
 
     # Depth-vision Teacher with RGB-vision Student
-    model_config = models.TeacherStudentVisionConfig()
+    model_config = models.TeacherStudentVisionConfig.default()
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
@@ -167,8 +167,25 @@ if __name__ == "__main__":
         training_config,
     )
 
+    # Mixed-mode Teacher with RGB Student
+    model_config = models.TeacherStudentMixedModeConfig.default()
+    training_config = training.TrainingWithVisionConfig()
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_mixed.yaml",
+        model_config,
+        training_config,
+    )
+
+    make_model_hyperparams_lighter(model_config)
+    make_training_hyperparams_lighter(training_config)
+    cfg.save_configs(
+        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_mixed_light.yaml",
+        model_config,
+        training_config,
+    )
+
     # Teacher with recurrent student
-    model_config = models.TeacherStudentRecurrentConfig()
+    model_config = models.TeacherStudentRecurrentConfig.default()
     training_config = training.TrainingWithRecurrentStudentConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "color_guided_recurrent.yaml",
@@ -185,10 +202,7 @@ if __name__ == "__main__":
     )
 
     # Randomized terrain tiles with privileged terrain map encoder, without a student
-    model_config = models.ActorCriticEnrichedConfig()
-    model_config.policy_obs_key = "proprioceptive_history"
-    model_config.value_obs_key = "proprioceptive_history"
-    model_config.encoder_obs_key = "privileged_terrain_map"
+    model_config = models.ActorCriticMixedModeConfig.default()
     training_config = training.TrainingWithVisionConfig()
     cfg.save_configs(
         paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",

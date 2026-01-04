@@ -1,49 +1,57 @@
 model:
   encoder:
-    dense:
+    joint_processing:
       layer_sizes:
       - 256
-    filter_sizes:
-    - 16
-    - 32
-    - 32
-  encoder_obs_key: privileged_terrain_map
+      obs_key: privileged
+    vision_preprocessing:
+      dense:
+        layer_sizes:
+        - 256
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 32
+      - 32
+      obs_key: privileged_terrain_map
   encoder_supersteps: 16
-  latent_encoding_size: 256
+  latent_encoding_size: 128
   model_class: TeacherStudentRecurrent
   policy:
     layer_sizes:
     - 256
     - 128
-  policy_obs_key: proprioceptive_history
+    obs_key: proprioceptive_history
   student:
     convolutional:
       dense:
         layer_sizes:
         - 128
         - 64
+        obs_key: null
       filter_sizes:
       - 16
       - 32
       - 32
+      obs_key: pixels/ego_frontal/rgb_adjusted
     proprioceptive_preprocessing:
       layer_sizes:
       - 128
       - 64
+      obs_key: proprioceptive
     recurrent:
       dense:
         layer_sizes:
         - 128
+        obs_key: null
       recurrent_size: 128
   student_encoder_supersteps: 4
-  student_obs_key: pixels/frontal_ego/rgb_adjusted
-  student_proprio_obs_key: proprioceptive
   student_recurrent_backpropagation_steps: 64
   value:
     layer_sizes:
     - 256
     - 256
-  value_obs_key: proprioceptive_history
+    obs_key: proprioceptive_history
 training:
   action_repeat: 1
   augment_pixels: false
@@ -75,3 +83,5 @@ training:
   training_metrics_steps: null
   unroll_length: 4
   use_vision: true
+  vision_frame_height: 64
+  vision_frame_width: 64
