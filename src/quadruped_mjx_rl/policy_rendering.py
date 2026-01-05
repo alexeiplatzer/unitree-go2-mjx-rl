@@ -10,7 +10,11 @@ from jax import numpy as jnp
 
 from quadruped_mjx_rl import running_statistics
 from quadruped_mjx_rl.config_utils import Configuration, register_config_base_class
-from quadruped_mjx_rl.environments import PipelineEnv, QuadrupedJoystickBaseEnv
+from quadruped_mjx_rl.environments import (
+    PipelineEnv,
+    QuadrupedJoystickBaseEnv,
+    is_obs_key_vision,
+)
 from quadruped_mjx_rl.environments.wrappers import _vmap_wrap_with_randomization
 from quadruped_mjx_rl.environments.wrappers import EpisodeWrapper
 from quadruped_mjx_rl.models import get_networks_factory, ModelConfig
@@ -66,7 +70,10 @@ def render_policy_rollout(
     render_config: RenderConfig,
     normalize_observations: bool = False,
     domain_rand_config: DomainRandomizationConfig | None = None,
-) -> tuple[dict[str, dict[str, Sequence[np.ndarray]]], float]:
+) -> tuple[
+    dict[str, tuple[dict[str, Sequence[np.ndarray]], dict[str, Sequence[np.ndarray]] | None]],
+    float,
+]:
     model_class = type(model_config).get_model_class()
     if not isinstance(model_params, model_class.agent_params_class()):
         raise ValueError(
@@ -142,7 +149,8 @@ def render_rollout(
     env: PipelineEnv,
     unroll_factory: Callable,
     render_config: RenderConfig,
-) -> dict[str, Sequence[np.ndarray]]:
+    return_vision_obs: bool = False,
+) -> tuple[dict[str, Sequence[np.ndarray]], dict[str, Sequence[np.ndarray]] | None]:
     reset_fn = jax.jit(env.reset)
     unroll_fn = jax.jit(
         functools.partial(unroll_factory, env=env, unroll_length=render_config.n_steps)
@@ -172,4 +180,13 @@ def render_rollout(
         )
         for i in range(1, render_config.n_steps // render_every)
     ]
-    return {camera: env.render(rollout, camera=camera) for camera in render_config.cameras}
+    rendering = {camera: env.render(rollout, camera=camera) for camera in render_config.cameras}
+    if return_vision_obs:
+        vision_obs = {
+            vision_key: vision_image
+            for vision_key, vision_image in transitions.observations.items()
+            if is_obs_key_vision(vision_key)
+        }
+    else:
+        vision_obs = None
+    return rendering, vision_obs

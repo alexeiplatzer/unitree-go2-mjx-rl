@@ -55,6 +55,8 @@ if __name__ == "__main__":
         (
             config_file_path
             if config_file_path.exists()
+            else paths.CONFIGS_DIRECTORY / config_file_path
+            if (paths.CONFIGS_DIRECTORY / config_file_path).exists()
             else paths.MODEL_CONFIGS_DIRECTORY / config_file_path
             if (paths.MODEL_CONFIGS_DIRECTORY / config_file_path).exists()
             else paths.ENVIRONMENT_CONFIGS_DIRECTORY / config_file_path

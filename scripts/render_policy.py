@@ -100,7 +100,8 @@ if __name__ == "__main__":
         domain_rand_config=terrain_config.randomization_config,
     )
     for rollout_name, frames in rollouts.items():
-        for camera_name, camera_frames in frames.items():
+        mujoco_renderings, madrona_renderings = frames
+        for camera_name, camera_frames in mujoco_renderings.items():
             save_video(
                 frames=camera_frames,
                 fps=fps,

@@ -41,6 +41,9 @@ class TerrainConfig(Configuration, ABC):
     egocentric_camera: CameraConfig = field(
         default_factory=lambda: predefined_camera_configs["ego_frontal"]
     )
+    add_goal: bool = False
+    goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
+    goal_size: float = 0.5
 
     @property
     def visualization_cameras(self) -> dict[str, CameraConfig]:
@@ -66,6 +69,8 @@ class TerrainConfig(Configuration, ABC):
         add_robot_camera(spec, robot_config=robot_config, camera_config=self.egocentric_camera)
         for camera_config in self.visualization_cameras.values():
             add_world_camera(spec, camera_config=camera_config)
+        if self.add_goal:
+            add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
 
 
 register_config_base_class(TerrainConfig)
@@ -194,9 +199,6 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     )
     n_rows: int = 9
     num_colors: int = 36
-    add_goal: bool = True
-    goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
-    goal_size: float = 0.5
     terrain_map_camera: CameraConfig = field(
         default_factory=lambda: predefined_camera_configs["terrain_map"]
     )
@@ -206,8 +208,6 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
         return "ColorMap"
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
-        if self.add_goal:
-            add_goal_sphere(spec, location=self.goal_location, size=self.goal_size)
         add_robot_camera(
             spec=spec, robot_config=robot_config, camera_config=self.terrain_map_camera
         )

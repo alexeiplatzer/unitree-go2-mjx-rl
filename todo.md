@@ -2,9 +2,9 @@
 
 ## Short term
 
-- [ ] train a blind joystick policy on color map terrain
+- [X] train a blind joystick policy on color map terrain
 - [ ] train a simple vision policy for target reaching to see if it works
-- [ ] add goal sphere observations to vision teachers
+- [X] add goal sphere observations to vision teachers
 - [ ] try training the teacher only
 - [X] add tile coloring to the env model for mujoco rendering
 - [ ] check rendering with tile coloring
@@ -15,7 +15,7 @@
 - [ ] develop a simplified environment for testing the RNN setup
 - [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] try to train with a simple MLP model
-- [ ] draft a plan for the final paper
+- [X] draft a plan for the final paper
 - [ ] check how multiple GPUs can be used for vision setups
 
 ## Long term

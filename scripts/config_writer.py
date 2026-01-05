@@ -64,8 +64,20 @@ if __name__ == "__main__":
         vision_wrapper_config,
     )
 
+    # Plain target-reaching
+    terrain_config = terrain_gen.FlatTerrainConfig()
+    terrain_config.add_goal = True
+    env_config = environments.QuadrupedVisionTargetEnvConfig()
+    cfg.save_configs(
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "target_reaching.yaml",
+        terrain_config,
+        env_config,
+        vision_wrapper_config,
+    )
+
     # Target-reaching and obstacle-avoiding
     terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    terrain_config.add_goal = True
     env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
     env_config.domain_rand.apply_kicks = False
     cfg.save_configs(
