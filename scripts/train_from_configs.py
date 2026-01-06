@@ -76,7 +76,7 @@ if __name__ == "__main__":
     logging.info(f"Using configs: {config_file_paths}.")
 
     # Prepare configs
-    robot_name = "unitree_go2"
+    robot_name = "google_barkour_vb"
     (
         robot_config,
         terrain_config,
