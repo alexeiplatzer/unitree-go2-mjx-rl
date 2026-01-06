@@ -11,7 +11,7 @@ model:
         obs_key: null
       filter_sizes:
       - 8
-      obs_key: privileged_terrain_map
+      obs_key: pixels/frontal_ego/rgb_adjusted
   encoder_supersteps: 16
   latent_encoding_size: 256
   model_class: ActorCriticMixedMode
