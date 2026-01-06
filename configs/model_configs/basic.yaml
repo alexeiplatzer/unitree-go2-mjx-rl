@@ -41,7 +41,7 @@ training:
     gae_lambda: 0.95
     normalize_advantage: true
     reward_scaling: 1
-  seed: 0
+  seed: 1
   training_class: PPO
   training_metrics_steps: null
   unroll_length: 20

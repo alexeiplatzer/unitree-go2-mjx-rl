@@ -15,14 +15,14 @@ from quadruped_mjx_rl.environments.rendering import (
     save_image,
 )
 from quadruped_mjx_rl.models import ActorCriticConfig
-from quadruped_mjx_rl.models.io import save_params
+from quadruped_mjx_rl.models.io import save_params, load_params
 from quadruped_mjx_rl.terrain_gen import make_terrain
 from quadruped_mjx_rl.training import TrainingWithVisionConfig
 from quadruped_mjx_rl.training.train_interface import train as train_ppo
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     headless = True
 
     # Configure logging
@@ -41,34 +41,42 @@ if __name__ == "__main__":
     next_number = max(existing_numbers) + 1 if existing_numbers else 0
     experiment_dir = paths.EXPERIMENTS_DIRECTORY / f"experiment_{next_number}"
     experiment_dir.mkdir()
+    logging.info(f"Created directory for experiments results: {experiment_dir}.")
 
-    # Prepare configs
-    robot_name = "unitree_go2"
-    config_file_paths = (
+    # Prepare used files
+    used_file_paths = (
         [Path(sys.argv[i]) for i in range(1, len(sys.argv))]
         if len(sys.argv) > 1
         else [paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml"]
     )
-    # Instead of passing full path, user can pass just the name which is assumed to be
-    # relative to the config directory.
-    config_file_paths = [
-        (
-            config_file_path
-            if config_file_path.exists()
-            else paths.CONFIGS_DIRECTORY / config_file_path
-            if (paths.CONFIGS_DIRECTORY / config_file_path).exists()
-            else paths.MODEL_CONFIGS_DIRECTORY / config_file_path
-            if (paths.MODEL_CONFIGS_DIRECTORY / config_file_path).exists()
-            else paths.ENVIRONMENT_CONFIGS_DIRECTORY / config_file_path
-        )
-        for config_file_path in config_file_paths
-    ]
-    for config_file_path in config_file_paths:
-        if not config_file_path.exists():
-            raise FileNotFoundError(
-                f"Config file {config_file_path} found neither with given path nor in the "
-                f"config directory."
-            )
+    pretrained_params_path = None
+    config_file_paths = []
+    for used_file_path in used_file_paths:
+        if used_file_path.suffix == ".yaml":
+            # Instead of passing full path, user can pass just the name which is assumed to be
+            # relative to the config directory.
+            if used_file_path.exists():
+                config_file_paths.append(used_file_path)
+            elif (paths.CONFIGS_DIRECTORY / used_file_path).exists():
+                config_file_paths.append(paths.CONFIGS_DIRECTORY / used_file_path)
+            elif (paths.MODEL_CONFIGS_DIRECTORY / used_file_path).exists():
+                config_file_paths.append(paths.MODEL_CONFIGS_DIRECTORY / used_file_path)
+            elif (paths.ENVIRONMENT_CONFIGS_DIRECTORY / used_file_path).exists():
+                config_file_paths.append(paths.ENVIRONMENT_CONFIGS_DIRECTORY / used_file_path)
+            else:
+                raise FileNotFoundError(
+                    f"Config file {used_file_path} found neither with given path nor in the "
+                    f"config directory."
+                )
+        else:
+            probable_params_path = paths.EXPERIMENTS_DIRECTORY / used_file_path / "trained_policy"
+            if probable_params_path.exists():
+                pretrained_params_path = probable_params_path
+                logging.info(f"Pretrained params found under path: {pretrained_params_path}.")
+    logging.info(f"Using configs: {config_file_paths}.")
+
+    # Prepare configs
+    robot_name = "unitree_go2"
     (
         robot_config,
         terrain_config,
@@ -115,6 +123,9 @@ if __name__ == "__main__":
         renderer_maker=renderer_maker,
     )
 
+    # Restore params
+    restored_params = load_params(str(pretrained_params_path)) if pretrained_params_path else None
+
     # Prepare everything for the training function
     assert isinstance(model_config, ActorCriticConfig)
     training_env = env_factory()
@@ -132,6 +143,7 @@ if __name__ == "__main__":
         show_outputs=not headless,
         run_in_cell=False,
         save_plots_path=training_plots_dir,
+        restore_params=restored_params,
     )
     save_params(params=trained_params, path=experiment_dir / "trained_policy")
     logging.info("Training complete. Params saved.")
