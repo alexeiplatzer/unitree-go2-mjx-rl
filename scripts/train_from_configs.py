@@ -22,7 +22,7 @@ from quadruped_mjx_rl.training.train_interface import train as train_ppo
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
     headless = True
 
     # Configure logging
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     logging.info(f"Using configs: {config_file_paths}.")
 
     # Prepare configs
-    robot_name = "google_barkour_vb"
+    robot_name = "unitree_go2"
     (
         robot_config,
         terrain_config,

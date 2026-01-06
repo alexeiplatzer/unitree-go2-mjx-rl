@@ -6,30 +6,24 @@ environment:
     apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-    obstacle_location_noise: 3.0
-  environment_class: QuadrupedObstacleAvoiding
+  environment_class: QuadrupedVisionTarget
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
-    extended_history_length: null
+    extended_history_length: 15
     general_noise: 0.05
-    history_length: 15
+    history_length: 1
   rewards:
-    collision_radius: 0.2
-    goal_radius: 0.2
-    obstacle_margin: 0.9
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
     scales:
       action_rate: -0.01
       ang_vel_xy: -0.05
-      collision: -5.0
       feet_air_time: 0.2
       foot_slip: -0.1
       goal_progress: 2.5
       goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
-      obstacle_proximity: -1.0
       orientation: -5.0
       speed_towards_goal: 2.5
       termination: -1.0
@@ -43,8 +37,9 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 terrain:
-  add_goal: true
-  base_scene_file: scene_mjx_cylinders.xml
+  add_goal: false
+  base_scene_file: scene_mjx_vision.xml
+  column_offset: 0
   egocentric_camera:
     fovy: 80
     location:
@@ -61,17 +56,36 @@ terrain:
     - 0
     - 0
     - 1
+  floor_thickness: 0.05
   goal_location:
   - 20
   - 0
   - 0.5
   goal_size: 0.5
+  n_columns: 20
+  n_rows: 9
+  num_colors: 36
   randomization_config:
-    friction_max: 1.4
-    friction_min: 0.6
-    gain_max: 5.0
-    gain_min: -5.0
-  terrain_class: SimpleObstacle
+    num_colors: 2
+    tile_body_prefix: tile_
+  square_size: 1.0
+  terrain_class: ColorMap
+  terrain_map_camera:
+    fovy: 5
+    location:
+    - 2
+    - 0
+    - 2
+    mode: track
+    name: terrain_map
+    orthographic: true
+    xyaxes:
+    - 0
+    - -1
+    - 0
+    - 1
+    - 0
+    - 0
 vision_wrapper:
   brightness:
   - 0.75
@@ -82,7 +96,7 @@ vision_wrapper:
     use_brightness_randomized_rgb: true
     use_depth: false
   - name: terrain
-    use_actual_rgb: false
+    use_actual_rgb: true
     use_brightness_randomized_rgb: false
-    use_depth: true
-  vision_wrapper_class: VisionBaseWrapper
+    use_depth: false
+  vision_wrapper_class: ColorGuidedWrapper

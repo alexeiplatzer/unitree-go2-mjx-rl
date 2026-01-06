@@ -45,6 +45,7 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 terrain:
+  add_goal: false
   base_scene_file: scene_mjx_vision.xml
   egocentric_camera:
     fovy: 80
@@ -62,6 +63,11 @@ terrain:
     - 0
     - 0
     - 1
+  goal_location:
+  - 20
+  - 0
+  - 0.5
+  goal_size: 0.5
   randomization_config:
     friction_max: 1.4
     friction_min: 0.6
