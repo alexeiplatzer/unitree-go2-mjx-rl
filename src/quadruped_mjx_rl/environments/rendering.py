@@ -85,7 +85,7 @@ def render_vision_observations(
     for key in vision_obs:
         view_tensor = vision_obs[key]
         view_image = tile_images(view_tensor[:n_images], n_rows)
-        {key: view_image}
+        images = {key: view_image}
     return images
 
 
