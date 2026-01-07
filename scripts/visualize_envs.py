@@ -22,7 +22,7 @@ from quadruped_mjx_rl import robots, terrain_gen, environments, training
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
     version = "joystick"
     seed = 0
 
