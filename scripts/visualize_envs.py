@@ -77,9 +77,10 @@ if __name__ == "__main__":
         domain_rand_config=terrain_config.randomization_config,
         num_worlds=training_config.num_envs,
     )
+    logging.info(f"Vision observations rendered: {images.keys()}")
     for key, image in images.items():
         safe_name = key.replace("/", "_")
-        if key == "privileged_map":
+        if key == "privileged_terrain_map":
             # Channel 0: Friction
             save_image(image[..., 0], pictures_dir / f"vision_obs_{safe_name}_friction.png")
             # Channel 1: Stiffness
