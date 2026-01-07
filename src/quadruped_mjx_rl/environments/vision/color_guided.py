@@ -57,7 +57,7 @@ class ColorGuidedVisionWrapper(VisionWrapper):
         state_info: dict[str, Any],
     ) -> Observation:
         obs = super().get_vision_obs(pipeline_state, state_info)
-        obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain/rgb"])
+        obs["privileged_terrain_map"] = self._privileged_terrain_map(obs["pixels/terrain_map/rgb"])
         return obs
 
     def _privileged_terrain_map(self, terrain_rgba: jax.Array) -> jax.Array:
