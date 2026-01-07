@@ -77,9 +77,12 @@ if __name__ == "__main__":
         domain_rand_config=terrain_config.randomization_config,
         num_worlds=training_config.num_envs,
     )
-    # TODO: convert the privileged map to grayscale
-    # the privileged map is two channels corresponding to friction and stiffness
-    # split into two images and save as grayscalse
     for key, image in images.items():
         safe_name = key.replace("/", "_")
-        save_image(image, pictures_dir / f"vision_obs_{safe_name}.png")
+        if key == "privileged_map":
+            # Channel 0: Friction
+            save_image(image[..., 0], pictures_dir / f"vision_obs_{safe_name}_friction.png")
+            # Channel 1: Stiffness
+            save_image(image[..., 1], pictures_dir / f"vision_obs_{safe_name}_stiffness.png")
+        else:
+            save_image(image, pictures_dir / f"vision_obs_{safe_name}.png")
