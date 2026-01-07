@@ -60,7 +60,7 @@ def tile_images(img: np.ndarray, d: int) -> np.ndarray:
 
 def render_vision_observations(
     env: Env, seed: int, domain_rand_config: DomainRandomizationConfig, num_worlds: int
-) -> list[np.ndarray]:
+) -> dict[str, np.ndarray]:
     rng_key = jax.random.PRNGKey(seed)
     domain_rand_key, reset_key = jax.random.split(rng_key, 2)
     wrapped_env = wrap_for_training(
@@ -81,11 +81,11 @@ def render_vision_observations(
         if num_worlds >= 16
         else (9, 3) if num_worlds >= 9 else (4, 2) if num_worlds >= 4 else (1, 1)
     )
-    images = []
+    images = {}
     for key in vision_obs:
         view_tensor = vision_obs[key]
         view_image = tile_images(view_tensor[:n_images], n_rows)
-        images.append(view_image)
+        {key: view_image}
     return images
 
 

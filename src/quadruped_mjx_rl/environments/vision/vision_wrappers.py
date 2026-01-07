@@ -37,7 +37,7 @@ class VisionWrapperConfig(Configuration):
             VisionWrapperConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionWrapperConfig.CameraInputConfig(name="terrain", use_depth=True),
+            VisionWrapperConfig.CameraInputConfig(name="terrain_map", use_depth=True),
         ]
     )
 

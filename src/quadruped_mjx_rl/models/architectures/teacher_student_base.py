@@ -103,7 +103,7 @@ class TeacherStudentMixedModeConfig(TeacherStudentVisionConfig):
                 vision_preprocessing=ModuleConfigCNN(
                     filter_sizes=[16, 32, 32],
                     dense=ModuleConfigMLP(layer_sizes=[256]),
-                    obs_key="pixels/terrain/depth",
+                    obs_key="pixels/terrain_map/depth",
                 ),
                 joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goalwards_xy"),
             ),

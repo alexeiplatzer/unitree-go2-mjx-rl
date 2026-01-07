@@ -25,7 +25,7 @@ class ColorGuidedEnvConfig(VisionWrapperConfig):
             VisionWrapperConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionWrapperConfig.CameraInputConfig(name="terrain", use_actual_rgb=True),
+            VisionWrapperConfig.CameraInputConfig(name="terrain_map", use_actual_rgb=True),
         ]
     )
 
