@@ -30,7 +30,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
     # Prepare experiment results directory
-    experiment_name = "joystick_basic"
+    experiment_name = "target_reaching_1"
     experiment_dir = paths.EXPERIMENTS_DIRECTORY / "server_experiments" / experiment_name
 
     # Prepare configs
@@ -44,8 +44,8 @@ if __name__ == "__main__":
         training_config,
     ) = prepare_all_configs(
         paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
-        paths.MODEL_CONFIGS_DIRECTORY / f"basic.yaml",
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"joystick_basic.yaml",
+        paths.MODEL_CONFIGS_DIRECTORY / f"color_guided_vision.yaml",
+        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"target_reaching.yaml",
     )
     render_config = RenderConfig(
         episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal"]

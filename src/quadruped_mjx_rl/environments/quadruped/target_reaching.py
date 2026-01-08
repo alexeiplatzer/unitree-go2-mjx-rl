@@ -20,6 +20,7 @@ from quadruped_mjx_rl.environments.quadruped.base import (
 )
 from quadruped_mjx_rl.robots import RobotConfig
 from quadruped_mjx_rl.types import Action, Observation, PRNGKey
+from quadruped_mjx_rl import math
 
 
 @dataclass
@@ -75,16 +76,22 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         self._rewards_config = environment_config.rewards
         self._goal_id = self._env_model.body("goal_sphere").id
 
+    @staticmethod
+    def _update_vectors(pipeline_state: PipelineState, state_info: dict[str, Any]) -> None:
+        state_info["goal_dir_world"] = state_info["goal_pos"] - pipeline_state.x.pos[0]
+        inv_torso_rot = math.quat_inv(pipeline_state.x.rot[0])
+        state_info["goal_dir_local"] = math.rotate(state_info["goal_dir_world"], inv_torso_rot)
+
     def _init_obs(
         self,
         pipeline_state: PipelineState,
         state_info: dict[str, Any],
     ) -> Observation:
         obs = super()._init_obs(pipeline_state, state_info)
-        state_info["goal_xy"] = pipeline_state.data.xpos[self._goal_id, :2]
-        state_info["last_pos_xy"] = pipeline_state.x.pos[0, :2]
-        state_info["goalwards_xy"] = state_info["goal_xy"] - pipeline_state.x.pos[0, :2]
-        obs["goalwards_xy"] = state_info["goalwards_xy"]
+        state_info["goal_pos"] = pipeline_state.data.xpos[self._goal_id]
+        self._update_vectors(pipeline_state, state_info)
+        state_info["last_pos"] = pipeline_state.x.pos[0]
+        obs["goal_direction"] = state_info["goal_dir_local"]
         return obs
 
     def _get_obs(
@@ -96,8 +103,8 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         obs = super()._get_obs(
             pipeline_state=pipeline_state, state_info=state_info, previous_obs=previous_obs
         )
-        state_info["goalwards_xy"] = state_info["goal_xy"] - pipeline_state.x.pos[0, :2]
-        obs["goalwards_xy"] = state_info["goalwards_xy"]
+        self._update_vectors(pipeline_state, state_info)
+        obs["goal_direction"] = state_info["goal_dir_local"]
         return obs
 
     def _get_rewards(
@@ -111,31 +118,31 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
 
         x, xd = pipeline_state.x, pipeline_state.xd
 
-        goalwards_xy = state_info["goalwards_xy"]
-        last_goalwards_xy = state_info["goal_xy"] - state_info["last_pos_xy"]
+        goal_dir = state_info["goal_dir_world"]
+        last_goal_dir = state_info["goal_pos"] - state_info["last_pos"]
 
-        state_info["last_pos_xy"] = x.pos[0, :2]
+        rewards["goal_progress"] = self._reward_goal_progress(last_goal_dir, goal_dir)
+        rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goal_dir)
+        rewards["goal_yaw_alignment"] = self._reward_goal_yaw_alignment(x, goal_dir)
 
-        rewards["goal_progress"] = self._reward_goal_progress(last_goalwards_xy, goalwards_xy)
-        rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goalwards_xy)
-        rewards["goal_yaw_alignment"] = self._reward_goal_yaw_alignment(x, goalwards_xy)
+        state_info["last_pos"] = x.pos[0]
 
         return rewards
 
     # ------------ reward functions ------------
     def _reward_goal_progress(
-        self, last_goalwards_xy: jax.Array, goalwards_xy: jax.Array
+        self, last_goal_dir: jax.Array, goal_dir: jax.Array
     ) -> jax.Array:
-        return jnp.linalg.norm(last_goalwards_xy) - jnp.linalg.norm(goalwards_xy)
+        return jnp.linalg.norm(last_goal_dir) - jnp.linalg.norm(goal_dir)
 
-    def _reward_speed_towards_goal(self, xd: Motion, goalwards_xy: jax.Array) -> jax.Array:
-        goalwards_direction_xy = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
-        return jnp.dot(goalwards_direction_xy, xd.vel[0, :2])
+    def _reward_speed_towards_goal(self, xd: Motion, goal_dir: jax.Array) -> jax.Array:
+        goalwards_direction_xy = goal_dir / (jnp.linalg.norm(goal_dir) + 1e-6)
+        return jnp.dot(goalwards_direction_xy, xd.vel[0])
 
-    def _reward_goal_yaw_alignment(self, x: Transform, goalwards_xy: jax.Array) -> jax.Array:
-        forward = math.rotate(jnp.array([1.0, 0.0, 0.0]), x.rot[0])[:2]
+    def _reward_goal_yaw_alignment(self, x: Transform, goal_dir: jax.Array) -> jax.Array:
+        forward = math.rotate(jnp.array([1.0, 0.0, 0.0]), x.rot[0])
         forward_direction = forward / (jnp.linalg.norm(forward) + 1e-6)
-        goal_direction = goalwards_xy / (jnp.linalg.norm(goalwards_xy) + 1e-6)
+        goal_direction = goal_dir / (jnp.linalg.norm(goal_dir) + 1e-6)
 
         cos_angle = jnp.clip(jnp.dot(forward_direction, goal_direction), -1.0, 1.0)
         angle = jnp.arccos(cos_angle)

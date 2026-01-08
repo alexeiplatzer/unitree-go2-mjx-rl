@@ -42,8 +42,8 @@ class TerrainConfig(Configuration, ABC):
         default_factory=lambda: predefined_camera_configs["ego_frontal"]
     )
     add_goal: bool = False
-    goal_location: list[float] = field(default_factory=lambda: [20, 0, 0.5])
-    goal_size: float = 0.5
+    goal_location: list[float] = field(default_factory=lambda: [20, 0, 2])
+    goal_size: float = 2
 
     @property
     def visualization_cameras(self) -> dict[str, CameraConfig]:
