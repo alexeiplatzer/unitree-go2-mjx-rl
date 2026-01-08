@@ -19,7 +19,6 @@ from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 from quadruped_mjx_rl.training.configs import (
     OptimizerConfig,
     TrainingConfig,
-    TrainingWithVisionConfig,
 )
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
@@ -180,8 +179,8 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.make_unroll_fn(
-                agent_params=params,
+            unroll_factory=functools.partial(
+                self.network.make_acting_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
         )
@@ -233,7 +232,6 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             )
             logging.info(f"{name} {data_key}: {evaluator_metrics[data_key]}")
             logging.info(f"{name} {data_err_key}: {evaluator_metrics[data_err_key]}")
-            # logging.info(f"current_step: {current_step}")
             progress_fn(current_step, evaluator_metrics)
 
         return evaluation_fn

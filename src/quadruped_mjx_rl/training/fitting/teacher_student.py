@@ -23,7 +23,6 @@ from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 from quadruped_mjx_rl.training.configs import (
     TeacherStudentOptimizerConfig,
     TrainingConfig,
-    TrainingWithVisionConfig,
 )
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
@@ -56,13 +55,8 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             main_loss_fn=main_loss_fn,
             algorithm_hyperparams=algorithm_hyperparams,
         )
-        # TODO: temporary fix for teacher student without vision
-        if isinstance(optimizer_config, TeacherStudentOptimizerConfig):
-            student_learning_rate = optimizer_config.student_learning_rate
-        else:
-            student_learning_rate = optimizer_config.learning_rate
         self.student_optimizer = make_optimizer(
-            student_learning_rate, optimizer_config.max_grad_norm
+            optimizer_config.student_learning_rate, optimizer_config.max_grad_norm
         )
         student_loss_fn = functools.partial(compute_student_loss, network=network)
         self.student_gradient_update_fn = gradients.gradient_update_fn(
@@ -134,8 +128,8 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.make_unroll_fn(
-                agent_params=params,
+            unroll_factory=functools.partial(
+                self.network.make_acting_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
         )
@@ -145,15 +139,9 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.make_unroll_fn(
-                agent_params=params,
+            unroll_factory=functools.partial(
+                self.network.make_student_unroll_fn,
                 deterministic=training_config.deterministic_eval,
-                policy_factory=(
-                    self.network.get_student_policy_factory()
-                    if not self.network.vision
-                    else None
-                ),
-                apply_encoder_fn=self.network.apply_student_encoder,
             ),
         )
 

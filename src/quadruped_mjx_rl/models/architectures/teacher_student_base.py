@@ -1,10 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import jax
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedConfig,
     ActorCriticEnrichedNetworkParams,
@@ -15,15 +16,11 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
     register_model_config_class,
 )
 from quadruped_mjx_rl.models.base_modules import (
-    ActivationFn, MixedModeCNN, ModuleConfigCNN,
+    ActivationFn, ModuleConfigCNN,
     ModuleConfigMixedModeCNN, ModuleConfigMLP,
 )
 from quadruped_mjx_rl.models.types import (
-    identity_observation_preprocessor,
-    Params,
-    AgentParams,
-    PolicyFactory,
-    PreprocessObservationFn,
+    AgentParams, identity_observation_preprocessor, Params, PreprocessObservationFn,
     PreprocessorParams,
 )
 from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
@@ -31,8 +28,8 @@ from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey
 
 @dataclass
 class TeacherStudentConfig(ActorCriticEnrichedConfig):
-    encoder: ModuleConfigMLP
-    student: ModuleConfigMLP
+    encoder: ModuleConfigMLP | ModuleConfigCNN | ModuleConfigMixedModeCNN
+    student: ModuleConfigMLP | ModuleConfigCNN | ModuleConfigMixedModeCNN
 
     @classmethod
     def default(cls) -> "TeacherStudentConfig":
@@ -40,30 +37,15 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
         return TeacherStudentConfig(
             policy=default_super.policy,
             value=default_super.value,
-            encoder=ModuleConfigMLP(layer_sizes=[128, 256], obs_key="environment_privileged"),
-            student=ModuleConfigMLP(layer_sizes=[512, 256], obs_key="proprioceptive_history"),
+            encoder=ModuleConfigMLP(layer_sizes=[256], obs_key="environment_privileged"),
+            student=ModuleConfigMLP(layer_sizes=[512], obs_key="proprioceptive_history"),
             latent_encoding_size=default_super.latent_encoding_size,
-            encoder_supersteps=default_super.encoder_supersteps,
         )
 
     @classmethod
-    def config_class_key(cls) -> str:
-        return "TeacherStudent"
-
-    @classmethod
-    def get_model_class(cls) -> type["TeacherStudentNetworks"]:
-        return TeacherStudentNetworks
-
-
-@dataclass
-class TeacherStudentVisionConfig(TeacherStudentConfig):
-    encoder: ModuleConfigCNN
-    student: ModuleConfigCNN
-
-    @classmethod
-    def default(cls) -> "TeacherStudentVisionConfig":
+    def default_vision(cls) -> "TeacherStudentConfig":
         default_super = TeacherStudentConfig.default()
-        return TeacherStudentVisionConfig(
+        return TeacherStudentConfig(
             policy=default_super.policy,
             value=default_super.value,
             encoder=ModuleConfigCNN(
@@ -77,26 +59,12 @@ class TeacherStudentVisionConfig(TeacherStudentConfig):
                 obs_key="pixels/frontal_ego/rgb_adjusted",
             ),
             latent_encoding_size=default_super.latent_encoding_size,
-            encoder_supersteps=default_super.encoder_supersteps,
         )
 
     @classmethod
-    def config_class_key(cls) -> str:
-        return "TeacherStudentVision"
-
-    @classmethod
-    def get_model_class(cls) -> type["TeacherStudentNetworks"]:
-        return TeacherStudentNetworks
-
-
-@dataclass
-class TeacherStudentMixedModeConfig(TeacherStudentVisionConfig):
-    encoder: ModuleConfigMixedModeCNN
-
-    @classmethod
-    def default(cls) -> "TeacherStudentMixedModeConfig":
-        default_super = TeacherStudentVisionConfig.default()
-        return TeacherStudentMixedModeConfig(
+    def default_mixed(cls) -> "TeacherStudentConfig":
+        default_super = TeacherStudentConfig.default_vision()
+        return TeacherStudentConfig(
             policy=default_super.policy,
             value=default_super.value,
             encoder=ModuleConfigMixedModeCNN(
@@ -109,12 +77,15 @@ class TeacherStudentMixedModeConfig(TeacherStudentVisionConfig):
             ),
             student=default_super.student,
             latent_encoding_size=default_super.latent_encoding_size,
-            encoder_supersteps=default_super.encoder_supersteps,
         )
+
+    @property
+    def vision(self) -> bool:
+        return super().vision or self.student.vision
 
     @classmethod
     def config_class_key(cls) -> str:
-        return "TeacherStudentMixedMode"
+        return "TeacherStudent"
 
     @classmethod
     def get_model_class(cls) -> type["TeacherStudentNetworks"]:
@@ -122,8 +93,6 @@ class TeacherStudentMixedModeConfig(TeacherStudentVisionConfig):
 
 
 register_model_config_class(TeacherStudentConfig)
-register_model_config_class(TeacherStudentVisionConfig)
-register_model_config_class(TeacherStudentMixedModeConfig)
 
 
 @flax_dataclass
@@ -165,6 +134,7 @@ class TeacherStudentNetworks(
         model_config: TeacherStudentConfig,
         observation_size: ObservationSize,
         action_size: int,
+        vision_obs_period: int | None = None,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
     ):
@@ -178,6 +148,7 @@ class TeacherStudentNetworks(
             model_config=model_config,
             observation_size=observation_size,
             action_size=action_size,
+            vision_obs_period=vision_obs_period,
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
@@ -207,7 +178,7 @@ class TeacherStudentNetworks(
             network_params.student_encoder, observation
         )
         if repeat_output:
-            latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
+            latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period, axis=0)
         return latent_encoding
 
     def apply_student_policy(
@@ -223,5 +194,24 @@ class TeacherStudentNetworks(
             preprocessor_params, network_params, observation, latent_encoding
         )
 
-    def get_student_policy_factory(self) -> PolicyFactory:
-        return self.policy_metafactory(self.apply_student_policy)
+    def make_student_unroll_fn(
+        self,
+        agent_params: TeacherStudentAgentParams,
+        *,
+        deterministic: bool = False,
+        accumulate_pipeline_states: bool = False,
+    ) -> GenerateUnrollFn:
+        if self.vision:
+            policy_factory = self.policy_metafactory(self.apply_policy_with_latents)
+            encoder_factory = self.apply_student_encoder
+        else:
+            policy_factory = self.policy_metafactory(self.apply_student_policy)
+            encoder_factory = None
+        return self.make_unroll_fn(
+            agent_params=agent_params,
+            policy_factory=policy_factory,
+            apply_encoder_fn=encoder_factory,
+            deterministic=deterministic,
+            accumulate_pipeline_states=accumulate_pipeline_states,
+        )
+

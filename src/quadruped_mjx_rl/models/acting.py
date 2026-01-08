@@ -33,6 +33,7 @@ def unroll_factory(
     fun: Callable[..., tuple],
     initial_carry_extras: tuple = (),
     remove_roll_axis: bool = False,
+    step_period: int = 1,
     **kwargs,
 ) -> GenerateUnrollFn:
     def generate_unroll(
@@ -56,7 +57,7 @@ def unroll_factory(
             roll,
             (env_state, *initial_carry_extras, key),
             (),
-            length=unroll_length,
+            length=unroll_length // step_period,
         )
         if remove_roll_axis:
             transitions = jax.tree_util.tree_map(
@@ -112,18 +113,22 @@ def _vision_actor_step(
     policy: Policy,
     vision_encoder: Callable[[Observation], jax.Array] | None = None,
     extra_fields: Sequence[str] = (),
-    proprio_substeps: int = 1,
+    vision_obs_period: int = 1,
     accumulate_pipeline_states: bool = False,
 ) -> tuple[State, Transition]:
     vision_obs = env.get_vision_obs(env_state.pipeline_state, env_state.info)
     if vision_encoder is not None:
-        latent_encoding = vision_encoder(observation=vision_obs)
+        latent_encoding = vision_encoder(observation=env_state.obs | vision_obs)
         policy = functools.partial(policy, latent_encoding=latent_encoding)
     generate_proprioceptive_unroll = proprioceptive_unroll_factory(
         policy=policy, accumulate_pipeline_states=accumulate_pipeline_states
     )
     next_state, transitions = generate_proprioceptive_unroll(
-        env_state, key, env, proprio_substeps, extra_fields
+        env_state=env_state,
+        key=key,
+        env=env,
+        unroll_length=vision_obs_period,
+        extra_fields=extra_fields,
     )
     vision_obs = jax.tree_util.tree_map(lambda x: jnp.expand_dims(x, axis=0), vision_obs)
     # add vision observations to transitions
@@ -141,16 +146,17 @@ def _vision_actor_step(
 def vision_unroll_factory(
     policy: Policy,
     vision_encoder: Callable[[Observation], jax.Array] | None = None,
-    proprio_substeps: int = 1,
+    vision_obs_period: int = 1,
     accumulate_pipeline_states: bool = False,
 ) -> GenerateUnrollFn:
     return unroll_factory(
         _vision_actor_step,
         policy=policy,
         vision_encoder=vision_encoder,
-        proprio_substeps=proprio_substeps,
+        vision_obs_period=vision_obs_period,
         remove_roll_axis=True,
         accumulate_pipeline_states=accumulate_pipeline_states,
+        step_period=vision_obs_period,
     )
 
 
@@ -164,25 +170,29 @@ def _recurrent_actor_step(
     policy: Policy,
     recurrent_encoder: RecurrentEncoder,
     extra_fields: Sequence[str] = (),
-    vision_substeps: int = 0,
-    proprio_substeps: int = 1,
+    recurrent_obs_period: int = 1,
+    vision_obs_period: int | None = None,
     accumulate_pipeline_states: bool = False,
 ) -> tuple[State, RecurrentCarry, jax.Array, Transition]:
     enriched_policy = functools.partial(policy, latent_encoding=initial_encoding)
-    if vision_substeps > 0:
+    if vision_obs_period is not None:
         generate_unroll = vision_unroll_factory(
             policy=enriched_policy,
-            proprio_substeps=proprio_substeps,
+            vision_obs_period=vision_obs_period,
             accumulate_pipeline_states=accumulate_pipeline_states,
         )
-        n_substeps = vision_substeps
     else:
         generate_unroll = proprioceptive_unroll_factory(
             policy=enriched_policy, accumulate_pipeline_states=accumulate_pipeline_states
         )
-        n_substeps = proprio_substeps
     key, recurrent_key = jax.random.split(key)
-    next_state, transitions = generate_unroll(env_state, key, env, n_substeps, extra_fields)
+    next_state, transitions = generate_unroll(
+        env_state=env_state,
+        key=key,
+        env=env,
+        unroll_length=recurrent_obs_period,
+        extra_fields=extra_fields,
+    )
     recurrent_key = jax.random.split(recurrent_key, initial_encoding.shape[0])
     transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
     next_encoding, recurrent_carry = recurrent_encoder(
@@ -201,8 +211,8 @@ def recurrent_unroll_factory(
     recurrent_encoder: RecurrentEncoder,
     encoding_size: int,
     init_carry_fn: Callable[[PRNGKey], RecurrentCarry],
-    vision_substeps: int = 0,
-    proprio_substeps: int = 1,
+    recurrent_obs_period: int | None = None,
+    vision_obs_period: int | None = None,
     recurrent_carry: RecurrentCarry | None = None,
     accumulate_pipeline_states: bool = False,
 ) -> GenerateUnrollFn:
@@ -226,10 +236,11 @@ def recurrent_unroll_factory(
             initial_carry_extras=(init_carry, initial_encoding),
             policy=policy,
             recurrent_encoder=recurrent_encoder,
-            vision_substeps=vision_substeps,
-            proprio_substeps=proprio_substeps,
+            recurrent_obs_period=recurrent_obs_period or unroll_length,
+            vision_obs_period=vision_obs_period,
             remove_roll_axis=True,
             accumulate_pipeline_states=accumulate_pipeline_states,
+            step_period=recurrent_obs_period or unroll_length,
         )
         env_state, transitions = gen_unroll(env_state, key, env, unroll_length, extra_fields)
         return env_state, transitions

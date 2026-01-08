@@ -13,15 +13,12 @@ from quadruped_mjx_rl.models.architectures.actor_critic_enriched import (
     ActorCriticEnrichedNetworkParams,
     ActorCriticEnrichedAgentParams,
     ActorCriticEnrichedNetworks,
-    ActorCriticMixedModeConfig,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
     TeacherStudentConfig,
-    TeacherStudentVisionConfig,
     TeacherStudentNetworkParams,
     TeacherStudentNetworks,
-    TeacherStudentMixedModeConfig,
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_recurrent import (
     TeacherStudentRecurrentConfig,

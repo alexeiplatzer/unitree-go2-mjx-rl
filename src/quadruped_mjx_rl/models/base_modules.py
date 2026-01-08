@@ -15,6 +15,12 @@ Initializer = Callable
 
 
 class ModuleConfig(ABC):
+
+    @property
+    @abstractmethod
+    def vision(self) -> bool:
+        pass
+
     @abstractmethod
     def create(
         self,
@@ -60,6 +66,10 @@ class MLP(linen.Module):
 class ModuleConfigMLP(ModuleConfig):
     layer_sizes: list[int] = field(default_factory=lambda: [256, 256, 256, 256])
     obs_key: str | None = None
+
+    @property
+    def vision(self) -> bool:
+        return False
 
     def create(
         self,
@@ -124,6 +134,10 @@ class ModuleConfigCNN(ModuleConfig):
     dense: ModuleConfigMLP = field(default_factory=lambda: ModuleConfigMLP)
     obs_key: str | None = None
 
+    @property
+    def vision(self) -> bool:
+        return True
+
     def create(
         self,
         activation_fn: ActivationFn = linen.swish,
@@ -157,6 +171,10 @@ class MixedModeCNN(linen.Module):
 class ModuleConfigMixedModeCNN(ModuleConfig):
     vision_preprocessing: ModuleConfigCNN
     joint_processing: ModuleConfigMLP
+
+    @property
+    def vision(self) -> bool:
+        return True
 
     def create(
         self,
@@ -219,6 +237,10 @@ class LSTM(linen.RNNCellBase):
 class ModuleConfigLSTM(ModuleConfig):
     recurrent_size: int
     dense: ModuleConfigMLP
+
+    @property
+    def vision(self) -> bool:
+        return False
 
     def create(
         self,
@@ -363,6 +385,10 @@ class ModuleConfigMixedModeRNN(ModuleConfig):
     convolutional: ModuleConfigCNN
     proprioceptive_preprocessing: ModuleConfigMLP
     recurrent: ModuleConfigLSTM
+
+    @property
+    def vision(self) -> bool:
+        return True
 
     def create(
         self,

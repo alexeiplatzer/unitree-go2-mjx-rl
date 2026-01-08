@@ -1,4 +1,3 @@
-import functools
 import logging
 import sys
 from pathlib import Path
@@ -7,18 +6,36 @@ import numpy as np
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
-from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.environments.rendering import (
-    large_overview_camera,
     render_model,
     save_image,
 )
 from quadruped_mjx_rl.models import ActorCriticConfig
-from quadruped_mjx_rl.models.io import save_params, load_params
+from quadruped_mjx_rl.models.io import load_params, save_params
 from quadruped_mjx_rl.terrain_gen import make_terrain
-from quadruped_mjx_rl.training import TrainingWithVisionConfig
+from quadruped_mjx_rl.training import TrainingConfig
 from quadruped_mjx_rl.training.train_interface import train as train_ppo
+
+
+def make_model_hyperparams_lighter(model_cfg: ActorCriticConfig) -> None:
+    model_cfg.policy.layer_sizes = [
+        model_cfg.policy.layer_sizes[0],
+        model_cfg.policy.layer_sizes[-1],
+    ]
+    model_cfg.value.layer_sizes = [
+        model_cfg.value.layer_sizes[0],
+        model_cfg.value.layer_sizes[-1],
+    ]
+
+
+def make_training_hyperparams_lighter(training_cfg: TrainingConfig) -> None:
+    training_cfg.num_timesteps = 100_000
+    training_cfg.num_envs = 4
+    training_cfg.num_eval_envs = 4
+    training_cfg.batch_size = 4
+    training_cfg.num_minibatches = 4
+    training_cfg.num_evals = 5
 
 
 if __name__ == "__main__":
@@ -87,6 +104,10 @@ if __name__ == "__main__":
     ) = prepare_all_configs(
         paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml", *config_file_paths
     )
+    assert isinstance(model_config, ActorCriticConfig)
+    if debug:
+        make_model_hyperparams_lighter(model_config)
+        make_training_hyperparams_lighter(training_config)
 
     # Prepare environment model
     env_model = make_terrain(
@@ -108,10 +129,9 @@ if __name__ == "__main__":
             )
 
     # Prepare the environment factory
-    vision = isinstance(training_config, TrainingWithVisionConfig)
     renderer_maker = (
         training_config.get_renderer_factory(gpu_id=0, debug=debug)
-        if isinstance(training_config, TrainingWithVisionConfig)
+        if model_config.vision
         else None
     )
     env_factory = get_env_factory(
@@ -119,7 +139,7 @@ if __name__ == "__main__":
         environment_config=env_config,
         env_model=env_model,
         customize_model=True,
-        vision_wrapper_config=vision_wrapper_config if vision else None,
+        vision_wrapper_config=vision_wrapper_config if model_config.vision else None,
         renderer_maker=renderer_maker,
     )
 
@@ -127,9 +147,8 @@ if __name__ == "__main__":
     restored_params = load_params(str(pretrained_params_path)) if pretrained_params_path else None
 
     # Prepare everything for the training function
-    assert isinstance(model_config, ActorCriticConfig)
     training_env = env_factory()
-    evaluation_env = env_factory() if not vision else None
+    evaluation_env = env_factory() if not model_config.vision else None
     training_plots_dir = experiment_dir / "training_plots"
     training_plots_dir.mkdir()
 

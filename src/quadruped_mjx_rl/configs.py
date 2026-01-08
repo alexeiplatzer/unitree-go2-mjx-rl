@@ -14,7 +14,7 @@ def prepare_all_configs(
     RobotConfig,
     TerrainConfig,
     EnvironmentConfig,
-    VisionWrapperConfig,
+    VisionWrapperConfig | None,
     ModelConfig,
     TrainingConfig,
 ]:
@@ -27,7 +27,7 @@ def prepare_all_configs(
     environment_config = configs["environment"]
     assert isinstance(environment_config, EnvironmentConfig)
     vision_wrapper_config = configs.get("vision_wrapper")
-    assert isinstance(vision_wrapper_config, VisionWrapperConfig)
+    assert isinstance(vision_wrapper_config, VisionWrapperConfig | None)
     model_config = configs["model"]
     assert isinstance(model_config, ModelConfig)
     training_config = configs["training"]

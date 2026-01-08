@@ -17,8 +17,7 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 )
 from quadruped_mjx_rl.models.architectures.teacher_student_base import (
     TeacherStudentAgentParams,
-    TeacherStudentMixedModeConfig, TeacherStudentNetworkParams,
-    TeacherStudentVisionConfig,
+    TeacherStudentConfig, TeacherStudentNetworkParams,
 )
 from quadruped_mjx_rl.models.base_modules import (
     ActivationFn,
@@ -39,14 +38,17 @@ from quadruped_mjx_rl.types import Observation, ObservationSize, PRNGKey, Transi
 
 
 @dataclass
-class TeacherStudentRecurrentConfig(TeacherStudentMixedModeConfig):
+class TeacherStudentRecurrentConfig(TeacherStudentConfig):
     student: ModuleConfigMixedModeRNN
     student_recurrent_backpropagation_steps: int
-    student_encoder_supersteps: int
+
+    @property
+    def recurrent(self) -> bool:
+        return True
 
     @classmethod
     def default(cls) -> "TeacherStudentRecurrentConfig":
-        default_super = TeacherStudentMixedModeConfig.default()
+        default_super = TeacherStudentConfig.default_mixed()
         return TeacherStudentRecurrentConfig(
             policy=ModuleConfigMLP(
                 layer_sizes=default_super.policy.layer_sizes, obs_key="proprioceptive_history"
@@ -76,9 +78,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentMixedModeConfig):
                 ),
             ),
             latent_encoding_size=128,
-            encoder_supersteps=default_super.encoder_supersteps,
             student_recurrent_backpropagation_steps=64,
-            student_encoder_supersteps=4,
         )
 
     @classmethod
@@ -102,6 +102,7 @@ class TeacherStudentRecurrentNetworks(
         model_config: TeacherStudentRecurrentConfig,
         observation_size: ObservationSize,
         action_size: int,
+        vision_obs_period: int | None = None,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
     ):
@@ -126,12 +127,20 @@ class TeacherStudentRecurrentNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
-        self.student_encoder_supersteps = model_config.student_encoder_supersteps
+        self.dummy_done = jnp.zeros((1,))
+        self.recurrent_period = None
+
+    @staticmethod
+    def agent_params_class() -> type[TeacherStudentAgentParams]:
+        return TeacherStudentAgentParams
+
+    def set_recurrent_period(self, unroll_length: int):
+        self.recurrent_period = unroll_length
         self.dummy_obs[self.student_encoder_module.convolutional_module.obs_key] = jnp.repeat(
             jnp.expand_dims(
                 self.dummy_obs[self.student_encoder_module.convolutional_module.obs_key], 1
             ),
-            self.student_encoder_supersteps * self.encoder_supersteps,
+            self.recurrent_period // self.vision_obs_period,
             axis=1,
         )
         self.dummy_obs[
@@ -143,37 +152,29 @@ class TeacherStudentRecurrentNetworks(
                 ],
                 1,
             ),
-            self.student_encoder_supersteps,
+            unroll_length,
             axis=1,
         )
-
-
-    @staticmethod
-    def agent_params_class() -> type[TeacherStudentAgentParams]:
-        return TeacherStudentAgentParams
+        self.dummy_done = jnp.repeat(jnp.expand_dims(self.dummy_done, 1), unroll_length, axis=1)
 
     def initialize(self, rng: PRNGKey) -> TeacherStudentNetworkParams:
+        if self.recurrent_period is None:
+            raise ValueError("Recurrent period must be set before initialization.")
         policy_key, value_key, teacher_key, student_key = jax.random.split(rng, 4)
         student_params_key, student_dummy_key, student_agent_key = jax.random.split(
             student_key, 3
         )
         dummy_agent_state = jax.tree_util.tree_map(
-            lambda x: jnp.expand_dims(x, axis=0), self.init_agent_state(jax.random.PRNGKey(0))
+            lambda x: jnp.expand_dims(x, axis=0), self.init_agent_state(student_agent_key)
         )
-        dummy_done = jnp.zeros((1,))
         return TeacherStudentNetworkParams(
             policy=self.policy_module.init(policy_key, self.dummy_obs, self.dummy_latent),
             value=self.value_module.init(value_key, self.dummy_obs, self.dummy_latent),
             acting_encoder=self.acting_encoder_module.init(teacher_key, self.dummy_obs),
             student_encoder=self.student_encoder_module.init(
-                # TODO
                 student_params_key,
                 self.dummy_obs,
-                jnp.repeat(
-                    jnp.expand_dims(dummy_done, 1),
-                    self.student_encoder_supersteps * self.encoder_supersteps,
-                    axis=1,
-                ),
+                self.dummy_done,
                 dummy_agent_state.recurrent_carry,
                 dummy_agent_state.recurrent_buffer,
                 dummy_agent_state.done_buffer,
@@ -250,19 +251,12 @@ class TeacherStudentRecurrentNetworks(
             preprocessor_params=agent_params.preprocessor_params,
             network_params=agent_params.network_params,
         )
-        if not self.vision:
-            vision_substeps = 0
-            proprio_substeps = self.student_encoder_supersteps
-        else:
-            vision_substeps = self.student_encoder_supersteps
-            proprio_substeps = self.encoder_supersteps
-
         return recurrent_unroll_factory(
             policy=policy,
             recurrent_encoder=recurrent_encoder,
             encoding_size=self.dummy_latent.shape[-1],
             init_carry_fn=self.init_student_carry,
-            vision_substeps=vision_substeps,
-            proprio_substeps=proprio_substeps,
+            recurrent_obs_period=self.recurrent_period,
+            vision_obs_period=self.vision_obs_period,
             accumulate_pipeline_states=accumulate_pipeline_states,
         )

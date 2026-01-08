@@ -26,8 +26,6 @@ from quadruped_mjx_rl.models.types import AgentParams
 from quadruped_mjx_rl.training.algorithms.ppo import compute_ppo_loss
 from quadruped_mjx_rl.training.configs import (
     TrainingConfig,
-    TrainingWithRecurrentStudentConfig,
-    TrainingWithVisionConfig,
 )
 from quadruped_mjx_rl.training.fitting import get_fitter
 from quadruped_mjx_rl.training.train_backend import train as train_backend, TrainingState
@@ -85,7 +83,7 @@ def train(
     unroll_length = training_config.unroll_length
     action_repeat = training_config.action_repeat
 
-    vision = training_config.use_vision  # TODO needs to check also on model config side
+    vision = model_config.vision
 
     # Check arguments
     training_config.check_validity()
@@ -204,11 +202,12 @@ def train(
     )
 
     agent_state = None
-    recurrent = isinstance(training_config, TrainingWithRecurrentStudentConfig)
+    recurrent = model_config.recurrent
 
     if recurrent:
         logging.info("Initializing recurrent agent state...")
         assert isinstance(ppo_networks, TeacherStudentRecurrentNetworks)
+        ppo_networks.set_recurrent_period(unroll_length)
         agent_state = jax.vmap(jax.vmap(ppo_networks.init_agent_state))(key_agent_states)
 
     logging.info("Initializing model params and training state...")
@@ -297,7 +296,7 @@ def train(
         recurrent_agent_state=agent_state,
         recurrent=recurrent,
         generate_unroll_factory=functools.partial(
-            ppo_networks.make_unroll_fn, deterministic=training_config.deterministic_eval
+            ppo_networks.make_acting_unroll_fn, deterministic=False
         ),
     )
 

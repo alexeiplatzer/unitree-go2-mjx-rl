@@ -1,16 +1,13 @@
 """Actor-Critic architecture with an additional common encoder."""
 
-import functools
-from collections.abc import Sequence, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import jax
 from flax import linen
 from flax.struct import dataclass as flax_dataclass
 from jax import numpy as jnp
 
-from quadruped_mjx_rl.environments.vision import VisionWrapper
-from quadruped_mjx_rl.models.acting import GenerateUnrollFn, vision_unroll_factory
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.models.architectures.actor_critic_base import (
     ActorCriticConfig,
     ActorCriticNetworkParams,
@@ -23,42 +20,70 @@ from quadruped_mjx_rl.models.architectures.configs_base import (
 from quadruped_mjx_rl.models.base_modules import ActivationFn, ModuleConfigMixedModeCNN
 from quadruped_mjx_rl.models.base_modules import ModuleConfigCNN
 from quadruped_mjx_rl.models.base_modules import ModuleConfigMLP
-from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams, PolicyFactory
+from quadruped_mjx_rl.models.types import AgentNetworkParams, AgentParams
 from quadruped_mjx_rl.models.types import (
     identity_observation_preprocessor,
     Params,
     PreprocessObservationFn,
     PreprocessorParams,
 )
-from quadruped_mjx_rl.physics_pipeline import Env, State
-from quadruped_mjx_rl.types import Observation, PRNGKey, Transition
+from quadruped_mjx_rl.types import Observation, PRNGKey
 from quadruped_mjx_rl.types import ObservationSize
 
 
 @dataclass
 class ActorCriticEnrichedConfig(ActorCriticConfig):
-    encoder: ModuleConfigCNN
+    encoder: ModuleConfigMLP | ModuleConfigCNN | ModuleConfigMixedModeCNN
     latent_encoding_size: int
-    encoder_supersteps: int
 
     @classmethod
     def default(cls) -> "ActorCriticEnrichedConfig":
         default_super = ActorCriticConfig.default()
         return ActorCriticEnrichedConfig(
             policy=ModuleConfigMLP(
-                layer_sizes=[256, 128, 128], obs_key=default_super.policy.obs_key
+                layer_sizes=[128, 128, 128, 128], obs_key=default_super.policy.obs_key
             ),
             value=ModuleConfigMLP(
-                layer_sizes=[256, 256, 256], obs_key=default_super.value.obs_key
+                layer_sizes=[256, 256, 256, 256], obs_key=default_super.value.obs_key
             ),
+            encoder=ModuleConfigMLP(layer_sizes=[256], obs_key="goal_direction"),
+            latent_encoding_size=256,
+        )
+
+    @classmethod
+    def default_vision(cls) -> "ActorCriticEnrichedConfig":
+        default_super = ActorCriticEnrichedConfig.default()
+        return ActorCriticEnrichedConfig(
+            policy=default_super.policy,
+            value=default_super.value,
             encoder=ModuleConfigCNN(
-                filter_sizes=[16, 32, 64],
+                filter_sizes=[8, 16, 32],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
                 obs_key="privileged_terrain_map"
             ),
             latent_encoding_size=256,
-            encoder_supersteps=16,
         )
+
+    @classmethod
+    def default_mixed(cls) -> "ActorCriticEnrichedConfig":
+        default_super = ActorCriticEnrichedConfig.default_vision()
+        return ActorCriticEnrichedConfig(
+            policy=default_super.policy,
+            value=default_super.value,
+            encoder=ModuleConfigMixedModeCNN(
+                vision_preprocessing=ModuleConfigCNN(
+                    filter_sizes=[8, 16, 32],
+                    dense=ModuleConfigMLP(layer_sizes=[256]),
+                    obs_key="privileged_terrain_map",
+                ),
+                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goal_direction"),
+            ),
+            latent_encoding_size=default_super.latent_encoding_size,
+        )
+
+    @property
+    def vision(self) -> bool:
+        return super().vision or self.encoder.vision
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -69,35 +94,7 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
         return ActorCriticNetworks
 
 
-@dataclass
-class ActorCriticMixedModeConfig(ActorCriticEnrichedConfig):
-    encoder: ModuleConfigMixedModeCNN
-
-    @classmethod
-    def default(cls) -> "ActorCriticMixedModeConfig":
-        default_super = ActorCriticEnrichedConfig.default()
-        return ActorCriticMixedModeConfig(
-            policy=default_super.policy,
-            value=default_super.value,
-            encoder=ModuleConfigMixedModeCNN(
-                vision_preprocessing=ModuleConfigCNN(
-                    filter_sizes=[16, 32, 32],
-                    dense=ModuleConfigMLP(layer_sizes=[256]),
-                    obs_key="privileged_terrain_map",
-                ),
-                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goalwards_xy"),
-            ),
-            latent_encoding_size=default_super.latent_encoding_size,
-            encoder_supersteps=default_super.encoder_supersteps,
-        )
-
-    @classmethod
-    def config_class_key(cls) -> str:
-        return "ActorCriticMixedMode"
-
-
 register_model_config_class(ActorCriticEnrichedConfig)
-register_model_config_class(ActorCriticMixedModeConfig)
 
 
 @flax_dataclass
@@ -139,6 +136,7 @@ class ActorCriticEnrichedNetworks(
         model_config: ActorCriticEnrichedConfig,
         observation_size: ObservationSize,
         action_size: int,
+        vision_obs_period: int | None = None,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
         activation: ActivationFn = linen.swish,
     ):
@@ -153,16 +151,10 @@ class ActorCriticEnrichedNetworks(
             model_config=model_config,
             observation_size=observation_size,
             action_size=action_size,
+            vision_obs_period=vision_obs_period,
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
-        self.encoder_supersteps = model_config.encoder_supersteps
-        if isinstance(model_config.encoder, ModuleConfigCNN):
-            self.vision = True
-        else:
-            self.vision = False
-            if self.encoder_supersteps > 1:
-                raise ValueError("Non-vision encoders do not support supersteps.")
 
     @staticmethod
     def agent_params_class() -> type[ActorCriticEnrichedAgentParams]:
@@ -188,7 +180,7 @@ class ActorCriticEnrichedNetworks(
             network_params.acting_encoder, observation
         )
         if repeat_output:
-            latent_encoding = jnp.repeat(latent_encoding, self.encoder_supersteps, axis=0)
+            latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period, axis=0)
         return latent_encoding
 
     def apply_policy_with_latents(
@@ -241,39 +233,23 @@ class ActorCriticEnrichedNetworks(
             preprocessor_params, network_params, observation, latent_encoding
         )
 
-    def make_unroll_fn(
+    def make_acting_unroll_fn(
         self,
         agent_params: AgentParams[AgentNetworkParams],
         *,
         deterministic: bool = False,
-        policy_factory: PolicyFactory | None = None,
-        apply_encoder_fn: Callable | None = None,
         accumulate_pipeline_states: bool = False,
     ) -> GenerateUnrollFn:
-        if not self.vision:
-            return super().make_unroll_fn(
-                agent_params,
-                deterministic=deterministic,
-                policy_factory=policy_factory,
-                accumulate_pipeline_states=accumulate_pipeline_states,
-            )
-
-        if policy_factory is None:
+        if self.vision:
             policy_factory = self.policy_metafactory(self.apply_policy_with_latents)
-        acting_policy = policy_factory(agent_params, deterministic)
-
-        if apply_encoder_fn is None:
-            apply_encoder_fn = self.apply_acting_encoder
-        vision_encoder = functools.partial(
-            apply_encoder_fn,
-            preprocessor_params=agent_params.preprocessor_params,
-            network_params=agent_params.network_params,
-            repeat_output=False,
-        )
-
-        return vision_unroll_factory(
-            policy=acting_policy,
-            vision_encoder=vision_encoder,
-            proprio_substeps=self.encoder_supersteps,
+            encoder_factory = self.apply_acting_encoder
+        else:
+            policy_factory = self.policy_metafactory(self.apply_policy)
+            encoder_factory = None
+        return self.make_unroll_fn(
+            agent_params=agent_params,
+            policy_factory=policy_factory,
+            apply_encoder_fn=encoder_factory,
+            deterministic=deterministic,
             accumulate_pipeline_states=accumulate_pipeline_states,
         )

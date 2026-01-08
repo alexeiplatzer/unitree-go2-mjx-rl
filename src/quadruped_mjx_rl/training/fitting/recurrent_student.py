@@ -18,9 +18,7 @@ from quadruped_mjx_rl.running_statistics import RunningStatisticsState
 from quadruped_mjx_rl.training import gradients, training_utils
 from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 from quadruped_mjx_rl.training.configs import (
-    TeacherStudentOptimizerConfig,
-    TrainingWithRecurrentStudentConfig,
-    TrainingWithVisionConfig,
+    TeacherStudentOptimizerConfig, TrainingConfig,
 )
 from quadruped_mjx_rl.training.evaluation import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
@@ -119,7 +117,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         self,
         eval_env: Env,
         eval_key: PRNGKey,
-        training_config: TrainingWithRecurrentStudentConfig,
+        training_config: TrainingConfig,
         show_outputs: bool = True,
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
@@ -131,8 +129,8 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.make_unroll_fn(
-                agent_params=params,
+            unroll_factory=functools.partial(
+                self.network.make_acting_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
         )
@@ -142,8 +140,8 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             num_eval_envs=training_config.num_eval_envs,
             episode_length=training_config.episode_length,
             action_repeat=training_config.action_repeat,
-            unroll_factory=lambda params: self.network.make_student_unroll_fn(
-                agent_params=params,
+            unroll_factory=functools.partial(
+                self.network.make_student_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
         )
