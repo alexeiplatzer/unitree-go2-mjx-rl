@@ -10,7 +10,7 @@ from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 @dataclass
 class OptimizerConfig:
-    learning_rate: float = 0.0001
+    learning_rate: float = 0.0003
     max_grad_norm: float | None = None
 
 
@@ -35,7 +35,7 @@ class TrainingConfig(Configuration):
     num_timesteps: int = 2**29
     log_training_metrics: bool = False
     training_metrics_steps: int | None = None
-    num_evals: int = 17
+    num_evals: int = 9
     deterministic_eval: bool = False
     num_resets_per_eval: int = 0
     episode_length: int = 4096
