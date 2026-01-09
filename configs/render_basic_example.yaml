@@ -5,8 +5,8 @@ render:
     ang_vel: 0.0
     x_vel: 0.5
     y_vel: 0.0
-  episode_length: 1000
-  n_steps: 500
+  episode_length: 4096
+  n_steps: 512
   render_class: default
   render_every: 2
   seed: 0

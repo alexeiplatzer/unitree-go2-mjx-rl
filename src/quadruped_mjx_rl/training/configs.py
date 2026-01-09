@@ -35,7 +35,7 @@ class TrainingConfig(Configuration):
     num_timesteps: int = 2**29
     log_training_metrics: bool = False
     training_metrics_steps: int | None = None
-    num_evals: int = 16
+    num_evals: int = 17
     deterministic_eval: bool = False
     num_resets_per_eval: int = 0
     episode_length: int = 4096

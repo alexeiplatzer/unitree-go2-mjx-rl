@@ -1,43 +1,41 @@
 environment:
-  command:
-    ranges:
-      ang_vel_yaw_max: 0.7
-      ang_vel_yaw_min: -0.7
-      lin_vel_x_max: 1.5
-      lin_vel_x_min: -0.6
-      lin_vel_y_max: 0.8
-      lin_vel_y_min: -0.8
-    resampling_time: 500
+  command: {}
   control:
     action_scale: 0.3
   domain_rand:
-    apply_kicks: true
+    apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: JoystickBase
+    obstacle_location_noise: 3.0
+  environment_class: QuadrupedObstacleAvoiding
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
-    extended_history_length: 45
+    extended_history_length: null
     general_noise: 0.05
     history_length: 15
   rewards:
+    collision_radius: 0.2
+    goal_radius: 0.2
+    obstacle_margin: 0.9
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
     scales:
       action_rate: -0.01
       ang_vel_xy: -0.05
+      collision: -5.0
       feet_air_time: 0.2
       foot_slip: -0.1
+      goal_progress: 2.5
+      goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
+      obstacle_proximity: -1.0
       orientation: -5.0
-      stand_still: -0.5
+      speed_towards_goal: 2.5
       termination: -1.0
       torques: -0.0002
-      tracking_ang_vel: 0.8
-      tracking_lin_vel: 1.5
     termination_body_height: 0.18
-    tracking_sigma: 0.25
+    yaw_alignment_threshold: 1.35
   sim:
     ctrl_dt: 0.02
     override:
@@ -46,9 +44,20 @@ environment:
     sim_dt: 0.004
 model:
   encoder:
-    layer_sizes:
-    - 256
-    obs_key: environment_privileged
+    joint_processing:
+      layer_sizes:
+      - 256
+      obs_key: goal_direction
+    vision_preprocessing:
+      dense:
+        layer_sizes:
+        - 256
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 24
+      - 32
+      obs_key: pixels/frontal_ego/depth
   latent_encoding_size: 256
   model_class: TeacherStudent
   policy:
@@ -59,9 +68,15 @@ model:
     - 128
     obs_key: proprioceptive
   student:
-    layer_sizes:
-    - 512
-    obs_key: proprioceptive_history
+    dense:
+      layer_sizes:
+      - 256
+      obs_key: null
+    filter_sizes:
+    - 16
+    - 24
+    - 32
+    obs_key: pixels/frontal_ego/rgb_adjusted
   value:
     layer_sizes:
     - 256
@@ -70,8 +85,8 @@ model:
     - 256
     obs_key: proprioceptive
 terrain:
-  add_goal: false
-  base_scene_file: scene_mjx_vision.xml
+  add_goal: true
+  base_scene_file: scene_mjx_cylinders.xml
   egocentric_camera:
     fovy: 80
     location:
@@ -98,17 +113,17 @@ terrain:
     friction_min: 0.6
     gain_max: 5.0
     gain_min: -5.0
-  terrain_class: Flat
+  terrain_class: SimpleObstacle
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 256
+  batch_size: 32
   deterministic_eval: false
   episode_length: 4096
   log_training_metrics: false
   normalize_observations: true
-  num_envs: 8192
-  num_eval_envs: 8192
+  num_envs: 1024
+  num_eval_envs: 1024
   num_evals: 17
   num_minibatches: 32
   num_resets_per_eval: 0
@@ -116,7 +131,7 @@ training:
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0001
-    max_grad_norm: null
+    max_grad_norm: 1.0
     student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
@@ -129,4 +144,17 @@ training:
   training_class: default
   training_metrics_steps: null
   unroll_length: 64
-  vision_config: null
+  vision_config:
+    vision_frame_height: 64
+    vision_frame_width: 64
+    vision_obs_period: 16
+vision_wrapper:
+  brightness:
+  - 0.75
+  - 2.0
+  camera_inputs:
+  - name: frontal_ego
+    use_actual_rgb: false
+    use_brightness_randomized_rgb: true
+    use_depth: true
+  vision_wrapper_class: VisionBaseWrapper

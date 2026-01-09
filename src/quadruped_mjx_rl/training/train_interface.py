@@ -128,6 +128,13 @@ def train(
             * max(training_config.num_resets_per_eval, 1)
         )
     ).astype(int)
+    logging.info(
+        f"Important numbers:\n"
+        f"Num evals after init: {num_evals_after_init}\n"
+        f"Num resets (epochs) per eval: {max(training_config.num_resets_per_eval, 1)}\n"
+        f"Num training steps per epoch: {num_training_steps_per_epoch}\n"
+        f"Env steps per training step: {env_step_per_training_step}"
+    )
 
     key = jax.random.PRNGKey(training_config.seed)
     # key_networks should be global, so that networks are initialized the same

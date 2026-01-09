@@ -64,18 +64,26 @@ if __name__ == "__main__":
         vision_wrapper_config,
     )
 
-    # # Target-reaching and obstacle-avoiding
-    # terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
-    # terrain_config.add_goal = True
-    # env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
-    # env_config.domain_rand.apply_kicks = False
-    # cfg.save_configs(
-    #     paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
-    #     terrain_config,
-    #     env_config,
-    #     vision_wrapper_config,
-    # )
-    #
+    # Target-reaching and obstacle-avoiding
+    terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    terrain_config.add_goal = True
+    env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
+    env_config.domain_rand.apply_kicks = False
+    model_config = models.TeacherStudentConfig.default_mixed()
+    training_config = training.TrainingConfig.default_vision()
+    training_config.optimizer = training.TeacherStudentOptimizerConfig()
+    training_config.optimizer.max_grad_norm = 1.0
+    vision_wrapper_config = environments.VisionWrapperConfig()
+    vision_wrapper_config.camera_inputs[0].use_depth = True
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config,
+        vision_wrapper_config,
+    )
+
     # # Colored terrain map with target goal
     # terrain_config = terrain_gen.ColorMapTerrainConfig()
     # env_config = environments.QuadrupedVisionTargetEnvConfig()

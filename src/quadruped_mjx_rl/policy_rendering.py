@@ -29,10 +29,10 @@ from quadruped_mjx_rl.domain_randomization import DomainRandomizationConfig
 
 @dataclass
 class RenderConfig(Configuration):
-    episode_length: int = 1000
+    episode_length: int = 4096
     render_every: int = 2
     seed: int = 0
-    n_steps: int = 500
+    n_steps: int = 512
     cameras: list[str] = field(default_factory=lambda: ["track"])
     command: dict[str, float] = field(
         default_factory=lambda: {

@@ -49,12 +49,12 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
             policy=default_super.policy,
             value=default_super.value,
             encoder=ModuleConfigCNN(
-                filter_sizes=[16, 32, 64],
+                filter_sizes=[16, 24, 32],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
-                obs_key="pixels/terrain/depth",
+                obs_key="pixels/frontal_ego/depth",
             ),
             student=ModuleConfigCNN(
-                filter_sizes=[16, 32, 64],
+                filter_sizes=[16, 24, 32],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
                 obs_key="pixels/frontal_ego/rgb_adjusted",
             ),
@@ -69,11 +69,11 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
             value=default_super.value,
             encoder=ModuleConfigMixedModeCNN(
                 vision_preprocessing=ModuleConfigCNN(
-                    filter_sizes=[16, 32, 32],
+                    filter_sizes=[16, 24, 32],
                     dense=ModuleConfigMLP(layer_sizes=[256]),
-                    obs_key="pixels/terrain_map/depth",
+                    obs_key="pixels/frontal_ego/depth",
                 ),
-                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goalwards_xy"),
+                joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goal_direction"),
             ),
             student=default_super.student,
             latent_encoding_size=default_super.latent_encoding_size,
