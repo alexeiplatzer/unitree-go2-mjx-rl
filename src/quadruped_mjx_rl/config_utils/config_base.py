@@ -1,7 +1,7 @@
 from dataclasses import dataclass, asdict
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dacite import from_dict
+from dacite import from_dict, Config
 
 
 @dataclass
@@ -55,7 +55,7 @@ class Configuration(ABC):
             f"{cls.config_base_class_key()}_class", cls.config_class_key()
         )
         config_class = cls.get_config_class_from_key(config_class_key)
-        return from_dict(config_class, config_dict)
+        return from_dict(config_class, config_dict, config=Config(strict=True))
 
     def to_dict(self) -> dict:
         """Dumpts the config class instance into a dictionary of data. Adds a key describing

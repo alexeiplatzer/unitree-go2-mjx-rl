@@ -54,6 +54,12 @@ def add_goal_sphere(
     if location is None:
         location = [10, 0, size]
 
+    # spec.worldbody.add_geom(
+    #     pos=location,
+    #     name="goal_sphere",
+    #     size=[size, 0, 0],
+    #     rgba=[0, 1, 0, 1],
+    # )
     body = spec.worldbody.add_body(pos=location, name="goal_sphere")
     body.add_geom(
         type=mj.mjtGeom.mjGEOM_SPHERE,

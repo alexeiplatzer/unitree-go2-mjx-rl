@@ -197,6 +197,7 @@ def train(
     ppo_networks = network_factory(
         observation_size=obs_shape,
         action_size=env.action_size,
+        vision_obs_period=training_config.vision_config.vision_obs_period,
         preprocess_observations_fn=preprocess_fn,
     )
 

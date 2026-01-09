@@ -90,8 +90,8 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
         return "ActorCriticEnriched"
 
     @classmethod
-    def get_model_class(cls) -> type["ActorCriticNetworks"]:
-        return ActorCriticNetworks
+    def get_model_class(cls) -> type["ActorCriticEnrichedNetworks"]:
+        return ActorCriticEnrichedNetworks
 
 
 register_model_config_class(ActorCriticEnrichedConfig)

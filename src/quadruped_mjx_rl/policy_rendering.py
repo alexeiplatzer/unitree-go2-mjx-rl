@@ -93,6 +93,7 @@ def render_policy_rollout(
             "privileged_terrain_map": 1,
         },
         action_size=env.action_size,
+        vision_obs_period=16,  # TODO: adapt
         preprocess_observations_fn=preprocess_fn,
     )
     unroll_factories = {

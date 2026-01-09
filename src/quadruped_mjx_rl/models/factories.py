@@ -18,6 +18,7 @@ class NetworkFactory(Protocol[AgentNetworkParams]):
         self,
         observation_size: ObservationSize,
         action_size: int,
+        vision_obs_period: int | None = None,
         preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
     ) -> ComponentNetworksArchitecture[AgentNetworkParams]:
         pass
