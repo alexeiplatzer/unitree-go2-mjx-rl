@@ -39,7 +39,7 @@ class TerrainConfig(Configuration, ABC):
         None
     )
     egocentric_camera: CameraConfig = field(
-        default_factory=lambda: predefined_camera_configs["ego_frontal"]
+        default_factory=lambda: predefined_camera_configs["frontal_ego"]
     )
     add_goal: bool = False
     goal_location: list[float] = field(default_factory=lambda: [20, 0, 2])

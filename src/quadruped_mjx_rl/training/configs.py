@@ -57,7 +57,7 @@ class TrainingConfig(Configuration):
             num_envs=1024,
             num_eval_envs=1024,
             batch_size=32,
-            optimizer=TeacherStudentOptimizerConfig(max_grad_norm=1.0),
+            optimizer=OptimizerConfig(max_grad_norm=1.0),
             vision_config=VisionConfig(),
         )
 

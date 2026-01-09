@@ -11,7 +11,7 @@ if __name__ == "__main__":
     model_config = models.ActorCriticConfig.default()
     training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_basic.yaml",
+        paths.CONFIGS_DIRECTORY / "joystick_basic.yaml",
         terrain_config,
         env_config,
         model_config,
@@ -25,8 +25,9 @@ if __name__ == "__main__":
     env_config.add_privileged_obs = True
     model_config = models.TeacherStudentConfig.default()
     training_config = training.TrainingConfig()
+    training_config.optimizer = training.TeacherStudentOptimizerConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
+        paths.CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
         terrain_config,
         env_config,
         model_config,
@@ -40,130 +41,144 @@ if __name__ == "__main__":
     model_config = models.ActorCriticEnrichedConfig.default()
     training_config = training.TrainingConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "target_reaching_basic.yaml",
+        paths.CONFIGS_DIRECTORY / "target_reaching_basic.yaml",
         terrain_config,
         env_config,
         model_config,
         training_config,
     )
 
-    #
-
-    # Target-reaching and obstacle-avoiding
-    terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    # Basic Target-reaching with vision
+    terrain_config = terrain_gen.FlatTerrainConfig()
     terrain_config.add_goal = True
-    env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
-    env_config.domain_rand.apply_kicks = False
-    cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
-        terrain_config,
-        env_config,
-        vision_wrapper_config,
-    )
-
-    # Colored terrain map with target goal
-    terrain_config = terrain_gen.ColorMapTerrainConfig()
     env_config = environments.QuadrupedVisionTargetEnvConfig()
-    env_config.domain_rand.apply_kicks = False
-    env_config.observation_noise.history_length = 1
-    env_config.observation_noise.extended_history_length = 15
-    vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    model_config = models.ActorCriticEnrichedConfig.default_vision()
+    training_config = training.TrainingConfig.default_vision()
+    vision_wrapper_config = environments.VisionWrapperConfig()
     cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
+        paths.CONFIGS_DIRECTORY / "target_reaching_vision.yaml",
         terrain_config,
         env_config,
+        model_config,
+        training_config,
         vision_wrapper_config,
     )
 
-    # Colored terrain map, but joystick
-    terrain_config = terrain_gen.ColorMapTerrainConfig()
-    terrain_config.add_goal = False
-    terrain_config.column_offset = 5  # for occasional backwards movements
-    env_config = environments.JoystickBaseEnvConfig()
-    env_config.domain_rand.apply_kicks = False
-    env_config.observation_noise.history_length = 1
-    env_config.observation_noise.extended_history_length = 15
-    vision_wrapper_config = environments.ColorGuidedEnvConfig()
-    cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_joystick.yaml",
-        terrain_config,
-        env_config,
-        vision_wrapper_config,
-    )
-
-    # --- MODELS ---
-    # Actor-Critic proprioceptive
-    model_config = models.ActorCriticConfig.default()
-    training_config = training.TrainingConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml",
-        model_config,
-        training_config,
-    )
-
-    training_config.num_envs = 1024
-    training_config.num_eval_envs = 1024
-    training_config.batch_size = 64
-    training_config.num_minibatches = 16
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "basic_lighter.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Teacher-Student proprioceptive
-    model_config = models.TeacherStudentConfig.default()
-    training_config = training.TrainingConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Depth-vision Teacher with RGB-vision Student
-    model_config = models.TeacherStudentVisionConfig.default()
-    training_config = training.TrainingWithVisionConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Mixed-mode Teacher with RGB Student
-    model_config = models.TeacherStudentMixedModeConfig.default()
-    training_config = training.TrainingWithVisionConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_mixed.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Teacher with recurrent student
-    model_config = models.TeacherStudentRecurrentConfig.default()
-    training_config = training.TrainingWithRecurrentStudentConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_recurrent.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Randomized terrain tiles with privileged terrain map encoder, without a student
-    model_config = models.ActorCriticMixedModeConfig.default()
-    training_config = training.TrainingWithVisionConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",
-        model_config,
-        training_config,
-    )
-
-    # Actor Critic Enriched with vision
-    model_config = models.ActorCriticEnrichedConfig.default()
-    training_config = training.TrainingWithVisionConfig()
-    cfg.save_configs(
-        paths.MODEL_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
-        model_config,
-        training_config,
-    )
+    # # Target-reaching and obstacle-avoiding
+    # terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    # terrain_config.add_goal = True
+    # env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
+    # env_config.domain_rand.apply_kicks = False
+    # cfg.save_configs(
+    #     paths.ENVIRONMENT_CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
+    #     terrain_config,
+    #     env_config,
+    #     vision_wrapper_config,
+    # )
+    #
+    # # Colored terrain map with target goal
+    # terrain_config = terrain_gen.ColorMapTerrainConfig()
+    # env_config = environments.QuadrupedVisionTargetEnvConfig()
+    # env_config.domain_rand.apply_kicks = False
+    # env_config.observation_noise.history_length = 1
+    # env_config.observation_noise.extended_history_length = 15
+    # vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    # cfg.save_configs(
+    #     paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
+    #     terrain_config,
+    #     env_config,
+    #     vision_wrapper_config,
+    # )
+    #
+    # # Colored terrain map, but joystick
+    # terrain_config = terrain_gen.ColorMapTerrainConfig()
+    # terrain_config.add_goal = False
+    # terrain_config.column_offset = 5  # for occasional backwards movements
+    # env_config = environments.JoystickBaseEnvConfig()
+    # env_config.domain_rand.apply_kicks = False
+    # env_config.observation_noise.history_length = 1
+    # env_config.observation_noise.extended_history_length = 15
+    # vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    # cfg.save_configs(
+    #     paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_joystick.yaml",
+    #     terrain_config,
+    #     env_config,
+    #     vision_wrapper_config,
+    # )
+    #
+    # # --- MODELS ---
+    # # Actor-Critic proprioceptive
+    # model_config = models.ActorCriticConfig.default()
+    # training_config = training.TrainingConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # training_config.num_envs = 1024
+    # training_config.num_eval_envs = 1024
+    # training_config.batch_size = 64
+    # training_config.num_minibatches = 16
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "basic_lighter.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Teacher-Student proprioceptive
+    # model_config = models.TeacherStudentConfig.default()
+    # training_config = training.TrainingConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Depth-vision Teacher with RGB-vision Student
+    # model_config = models.TeacherStudentVisionConfig.default()
+    # training_config = training.TrainingWithVisionConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Mixed-mode Teacher with RGB Student
+    # model_config = models.TeacherStudentMixedModeConfig.default()
+    # training_config = training.TrainingWithVisionConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_mixed.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Teacher with recurrent student
+    # model_config = models.TeacherStudentRecurrentConfig.default()
+    # training_config = training.TrainingWithRecurrentStudentConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "color_guided_recurrent.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Randomized terrain tiles with privileged terrain map encoder, without a student
+    # model_config = models.ActorCriticMixedModeConfig.default()
+    # training_config = training.TrainingWithVisionConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",
+    #     model_config,
+    #     training_config,
+    # )
+    #
+    # # Actor Critic Enriched with vision
+    # model_config = models.ActorCriticEnrichedConfig.default()
+    # training_config = training.TrainingWithVisionConfig()
+    # cfg.save_configs(
+    #     paths.MODEL_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
+    #     model_config,
+    #     training_config,
+    # )
 
     # Example rendering config
     cfg.save_configs(

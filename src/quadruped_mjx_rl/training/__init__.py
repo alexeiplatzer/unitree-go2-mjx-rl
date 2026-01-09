@@ -1,4 +1,4 @@
 from quadruped_mjx_rl.training.configs import (
-    TrainingConfig,
+    TrainingConfig, OptimizerConfig, TeacherStudentOptimizerConfig
 )
 from quadruped_mjx_rl.training.train_interface import train

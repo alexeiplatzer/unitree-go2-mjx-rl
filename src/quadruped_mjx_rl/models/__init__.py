@@ -3,10 +3,7 @@ from quadruped_mjx_rl.models.architectures import (
     ActorCriticEnrichedConfig,
     ModelConfig,
     TeacherStudentConfig,
-    TeacherStudentVisionConfig,
     TeacherStudentRecurrentConfig,
-    TeacherStudentMixedModeConfig,
-    ActorCriticMixedModeConfig,
 )
 from quadruped_mjx_rl.models.base_modules import (
     ModuleConfigMLP,
@@ -14,5 +11,5 @@ from quadruped_mjx_rl.models.base_modules import (
     ModuleConfigLSTM,
     ModuleConfigMixedModeRNN,
 )
-from quadruped_mjx_rl.models.factories import get_networks_factory, load_inference_fn
+from quadruped_mjx_rl.models.factories import get_networks_factory
 from quadruped_mjx_rl.models.types import AgentParams

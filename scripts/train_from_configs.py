@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import jax
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
@@ -39,7 +40,7 @@ def make_training_hyperparams_lighter(training_cfg: TrainingConfig) -> None:
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = not (jax.default_backend() == 'gpu')
     headless = True
 
     # Configure logging
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     used_file_paths = (
         [Path(sys.argv[i]) for i in range(1, len(sys.argv))]
         if len(sys.argv) > 1
-        else [paths.CONFIGS_DIRECTORY / "joystick_basic_ppo_light.yaml"]
+        else [paths.CONFIGS_DIRECTORY / "joystick_basic.yaml"]
     )
     pretrained_params_path = None
     config_file_paths = []

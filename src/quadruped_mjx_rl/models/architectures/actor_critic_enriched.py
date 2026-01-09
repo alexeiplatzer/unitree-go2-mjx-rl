@@ -57,9 +57,9 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
             policy=default_super.policy,
             value=default_super.value,
             encoder=ModuleConfigCNN(
-                filter_sizes=[8, 16, 32],
+                filter_sizes=[16, 24, 32],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
-                obs_key="privileged_terrain_map"
+                obs_key="pixels/frontal_ego/rgb_adjusted"
             ),
             latent_encoding_size=256,
         )
