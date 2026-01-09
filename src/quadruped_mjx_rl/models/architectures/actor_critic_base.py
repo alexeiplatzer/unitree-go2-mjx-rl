@@ -37,7 +37,7 @@ class ActorCriticConfig(ModelConfig):
         return ActorCriticConfig(
             policy=default_super.policy,
             value=ModuleConfigMLP(
-                layer_sizes=[256, 256, 256, 256, 256], obs_key="proprioceptive"
+                layer_sizes=[256, 256, 256, 256], obs_key="proprioceptive"
             ),
         )
 

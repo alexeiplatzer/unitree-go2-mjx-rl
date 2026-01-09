@@ -106,11 +106,11 @@ training:
   num_evals: 9
   num_minibatches: 32
   num_resets_per_eval: 0
-  num_timesteps: 536870912
+  num_timesteps: 134217728
   num_updates_per_batch: 4
   optimizer:
-    learning_rate: 0.0003
-    max_grad_norm: 1.0
+    learning_rate: 0.0002
+    max_grad_norm: null
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97

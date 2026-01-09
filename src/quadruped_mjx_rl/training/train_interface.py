@@ -134,6 +134,7 @@ def train(
         f"Num resets (epochs) per eval: {max(training_config.num_resets_per_eval, 1)}\n"
         f"Num training steps per epoch: {num_training_steps_per_epoch}\n"
         f"Env steps per training step: {env_step_per_training_step}"
+        f"Training step env steps for a single env: {env_step_per_training_step // num_envs}"
     )
 
     key = jax.random.PRNGKey(training_config.seed)

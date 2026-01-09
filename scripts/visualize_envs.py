@@ -1,29 +1,17 @@
-import functools
 import logging
 
 import numpy as np
-import mujoco
 
 import paths
-from quadruped_mjx_rl.configs import prepare_all_configs
+from quadruped_mjx_rl import environments, robots, terrain_gen, training
 from quadruped_mjx_rl.environments import get_env_factory
-from quadruped_mjx_rl.environments.rendering import (
-    large_overview_camera,
-    render_model,
-    save_image,
-    render_vision_observations
-)
-from quadruped_mjx_rl.robotic_vision import get_renderer
-from quadruped_mjx_rl.models.io import load_params
-from quadruped_mjx_rl.policy_rendering import render_policy_rollout, RenderConfig, save_video
+from quadruped_mjx_rl.environments.rendering import (render_vision_observations, save_image)
 from quadruped_mjx_rl.terrain_gen import make_terrain
-from quadruped_mjx_rl.training import TrainingWithVisionConfig
-from quadruped_mjx_rl import robots, terrain_gen, environments, training
 
 
 if __name__ == "__main__":
     debug = False
-    version = "joystick"
+    version = "target_plain"
     seed = 0
 
     # Configure logging
@@ -42,11 +30,16 @@ if __name__ == "__main__":
     if version == "joystick":
         terrain_config = terrain_gen.ColorMapTerrainConfig(add_goal=False)
         env_config = environments.JoystickBaseEnvConfig()
+        vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    elif version == "target_plain":
+        terrain_config = terrain_gen.FlatTerrainConfig(add_goal=True)
+        env_config = environments.QuadrupedVisionTargetEnvConfig()
+        vision_wrapper_config = environments.VisionWrapperConfig()
     else:
         terrain_config = terrain_gen.ColorMapTerrainConfig(add_goal=True)
         env_config = environments.QuadrupedVisionTargetEnvConfig()
-    vision_wrapper_config = environments.ColorGuidedEnvConfig()
-    training_config = training.TrainingWithVisionConfig()
+        vision_wrapper_config = environments.ColorGuidedEnvConfig()
+    training_config = training.TrainingConfig.default_vision()
 
     # Prepare environment model
     env_model = make_terrain(

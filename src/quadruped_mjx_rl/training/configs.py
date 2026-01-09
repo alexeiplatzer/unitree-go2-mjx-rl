@@ -10,7 +10,7 @@ from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 @dataclass
 class OptimizerConfig:
-    learning_rate: float = 0.0003
+    learning_rate: float = 0.0002
     max_grad_norm: float | None = None
 
 
@@ -29,10 +29,10 @@ class VisionConfig:
 @dataclass
 class TrainingConfig(Configuration):
     augment_pixels: bool = False
-    num_envs: int = 8192
-    num_eval_envs: int = 8192
+    num_envs: int = 1024
+    num_eval_envs: int = 1024
     seed: int = 0
-    num_timesteps: int = 2**29
+    num_timesteps: int = 2**27
     log_training_metrics: bool = False
     training_metrics_steps: int | None = None
     num_evals: int = 9
@@ -42,7 +42,7 @@ class TrainingConfig(Configuration):
     unroll_length: int = 64
     normalize_observations: bool = True
     action_repeat: int = 1
-    batch_size: int = 256
+    batch_size: int = 32
     num_updates_per_batch: int = 4
     num_minibatches: int = 32
     optimizer: TeacherStudentOptimizerConfig | OptimizerConfig = field(
@@ -54,10 +54,11 @@ class TrainingConfig(Configuration):
     @classmethod
     def default_vision(cls) -> "TrainingConfig":
         return TrainingConfig(
-            num_envs=1024,
-            num_eval_envs=1024,
-            batch_size=32,
-            optimizer=OptimizerConfig(max_grad_norm=1.0),
+            # num_envs=1024,
+            # num_eval_envs=1024,
+            # num_timesteps=2**27,
+            # batch_size=32,
+            # optimizer=OptimizerConfig(max_grad_norm=1.0),
             vision_config=VisionConfig(),
         )
 

@@ -5,6 +5,7 @@ from quadruped_mjx_rl import environments, models, policy_rendering, training, t
 
 # TODO: update this and the default values for models
 if __name__ == "__main__":
+    # PLAIN TERRAIN JOYSTICK CONFIGS
     # Joystick basic
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
@@ -34,53 +35,41 @@ if __name__ == "__main__":
         training_config,
     )
 
-    # Target-reaching basic
-    terrain_config = terrain_gen.FlatTerrainConfig()
-    terrain_config.add_goal = True
+    # PLAIN TERRAIN TARGET REACHING
+    terrain_config = terrain_gen.FlatTerrainConfig(add_goal=True)
     env_config = environments.QuadrupedVisionTargetEnvConfig()
+    training_config_blind = training.TrainingConfig()
+    training_config_vision = training.TrainingConfig.default_vision()
+
+    # Target-reaching with no observations pointing to the ball
+    model_config = models.ActorCriticConfig.default()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "target_reaching_clueless.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config_blind,
+    )
+
+    # Target-reaching basic, given direction vector
     model_config = models.ActorCriticEnrichedConfig.default()
-    training_config = training.TrainingConfig()
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "target_reaching_basic.yaml",
         terrain_config,
         env_config,
         model_config,
-        training_config,
+        training_config_blind,
     )
 
-    # Basic Target-reaching with vision
-    terrain_config = terrain_gen.FlatTerrainConfig()
-    terrain_config.add_goal = True
-    env_config = environments.QuadrupedVisionTargetEnvConfig()
+    # Target-reaching with naive rgb vision input
     model_config = models.ActorCriticEnrichedConfig.default_vision()
-    training_config = training.TrainingConfig.default_vision()
     vision_wrapper_config = environments.VisionWrapperConfig()
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "target_reaching_vision.yaml",
         terrain_config,
         env_config,
         model_config,
-        training_config,
-        vision_wrapper_config,
-    )
-
-    # Target-reaching and obstacle-avoiding
-    terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
-    terrain_config.add_goal = True
-    env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
-    env_config.domain_rand.apply_kicks = False
-    model_config = models.TeacherStudentConfig.default_mixed()
-    training_config = training.TrainingConfig.default_vision()
-    training_config.optimizer = training.TeacherStudentOptimizerConfig()
-    training_config.optimizer.max_grad_norm = 1.0
-    vision_wrapper_config = environments.VisionWrapperConfig()
-    vision_wrapper_config.camera_inputs[0].use_depth = True
-    cfg.save_configs(
-        paths.CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
-        terrain_config,
-        env_config,
-        model_config,
-        training_config,
+        training_config_vision,
         vision_wrapper_config,
     )
 
@@ -113,7 +102,7 @@ if __name__ == "__main__":
         terrain_config_target,
         env_config,
         model_config,
-        training_config,
+        training_config_vision,
         vision_wrapper_config,
     )
 
@@ -176,6 +165,27 @@ if __name__ == "__main__":
     #     model_config,
     #     training_config,
     # )
+
+    # OBSTACLE AVOIDING: speculative work
+    # Target-reaching and obstacle-avoiding
+    terrain_config = terrain_gen.SimpleObstacleTerrainConfig()
+    terrain_config.add_goal = True
+    env_config = environments.QuadrupedObstacleAvoidingEnvConfig()
+    env_config.domain_rand.apply_kicks = False
+    model_config = models.TeacherStudentConfig.default_mixed()
+    training_config = training.TrainingConfig.default_vision()
+    training_config.optimizer = training.TeacherStudentOptimizerConfig()
+    training_config.optimizer.max_grad_norm = 1.0
+    vision_wrapper_config = environments.VisionWrapperConfig()
+    vision_wrapper_config.camera_inputs[0].use_depth = True
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "obstacle_avoiding.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config,
+        vision_wrapper_config,
+    )
 
     # Example rendering config
     cfg.save_configs(

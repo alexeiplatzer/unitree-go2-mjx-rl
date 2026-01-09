@@ -21,3 +21,4 @@ RESOURCES_DIRECTORY = PROJECT_ROOT_DIRECTORY / "resources"
 
 # Experiment results, visualizations, configs, etc.
 EXPERIMENTS_DIRECTORY = PROJECT_ROOT_DIRECTORY / "experiments"
+EXPERIMENTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
