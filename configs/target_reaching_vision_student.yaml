@@ -40,7 +40,7 @@ model:
   encoder:
     layer_sizes:
     - 256
-    obs_key: direction_vector
+    obs_key: goal_direction
   latent_encoding_size: 256
   model_class: TeacherStudent
   policy:

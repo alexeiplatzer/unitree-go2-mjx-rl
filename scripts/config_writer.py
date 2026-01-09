@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # direction vector teacher with rgb vision student
     model_config = models.TeacherStudentConfig.default()
-    model_config.encoder = models.ModuleConfigMLP(layer_sizes=[256], obs_key="direction_vector")
+    model_config.encoder = models.ModuleConfigMLP(layer_sizes=[256], obs_key="goal_direction")
     model_config.student = models.ModuleConfigCNN(
         filter_sizes=[16, 24, 32],
         obs_key="pixels/frontal_ego/rgb_adjusted",
