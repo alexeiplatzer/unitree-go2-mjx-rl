@@ -84,6 +84,41 @@ if __name__ == "__main__":
         vision_wrapper_config,
     )
 
+    # COLORED TERRAIN MAPS
+    terrain_config_joystick = terrain_gen.ColorMapTerrainConfig(add_goal=False)
+    terrain_config_joystick.column_offset = 5  # for occasional backwards movements
+    terrain_config_target = terrain_gen.ColorMapTerrainConfig(add_goal=True)
+
+    # Colored terrain map, blind joystick
+    env_config = environments.JoystickBaseEnvConfig()
+    env_config.domain_rand.apply_kicks = False
+    model_config = models.ActorCriticConfig.default()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "color_map_blind_joystick.yaml",
+        terrain_config_joystick,
+        env_config,
+        model_config,
+        training_config,
+    )
+
+    # Plain rgb vision target-reaching
+    env_config = environments.QuadrupedVisionTargetEnvConfig()
+    env_config.domain_rand.apply_kicks = False
+    model_config = models.ActorCriticEnrichedConfig.default_vision()
+    training_config = training.TrainingConfig.default_vision()
+    vision_wrapper_config = environments.VisionWrapperConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "color_map_plain_rgb_target.yaml",
+        terrain_config_target,
+        env_config,
+        model_config,
+        training_config,
+        vision_wrapper_config,
+    )
+
+    # # Privileged terrain map, teacher only
+    #
     # # Colored terrain map with target goal
     # terrain_config = terrain_gen.ColorMapTerrainConfig()
     # env_config = environments.QuadrupedVisionTargetEnvConfig()
@@ -92,7 +127,7 @@ if __name__ == "__main__":
     # env_config.observation_noise.extended_history_length = 15
     # vision_wrapper_config = environments.ColorGuidedEnvConfig()
     # cfg.save_configs(
-    #     paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_guided.yaml",
+    #     paths.CONFIGS_DIRECTORY / "color_map_guided.yaml",
     #     terrain_config,
     #     env_config,
     #     vision_wrapper_config,
@@ -114,43 +149,6 @@ if __name__ == "__main__":
     #     vision_wrapper_config,
     # )
     #
-    # # --- MODELS ---
-    # # Actor-Critic proprioceptive
-    # model_config = models.ActorCriticConfig.default()
-    # training_config = training.TrainingConfig()
-    # cfg.save_configs(
-    #     paths.MODEL_CONFIGS_DIRECTORY / "basic.yaml",
-    #     model_config,
-    #     training_config,
-    # )
-    #
-    # training_config.num_envs = 1024
-    # training_config.num_eval_envs = 1024
-    # training_config.batch_size = 64
-    # training_config.num_minibatches = 16
-    # cfg.save_configs(
-    #     paths.MODEL_CONFIGS_DIRECTORY / "basic_lighter.yaml",
-    #     model_config,
-    #     training_config,
-    # )
-    #
-    # # Teacher-Student proprioceptive
-    # model_config = models.TeacherStudentConfig.default()
-    # training_config = training.TrainingConfig()
-    # cfg.save_configs(
-    #     paths.MODEL_CONFIGS_DIRECTORY / "joystick_teacher_student.yaml",
-    #     model_config,
-    #     training_config,
-    # )
-    #
-    # # Depth-vision Teacher with RGB-vision Student
-    # model_config = models.TeacherStudentVisionConfig.default()
-    # training_config = training.TrainingWithVisionConfig()
-    # cfg.save_configs(
-    #     paths.MODEL_CONFIGS_DIRECTORY / "teacher_student_vision.yaml",
-    #     model_config,
-    #     training_config,
-    # )
     #
     # # Mixed-mode Teacher with RGB Student
     # model_config = models.TeacherStudentMixedModeConfig.default()
@@ -175,15 +173,6 @@ if __name__ == "__main__":
     # training_config = training.TrainingWithVisionConfig()
     # cfg.save_configs(
     #     paths.MODEL_CONFIGS_DIRECTORY / "color_guided_vision.yaml",
-    #     model_config,
-    #     training_config,
-    # )
-    #
-    # # Actor Critic Enriched with vision
-    # model_config = models.ActorCriticEnrichedConfig.default()
-    # training_config = training.TrainingWithVisionConfig()
-    # cfg.save_configs(
-    #     paths.MODEL_CONFIGS_DIRECTORY / "color_guided_joystick.yaml",
     #     model_config,
     #     training_config,
     # )
