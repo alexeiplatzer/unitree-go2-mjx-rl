@@ -22,7 +22,7 @@ if __name__ == "__main__":
     terrain_config = terrain_gen.FlatTerrainConfig()
     env_config = environments.JoystickBaseEnvConfig()
     env_config.observation_noise.extended_history_length = 45
-    env_config.add_privileged_obs = True
+    env_config.observation_noise.add_privileged_obs = True
     model_config = models.TeacherStudentConfig.default()
     training_config = training.TrainingConfig()
     training_config.optimizer = training.TeacherStudentOptimizerConfig()
