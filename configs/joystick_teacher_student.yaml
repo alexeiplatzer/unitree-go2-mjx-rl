@@ -16,7 +16,7 @@ environment:
     kick_vel: 0.05
   environment_class: JoystickBase
   observation_noise:
-    add_privileged_obs: false
+    add_privileged_obs: true
     clip: 100.0
     extended_history_length: 45
     general_noise: 0.05
