@@ -180,7 +180,7 @@ class ActorCriticEnrichedNetworks(
             network_params.acting_encoder, observation
         )
         if repeat_output:
-            latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period, axis=0)
+            latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period or 1, axis=0)
         return latent_encoding
 
     def apply_policy_with_latents(
