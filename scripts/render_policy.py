@@ -1,22 +1,18 @@
-import functools
 import logging
 
-import numpy as np
 import mujoco
+import numpy as np
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
 from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.environments.rendering import (
-    large_overview_camera,
     render_model,
     save_image,
 )
-from quadruped_mjx_rl.robotic_vision import get_renderer
 from quadruped_mjx_rl.models.io import load_params
 from quadruped_mjx_rl.policy_rendering import render_policy_rollout, RenderConfig, save_video
 from quadruped_mjx_rl.terrain_gen import make_terrain
-from quadruped_mjx_rl.training import TrainingWithVisionConfig
 
 
 if __name__ == "__main__":
@@ -30,7 +26,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
     # Prepare experiment results directory
-    experiment_name = "target_reaching_1"
+    experiment_name = "target_reaching_2"
     experiment_dir = paths.EXPERIMENTS_DIRECTORY / "server_experiments" / experiment_name
 
     # Prepare configs
@@ -44,11 +40,10 @@ if __name__ == "__main__":
         training_config,
     ) = prepare_all_configs(
         paths.ROBOT_CONFIGS_DIRECTORY / f"{robot_name}.yaml",
-        paths.MODEL_CONFIGS_DIRECTORY / f"color_guided_vision.yaml",
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / f"target_reaching.yaml",
+        paths.CONFIGS_DIRECTORY / f"target_reaching_basic.yaml",
     )
     render_config = RenderConfig(
-        episode_length=2000, n_steps=1000, cameras=["track", "ego_frontal"]
+        episode_length=2000, n_steps=1000, cameras=["track", "frontal_ego"]
     )
 
     # Prepare environment model
@@ -72,10 +67,10 @@ if __name__ == "__main__":
         save_image(image=image, save_path=experiment_dir / f"environment_view_{camera_name}")
 
     # Prepare the environment factory
-    vision = isinstance(training_config, TrainingWithVisionConfig)
+    vision = model_config.vision
     renderer_maker = (
         training_config.get_renderer_factory(gpu_id=0, debug=debug)
-        if isinstance(training_config, TrainingWithVisionConfig)
+        if vision
         else None
     )
     env_factory = get_env_factory(

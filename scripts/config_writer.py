@@ -73,6 +73,23 @@ if __name__ == "__main__":
         vision_wrapper_config,
     )
 
+    # direction vector teacher with rgb vision student
+    model_config = models.TeacherStudentConfig.default()
+    model_config.encoder = models.ModuleConfigMLP(layer_sizes=[256], obs_key="direction_vector")
+    model_config.student = models.ModuleConfigCNN(
+        filter_sizes=[16, 24, 32],
+        obs_key="pixels/frontal_ego/rgb_adjusted",
+        dense=models.ModuleConfigMLP(layer_sizes=[256])
+    )
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "target_reaching_vision_student.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config_vision,
+        vision_wrapper_config,
+    )
+
     # COLORED TERRAIN MAPS
     terrain_config_joystick = terrain_gen.ColorMapTerrainConfig(add_goal=False)
     terrain_config_joystick.column_offset = 5  # for occasional backwards movements

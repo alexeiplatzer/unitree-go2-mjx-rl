@@ -93,11 +93,11 @@ def render_policy_rollout(
             "privileged_terrain_map": 1,
         },
         action_size=env.action_size,
-        vision_obs_period=16,  # TODO: adapt
+        vision_obs_period=None,  # TODO: adapt
         preprocess_observations_fn=preprocess_fn,
     )
     unroll_factories = {
-        "training_acting_policy": network.make_unroll_fn(
+        "training_acting_policy": network.make_acting_unroll_fn(
             model_params, deterministic=True, accumulate_pipeline_states=True
         )
     }
@@ -107,12 +107,9 @@ def render_policy_rollout(
             model_params, deterministic=True, accumulate_pipeline_states=True
         )
     elif isinstance(network, TeacherStudentNetworks):
-        unroll_factories["student_policy"] = network.make_unroll_fn(
-            model_params,
-            policy_factory=network.get_student_policy_factory() if not network.vision else None,
-            apply_encoder_fn=network.apply_student_encoder,
-            deterministic=True,
-            accumulate_pipeline_states=True,
+        assert isinstance(model_params, TeacherStudentAgentParams)
+        unroll_factories["student_policy"] = network.make_student_unroll_fn(
+            model_params, deterministic=True, accumulate_pipeline_states=True,
         )
     if hasattr(network, "vision") and getattr(network, "vision"):
         env = _vmap_wrap_with_randomization(
