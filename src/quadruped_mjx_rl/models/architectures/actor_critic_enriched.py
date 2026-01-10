@@ -65,6 +65,20 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
         )
 
     @classmethod
+    def default_privileged_map(cls) -> "ActorCriticEnrichedConfig":
+        default_super = ActorCriticEnrichedConfig.default_vision()
+        return ActorCriticEnrichedConfig(
+            policy=default_super.policy,
+            value=default_super.value,
+            encoder=ModuleConfigCNN(
+                filter_sizes=[16, 24, 32],
+                dense=ModuleConfigMLP(layer_sizes=[256]),
+                obs_key="privileged_terrain_map"
+            ),
+            latent_encoding_size=256,
+        )
+
+    @classmethod
     def default_mixed(cls) -> "ActorCriticEnrichedConfig":
         default_super = ActorCriticEnrichedConfig.default_vision()
         return ActorCriticEnrichedConfig(

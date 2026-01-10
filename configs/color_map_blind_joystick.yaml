@@ -87,8 +87,7 @@ terrain:
   - 2
   goal_size: 2
   n_columns: 20
-  n_rows: 9
-  num_colors: 36
+  n_rows: 5
   randomization_config:
     num_colors: 2
     tile_body_prefix: tile_

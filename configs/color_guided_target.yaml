@@ -10,9 +10,9 @@ environment:
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
-    extended_history_length: null
+    extended_history_length: 15
     general_noise: 0.05
-    history_length: 15
+    history_length: 1
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -38,31 +38,60 @@ environment:
     sim_dt: 0.004
 model:
   encoder:
-    dense:
+    joint_processing:
       layer_sizes:
       - 256
-      obs_key: null
-    filter_sizes:
-    - 16
-    - 24
-    - 32
-    obs_key: pixels/frontal_ego/rgb_adjusted
-  latent_encoding_size: 256
-  model_class: ActorCriticEnriched
+      obs_key: goal_direction
+    vision_preprocessing:
+      dense:
+        layer_sizes:
+        - 256
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 24
+      - 32
+      obs_key: privileged_terrain_map
+  latent_encoding_size: 128
+  model_class: TeacherStudentRecurrent
   policy:
     layer_sizes:
     - 128
     - 128
     - 128
     - 128
-    obs_key: proprioceptive
+    obs_key: proprioceptive_history
+  student:
+    convolutional:
+      dense:
+        layer_sizes:
+        - 128
+        - 64
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 32
+      - 32
+      obs_key: pixels/ego_frontal/rgb_adjusted
+    proprioceptive_preprocessing:
+      layer_sizes:
+      - 128
+      - 64
+      obs_key: proprioceptive
+    recurrent:
+      dense:
+        layer_sizes:
+        - 128
+        obs_key: null
+      recurrent_size: 128
+  student_recurrent_backpropagation_steps: 64
   value:
     layer_sizes:
     - 256
     - 256
     - 256
     - 256
-    obs_key: proprioceptive
+    obs_key: proprioceptive_history
 terrain:
   add_goal: true
   base_scene_file: scene_mjx_vision.xml
@@ -130,6 +159,7 @@ training:
   optimizer:
     learning_rate: 0.0002
     max_grad_norm: null
+    student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97
@@ -154,4 +184,8 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: true
     use_depth: false
-  vision_wrapper_class: VisionBaseWrapper
+  - name: terrain_map
+    use_actual_rgb: true
+    use_brightness_randomized_rgb: false
+    use_depth: false
+  vision_wrapper_class: ColorGuidedWrapper

@@ -38,6 +38,30 @@ environment:
     sim_dt: 0.004
 model:
   encoder:
+    joint_processing:
+      layer_sizes:
+      - 256
+      obs_key: goal_direction
+    vision_preprocessing:
+      dense:
+        layer_sizes:
+        - 256
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 24
+      - 32
+      obs_key: privileged_terrain_map
+  latent_encoding_size: 256
+  model_class: TeacherStudent
+  policy:
+    layer_sizes:
+    - 128
+    - 128
+    - 128
+    - 128
+    obs_key: proprioceptive
+  student:
     dense:
       layer_sizes:
       - 256
@@ -47,15 +71,6 @@ model:
     - 24
     - 32
     obs_key: pixels/frontal_ego/rgb_adjusted
-  latent_encoding_size: 256
-  model_class: ActorCriticEnriched
-  policy:
-    layer_sizes:
-    - 128
-    - 128
-    - 128
-    - 128
-    obs_key: proprioceptive
   value:
     layer_sizes:
     - 256
@@ -130,6 +145,7 @@ training:
   optimizer:
     learning_rate: 0.0002
     max_grad_norm: null
+    student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97
@@ -154,4 +170,8 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: true
     use_depth: false
-  vision_wrapper_class: VisionBaseWrapper
+  - name: terrain_map
+    use_actual_rgb: true
+    use_brightness_randomized_rgb: false
+    use_depth: false
+  vision_wrapper_class: ColorGuidedWrapper

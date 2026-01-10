@@ -38,15 +38,9 @@ environment:
     sim_dt: 0.004
 model:
   encoder:
-    dense:
-      layer_sizes:
-      - 256
-      obs_key: null
-    filter_sizes:
-    - 16
-    - 24
-    - 32
-    obs_key: pixels/frontal_ego/rgb_adjusted
+    layer_sizes:
+    - 256
+    obs_key: goal_direction
   latent_encoding_size: 256
   model_class: ActorCriticEnriched
   policy:
@@ -141,17 +135,4 @@ training:
   training_class: default
   training_metrics_steps: null
   unroll_length: 64
-  vision_config:
-    vision_frame_height: 64
-    vision_frame_width: 64
-    vision_obs_period: 16
-vision_wrapper:
-  brightness:
-  - 0.75
-  - 2.0
-  camera_inputs:
-  - name: frontal_ego
-    use_actual_rgb: false
-    use_brightness_randomized_rgb: true
-    use_depth: false
-  vision_wrapper_class: VisionBaseWrapper
+  vision_config: null

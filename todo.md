@@ -2,16 +2,28 @@
 
 ## Short term
 
-- [ ] train a simple vision policy for target reaching to see if it works
-- [ ] try training the teacher only
-- [ ] check rendering with tile coloring
+- [X] improve the non-vision teacher student env and test it
+- [X] rethink configuration of amount of tiles in colored map terrain
+- [X] check optimizer config initialization and usage
+- [ ] check if the ground plane collides with the tiles in color map terrain
+- [ ] think of improvements to target-reaching (variance reduction, goal achievement)
+- [ ] think of improvements to vision students, and vision teachers, improve CNNs, training
+- [X] write down configs for everything
+- [ ] verify that all config-examples function on the GPU server
+- [ ] check maximum memory utilization for the final, heaviest experiment-config
 - [ ] save configs when running an experiment 
+- [ ] visualize examples from more angles, with GPU also, improve camera angles  
+Daily line
+- [ ] improve and persist resulting evaluation and convergence data from the plots
+- [ ] develop speed benchmarks for different parts
 
 ## Mid term
 
+- [ ] add more robust checkpointing to the training
+- [ ] adaptable learning rate
+- [ ] early termination ?
 - [ ] verify the RNN architecture with examples
 - [ ] develop a simplified environment for testing the RNN setup
-- [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] try to train with a simple MLP model
 - [X] draft a plan for the final paper
 - [ ] check how multiple GPUs can be used for vision setups
@@ -22,11 +34,7 @@
 - [ ] obstacle env has some nan issues, check rewards calcs
 - [ ] standardize and make configurable observation-related keywords
 - [ ] add obstacle position randomization into the vision env reset
-- [ ] improve the non-vision teacher student env and test it
 - [ ] add pure tracking and forward moving cumulative reward to metrics, no normalizations.
-- [ ] add more robust checkpointing to the training
-- [X] ~~add an "implements" decorator for checking protocol adherence on definition~~
-- [X] ~~configure a curriculum training kaggle pipeline with terrain~~
 - [ ] add curriculum training support but to the package
 - [ ] add nice post-training rendering and results-saving
 - [ ] update the universal notebook, try to add curriculum training there perhaps

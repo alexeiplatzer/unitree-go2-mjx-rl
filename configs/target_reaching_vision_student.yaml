@@ -115,6 +115,7 @@ training:
   optimizer:
     learning_rate: 0.0002
     max_grad_norm: null
+    student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97

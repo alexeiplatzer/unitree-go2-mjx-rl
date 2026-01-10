@@ -102,6 +102,7 @@ class CNN(linen.Module):
 
     @linen.compact
     def __call__(self, data: Observation | jax.Array):
+        # TODO: maybe improve architecture
         if self.obs_key is not None:
             data = data[self.obs_key]
         hidden = data
@@ -261,6 +262,16 @@ class ModuleConfigLSTM(ModuleConfig):
         )
 
 
+def where_done_tree(done: jax.Array, x, y):
+    def where_done(x_leaf, y_leaf):
+        done_local = done
+        if done_local.shape:
+            done_local = jnp.reshape(done_local, [x_leaf.shape[0]] + [1] * (len(x_leaf.shape) - 1))
+        return jnp.where(done_local, x_leaf, y_leaf)
+
+    return jax.tree_util.tree_map(where_done, x, y)
+
+
 class MixedModeRNN(linen.RNNCellBase):
     convolutional_module: CNN
     proprioceptive_preprocessing_module: MLP
@@ -274,14 +285,7 @@ class MixedModeRNN(linen.RNNCellBase):
         init_carry = jax.vmap(self.initialize_carry)(init_key)
         current_input, current_done = data
         current_output, next_carry = self.recurrent_module(current_input, recurrent_carry)
-
-        def where_done(x, y):
-            done = current_done
-            if done.shape:
-                done = jnp.reshape(done, [x.shape[0]] + [1] * (len(x.shape) - 1))
-            return jnp.where(done, x, y)
-
-        next_carry = jax.tree_util.tree_map(where_done, next_carry, init_carry)
+        next_carry = where_done_tree(current_done, next_carry, init_carry)
         return (next_carry, key), current_output
 
     def pre_encode(

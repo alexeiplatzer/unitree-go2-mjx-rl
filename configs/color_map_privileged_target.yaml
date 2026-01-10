@@ -38,15 +38,20 @@ environment:
     sim_dt: 0.004
 model:
   encoder:
-    dense:
+    joint_processing:
       layer_sizes:
       - 256
-      obs_key: null
-    filter_sizes:
-    - 16
-    - 24
-    - 32
-    obs_key: pixels/frontal_ego/rgb_adjusted
+      obs_key: goal_direction
+    vision_preprocessing:
+      dense:
+        layer_sizes:
+        - 256
+        obs_key: null
+      filter_sizes:
+      - 8
+      - 16
+      - 32
+      obs_key: privileged_terrain_map
   latent_encoding_size: 256
   model_class: ActorCriticEnriched
   policy:
@@ -154,4 +159,8 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: true
     use_depth: false
-  vision_wrapper_class: VisionBaseWrapper
+  - name: terrain_map
+    use_actual_rgb: true
+    use_brightness_randomized_rgb: false
+    use_depth: false
+  vision_wrapper_class: ColorGuidedWrapper

@@ -57,7 +57,7 @@ model:
       - 16
       - 24
       - 32
-      obs_key: pixels/frontal_ego/depth
+      obs_key: privileged_terrain_map
   latent_encoding_size: 256
   model_class: TeacherStudent
   policy:
@@ -131,7 +131,7 @@ training:
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0002
-    max_grad_norm: 1.0
+    max_grad_norm: null
     student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3

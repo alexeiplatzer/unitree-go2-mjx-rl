@@ -41,8 +41,6 @@ def preprocess_obs_by_key(
     preprocess_obs_fn: PreprocessObservationFn,
 ) -> Observation:
     """Preprocesses the specified observations only, returns the same structure."""
-    # if not isinstance(obs, Mapping):
-    #     return preprocess_obs_fn(obs, processor_params)
     return {
         obs_key: (
             obs[obs_key]

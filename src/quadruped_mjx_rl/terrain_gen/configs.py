@@ -197,8 +197,8 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     randomization_config: ColorMapRandomizationConfig = field(
         default_factory=ColorMapRandomizationConfig
     )
-    n_rows: int = 9
-    num_colors: int = 36
+    n_rows: int = 5
+    n_columns: int = 20
     terrain_map_camera: CameraConfig = field(
         default_factory=lambda: predefined_camera_configs["terrain_map"]
     )

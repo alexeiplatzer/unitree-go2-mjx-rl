@@ -10,13 +10,23 @@ from quadruped_mjx_rl.training.algorithms.ppo import HyperparamsPPO
 
 @dataclass
 class OptimizerConfig:
-    learning_rate: float = 0.0002
-    max_grad_norm: float | None = None
+    learning_rate: float
+    max_grad_norm: float | None
+
+    @classmethod
+    def default(cls) -> "OptimizerConfig":
+        return OptimizerConfig(learning_rate=0.0002, max_grad_norm=None)
 
 
 @dataclass
 class TeacherStudentOptimizerConfig(OptimizerConfig):
-    student_learning_rate: float = 0.001
+    student_learning_rate: float
+
+    @classmethod
+    def default(cls) -> "TeacherStudentOptimizerConfig":
+        return TeacherStudentOptimizerConfig(
+            learning_rate=0.0002, max_grad_norm=None, student_learning_rate=0.001
+        )
 
 
 @dataclass
@@ -46,21 +56,21 @@ class TrainingConfig(Configuration):
     num_updates_per_batch: int = 4
     num_minibatches: int = 32
     optimizer: TeacherStudentOptimizerConfig | OptimizerConfig = field(
-        default_factory=OptimizerConfig
+        default_factory=OptimizerConfig.default
     )
     rl_hyperparams: HyperparamsPPO = field(default_factory=HyperparamsPPO)
     vision_config: VisionConfig | None = None
 
-    @classmethod
-    def default_vision(cls) -> "TrainingConfig":
-        return TrainingConfig(
-            # num_envs=1024,
-            # num_eval_envs=1024,
-            # num_timesteps=2**27,
-            # batch_size=32,
-            # optimizer=OptimizerConfig(max_grad_norm=1.0),
-            vision_config=VisionConfig(),
-        )
+    # @classmethod
+    # def default_vision(cls) -> "TrainingConfig":
+    #     return TrainingConfig(
+    #         # num_envs=1024,
+    #         # num_eval_envs=1024,
+    #         # num_timesteps=2**27,
+    #         # batch_size=32,
+    #         # optimizer=OptimizerConfig(max_grad_norm=1.0),
+    #         vision_config=VisionConfig(),
+    #     )
 
     def check_validity(self, model_config: ModelConfig | None = None) -> None:
         if self.batch_size * self.num_minibatches % self.num_envs != 0:

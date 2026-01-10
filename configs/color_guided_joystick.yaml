@@ -1,18 +1,26 @@
 environment:
-  command: {}
+  command:
+    ranges:
+      ang_vel_yaw_max: 0.7
+      ang_vel_yaw_min: -0.7
+      lin_vel_x_max: 1.5
+      lin_vel_x_min: -0.6
+      lin_vel_y_max: 0.8
+      lin_vel_y_min: -0.8
+    resampling_time: 500
   control:
     action_scale: 0.3
   domain_rand:
     apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: QuadrupedVisionTarget
+  environment_class: JoystickBase
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
-    extended_history_length: null
+    extended_history_length: 15
     general_noise: 0.05
-    history_length: 15
+    history_length: 1
   rewards:
     reward_clip_max: 10000.0
     reward_clip_min: -100.0
@@ -21,15 +29,15 @@ environment:
       ang_vel_xy: -0.05
       feet_air_time: 0.2
       foot_slip: -0.1
-      goal_progress: 2.5
-      goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
       orientation: -5.0
-      speed_towards_goal: 2.5
+      stand_still: -0.5
       termination: -1.0
       torques: -0.0002
+      tracking_ang_vel: 0.8
+      tracking_lin_vel: 1.5
     termination_body_height: 0.18
-    yaw_alignment_threshold: 1.35
+    tracking_sigma: 0.25
   sim:
     ctrl_dt: 0.02
     override:
@@ -46,27 +54,51 @@ model:
     - 16
     - 24
     - 32
-    obs_key: pixels/frontal_ego/rgb_adjusted
-  latent_encoding_size: 256
-  model_class: ActorCriticEnriched
+    obs_key: privileged_terrain_map
+  latent_encoding_size: 128
+  model_class: TeacherStudentRecurrent
   policy:
     layer_sizes:
     - 128
     - 128
     - 128
     - 128
-    obs_key: proprioceptive
+    obs_key: proprioceptive_history
+  student:
+    convolutional:
+      dense:
+        layer_sizes:
+        - 128
+        - 64
+        obs_key: null
+      filter_sizes:
+      - 16
+      - 32
+      - 32
+      obs_key: pixels/ego_frontal/rgb_adjusted
+    proprioceptive_preprocessing:
+      layer_sizes:
+      - 128
+      - 64
+      obs_key: proprioceptive
+    recurrent:
+      dense:
+        layer_sizes:
+        - 128
+        obs_key: null
+      recurrent_size: 128
+  student_recurrent_backpropagation_steps: 64
   value:
     layer_sizes:
     - 256
     - 256
     - 256
     - 256
-    obs_key: proprioceptive
+    obs_key: proprioceptive_history
 terrain:
-  add_goal: true
+  add_goal: false
   base_scene_file: scene_mjx_vision.xml
-  column_offset: 0
+  column_offset: 5
   egocentric_camera:
     fovy: 80
     location:
@@ -130,6 +162,7 @@ training:
   optimizer:
     learning_rate: 0.0002
     max_grad_norm: null
+    student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97
@@ -154,4 +187,8 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: true
     use_depth: false
-  vision_wrapper_class: VisionBaseWrapper
+  - name: terrain_map
+    use_actual_rgb: true
+    use_brightness_randomized_rgb: false
+    use_depth: false
+  vision_wrapper_class: ColorGuidedWrapper

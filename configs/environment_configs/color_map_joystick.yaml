@@ -55,7 +55,7 @@ terrain:
     - 0.0
     - 0.1
     mode: fixed
-    name: ego_frontal
+    name: frontal_ego
     orthographic: false
     xyaxes:
     - 0
@@ -68,11 +68,10 @@ terrain:
   goal_location:
   - 20
   - 0
-  - 0.5
-  goal_size: 0.5
+  - 2
+  goal_size: 2
   n_columns: 20
-  n_rows: 9
-  num_colors: 36
+  n_rows: 5
   randomization_config:
     num_colors: 2
     tile_body_prefix: tile_
@@ -103,7 +102,7 @@ vision_wrapper:
     use_actual_rgb: false
     use_brightness_randomized_rgb: true
     use_depth: false
-  - name: terrain
+  - name: terrain_map
     use_actual_rgb: true
     use_brightness_randomized_rgb: false
     use_depth: false

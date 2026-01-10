@@ -124,6 +124,7 @@ class TeacherStudentRecurrentNetworks(
             model_config=model_config,
             observation_size=observation_size,
             action_size=action_size,
+            vision_obs_period=vision_obs_period,
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )

@@ -71,7 +71,7 @@ class TeacherStudentConfig(ActorCriticEnrichedConfig):
                 vision_preprocessing=ModuleConfigCNN(
                     filter_sizes=[16, 24, 32],
                     dense=ModuleConfigMLP(layer_sizes=[256]),
-                    obs_key="pixels/frontal_ego/depth",
+                    obs_key="privileged_terrain_map",
                 ),
                 joint_processing=ModuleConfigMLP(layer_sizes=[256], obs_key="goal_direction"),
             ),
