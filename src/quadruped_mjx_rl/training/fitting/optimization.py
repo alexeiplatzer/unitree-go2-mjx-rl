@@ -94,10 +94,10 @@ class Fitter(ABC, Generic[AgentNetworkParams]):
     @abstractmethod
     def minibatch_step(
         self,
-        carry: tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey],
+        carry: tuple[OptimizerState, AgentNetworkParams, PRNGKey],
         data: Transition,
         normalizer_params: RunningStatisticsState,
-    ) -> tuple[tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey], dict[str, Any]]:
+    ) -> tuple[tuple[OptimizerState, AgentNetworkParams, PRNGKey], dict[str, Any]]:
         pass
 
     @abstractmethod
@@ -148,10 +148,10 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
 
     def minibatch_step(
         self,
-        carry: tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey],
+        carry: tuple[OptimizerState, AgentNetworkParams, PRNGKey],
         data: Transition,
         normalizer_params: RunningStatisticsState,
-    ) -> tuple[tuple[OptimizerState, AgentParams[AgentNetworkParams], PRNGKey], dict[str, Any]]:
+    ) -> tuple[tuple[OptimizerState, AgentNetworkParams, PRNGKey], dict[str, Any]]:
         optimizer_state, network_params, key = carry
         key, key_loss = jax.random.split(key)
         (loss, metrics), params, raw_optimizer_state = self.gradient_update_fn(

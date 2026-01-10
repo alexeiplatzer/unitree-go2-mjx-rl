@@ -84,7 +84,7 @@ if __name__ == "__main__":
         dense=models.ModuleConfigMLP(layer_sizes=[256])
     )
     training_config = training.TrainingConfig()
-    training_config.vision_config = training.VisionConfig()
+    training_config.vision_config = training.VisionConfig(vision_obs_period=1)
     training_config.optimizer = training.TeacherStudentOptimizerConfig.default()
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "target_reaching_vision_student.yaml",

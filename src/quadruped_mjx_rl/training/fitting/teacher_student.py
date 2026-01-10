@@ -80,15 +80,15 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
 
     def minibatch_step(
         self,
-        carry: tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey],
+        carry: tuple[TeacherStudentOptimizerState, TeacherStudentNetworkParams, PRNGKey],
         data: Transition,
         normalizer_params: RunningStatisticsState,
     ) -> tuple[
-        tuple[TeacherStudentOptimizerState, TeacherStudentAgentParams, PRNGKey], dict[str, Any]
+        tuple[TeacherStudentOptimizerState, TeacherStudentNetworkParams, PRNGKey], dict[str, Any]
     ]:
         optimizer_state, network_params, key = carry
         key, teacher_key = jax.random.split(key, 2)
-        ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
+        ((teacher_loss, teacher_metrics), teacher_update_params, teacher_optimizer_state) = (
             self.gradient_update_fn(
                 network_params,
                 normalizer_params,
@@ -97,7 +97,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 optimizer_state=optimizer_state.optimizer_state,
             )
         )
-        ((student_loss, student_metrics), network_params, student_optimizer_state) = (
+        ((student_loss, student_metrics), student_update_params, student_optimizer_state) = (
             self.student_gradient_update_fn(
                 network_params,
                 normalizer_params,
@@ -109,8 +109,14 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             optimizer_state=teacher_optimizer_state,
             student_optimizer_state=student_optimizer_state,
         )
+        network_params_updated = TeacherStudentNetworkParams(
+            policy=teacher_update_params.policy,
+            value=teacher_update_params.value,
+            acting_encoder=teacher_update_params.acting_encoder,
+            student_encoder=student_update_params.student_encoder,
+        )
         metrics = teacher_metrics | student_metrics
-        return (optimizer_state, network_params, key), metrics
+        return (optimizer_state, network_params_updated, key), metrics
 
     def make_evaluation_fn(
         self,

@@ -69,7 +69,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         self,
         carry: tuple[
             TeacherStudentOptimizerState,
-            TeacherStudentAgentParams,
+            TeacherStudentNetworkParams,
             PRNGKey,
         ],
         data: tuple[Transition, RecurrentAgentState],
@@ -77,7 +77,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
     ) -> tuple[
         tuple[
             TeacherStudentOptimizerState,
-            TeacherStudentAgentParams,
+            TeacherStudentNetworkParams,
             PRNGKey,
         ],
         tuple[RecurrentAgentState, dict[str, Any]],
@@ -85,7 +85,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         optimizer_state, network_params, key = carry
         key, teacher_key, student_key = jax.random.split(key, 3)
         transitions, agent_state = data
-        ((teacher_loss, teacher_metrics), network_params, teacher_optimizer_state) = (
+        ((teacher_loss, teacher_metrics), teacher_update_params, teacher_optimizer_state) = (
             self.gradient_update_fn(
                 network_params,
                 normalizer_params,
@@ -96,7 +96,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         )
         (
             (student_loss, (agent_state, student_metrics)),
-            network_params,
+            student_update_params,
             student_optimizer_state,
         ) = self.student_gradient_update_fn(
             network_params,
@@ -106,12 +106,18 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             student_key,
             optimizer_state=optimizer_state.student_optimizer_state,
         )
+        network_params_updated = TeacherStudentNetworkParams(
+            policy=teacher_update_params.policy,
+            value=teacher_update_params.value,
+            acting_encoder=teacher_update_params.acting_encoder,
+            student_encoder=student_update_params.student_encoder,
+        )
         optimizer_state = TeacherStudentOptimizerState(
             optimizer_state=teacher_optimizer_state,
             student_optimizer_state=student_optimizer_state,
         )
         metrics = teacher_metrics | student_metrics
-        return (optimizer_state, network_params, key), (agent_state, metrics)
+        return (optimizer_state, network_params_updated, key), (agent_state, metrics)
 
     def make_evaluation_fn(
         self,

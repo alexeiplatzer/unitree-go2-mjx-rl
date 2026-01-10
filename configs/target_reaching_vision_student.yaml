@@ -130,7 +130,7 @@ training:
   vision_config:
     vision_frame_height: 64
     vision_frame_width: 64
-    vision_obs_period: 16
+    vision_obs_period: 1
 vision_wrapper:
   brightness:
   - 0.75
