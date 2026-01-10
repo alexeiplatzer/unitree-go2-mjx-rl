@@ -13,6 +13,7 @@
 - [ ] check maximum memory utilization for the final, heaviest experiment-config
 - [ ] save configs when running an experiment 
 - [ ] visualize examples from more angles, with GPU also, improve camera angles  
+- [ ] analyze opportunities for privileged critic
 Daily line
 - [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] develop speed benchmarks for different parts

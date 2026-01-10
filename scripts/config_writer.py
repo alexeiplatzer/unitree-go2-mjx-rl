@@ -222,22 +222,6 @@ if __name__ == "__main__":
         vision_wrapper_config,
     )
 
-    # Colored terrain map, but joystick
-    terrain_config = terrain_gen.ColorMapTerrainConfig()
-    terrain_config.add_goal = False
-    terrain_config.column_offset = 5  # for occasional backwards movements
-    env_config = environments.JoystickBaseEnvConfig()
-    env_config.domain_rand.apply_kicks = False
-    env_config.observation_noise.history_length = 1
-    env_config.observation_noise.extended_history_length = 15
-    vision_wrapper_config = environments.ColorGuidedEnvConfig()
-    cfg.save_configs(
-        paths.ENVIRONMENT_CONFIGS_DIRECTORY / "color_map_joystick.yaml",
-        terrain_config,
-        env_config,
-        vision_wrapper_config,
-    )
-
     # OBSTACLE AVOIDING: speculative work
     # Target-reaching and obstacle-avoiding
     terrain_config = terrain_gen.SimpleObstacleTerrainConfig()

@@ -68,7 +68,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentConfig):
                 convolutional=ModuleConfigCNN(
                     filter_sizes=[16, 32, 32],
                     dense=ModuleConfigMLP(layer_sizes=[128, 64]),
-                    obs_key="pixels/ego_frontal/rgb_adjusted"
+                    obs_key="pixels/frontal_ego/rgb_adjusted"
                 ),
                 proprioceptive_preprocessing=ModuleConfigMLP(
                     layer_sizes=[128, 64], obs_key="proprioceptive"
