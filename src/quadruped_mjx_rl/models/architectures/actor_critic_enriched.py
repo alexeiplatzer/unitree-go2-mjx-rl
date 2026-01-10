@@ -155,6 +155,7 @@ class ActorCriticEnrichedNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
+        self.acting_encoder_vision = model_config.encoder.vision
 
     @staticmethod
     def agent_params_class() -> type[ActorCriticEnrichedAgentParams]:
@@ -179,7 +180,7 @@ class ActorCriticEnrichedNetworks(
         latent_encoding = self.acting_encoder_module.apply(
             network_params.acting_encoder, observation
         )
-        if repeat_output:
+        if repeat_output and self.acting_encoder_vision:
             latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period or 1, axis=0)
         return latent_encoding
 

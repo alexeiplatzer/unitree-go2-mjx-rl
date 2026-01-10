@@ -139,7 +139,7 @@ class TeacherStudentNetworks(
         activation: ActivationFn = linen.swish,
     ):
         """Make teacher-student network with preprocessor."""
-        self.student_encoder_module = model_config.encoder.create(
+        self.student_encoder_module = model_config.student.create(
             activation_fn=activation,
             activate_final=True,
             extra_final_layer_size=model_config.latent_encoding_size,
@@ -152,6 +152,7 @@ class TeacherStudentNetworks(
             preprocess_observations_fn=preprocess_observations_fn,
             activation=activation,
         )
+        self.student_encoder_vision = model_config.student.vision
 
     @staticmethod
     def agent_params_class() -> type[TeacherStudentAgentParams]:
@@ -177,7 +178,7 @@ class TeacherStudentNetworks(
         latent_encoding = self.student_encoder_module.apply(
             network_params.student_encoder, observation
         )
-        if repeat_output:
+        if repeat_output and self.student_encoder_vision:
             latent_encoding = jnp.repeat(latent_encoding, self.vision_obs_period or 1, axis=0)
         return latent_encoding
 
