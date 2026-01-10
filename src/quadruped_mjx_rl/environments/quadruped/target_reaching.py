@@ -35,12 +35,14 @@ class QuadrupedVisionTargetEnvConfig(EnvironmentConfig):
     @dataclass
     class RewardConfig(EnvironmentConfig.RewardConfig):
         yaw_alignment_threshold: float = 1.35
+        success_radius: float = 2.5  # TODO: configure with goal size
 
         @dataclass
         class ScalesConfig(EnvironmentConfig.RewardConfig.ScalesConfig):
             goal_progress: float = 2.5
             speed_towards_goal: float = 2.5
             goal_yaw_alignment: float = 1.0
+            goal_reached: float = 5.0
 
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
@@ -107,6 +109,22 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         obs["goal_direction"] = state_info["goal_dir_local"]
         return obs
 
+    def _check_success(self, pipeline_state: PipelineState) -> jax.Array:
+        goal_pos = pipeline_state.data.xpos[self._goal_id]
+        curr_pos = pipeline_state.x.pos[0]
+        dist = jnp.linalg.norm(goal_pos - curr_pos)
+        return dist < self._rewards_config.success_radius
+
+    def _check_termination(self, pipeline_state: PipelineState) -> jax.Array:
+        # 1. Check for standard failures (falling, flipping)
+        failure = super()._check_termination(pipeline_state)
+
+        # 2. Check for success (reaching the goal)
+        success = self._check_success(pipeline_state)
+
+        # Terminate on EITHER failure OR success
+        return failure | success
+
     def _get_rewards(
         self,
         pipeline_state: PipelineState,
@@ -124,6 +142,10 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
         rewards["goal_progress"] = self._reward_goal_progress(last_goal_dir, goal_dir)
         rewards["speed_towards_goal"] = self._reward_speed_towards_goal(xd, goal_dir)
         rewards["goal_yaw_alignment"] = self._reward_goal_yaw_alignment(x, goal_dir)
+
+        success = self._check_success(pipeline_state)
+        rewards["termination"] = jnp.where(success, 0.0, rewards["termination"])
+        rewards["goal_reached"] = jnp.where(success, 1.0, 0.0)
 
         state_info["last_pos"] = x.pos[0]
 

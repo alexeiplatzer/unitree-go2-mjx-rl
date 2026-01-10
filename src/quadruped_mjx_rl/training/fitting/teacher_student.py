@@ -4,6 +4,7 @@ import functools
 import logging
 from pathlib import Path
 from typing import Any
+import copy
 
 import jax
 import optax
@@ -127,7 +128,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
-        teacher_eval_key, student_eval_key = jax.random.split(eval_key, 2)
+        teacher_eval_key, student_eval_key, ablation_eval_key = jax.random.split(eval_key, 3)
         teacher_evaluator = Evaluator(
             eval_env=eval_env,
             key=teacher_eval_key,
@@ -150,6 +151,19 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
                 deterministic=training_config.deterministic_eval,
             ),
         )
+        ablation_network = copy.copy(self.network)
+        ablation_network.vision_obs_period = 64  # TODO: configure dynamically
+        ablation_evaluator = Evaluator(
+            eval_env=eval_env,
+            key=ablation_eval_key,
+            num_eval_envs=training_config.num_eval_envs,
+            episode_length=training_config.episode_length,
+            action_repeat=training_config.action_repeat,
+            unroll_factory=functools.partial(
+                ablation_network.make_student_unroll_fn,  # Use the MODIFIED network copy
+                deterministic=training_config.deterministic_eval,
+            ),
+        )
 
         data_key = "eval/episode_reward"
         data_err_key = "eval/episode_reward_std"
@@ -164,7 +178,7 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode reward",
             data_key=data_key,
             data_err_key=data_err_key,
-            data_max=40,
+            data_max=150,
             data_min=-10,
         )
 
@@ -178,7 +192,21 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode reward",
             data_key=data_key,
             data_err_key=data_err_key,
-            data_max=40,
+            data_max=150,
+            data_min=-10,
+        )
+
+        ablation_progress_fn, _ = make_progress_fn(
+            show_outputs=show_outputs,
+            run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path / "student_ablation_evaluation" if save_plots_path else None,
+            num_timesteps=training_config.num_timesteps,
+            title="Student Ablation (Period=64)",
+            color="orange",  # Different color
+            label_key="episode reward",
+            data_key=data_key,
+            data_err_key=data_err_key,
+            data_max=150,
             data_min=-10,
         )
 
@@ -206,11 +234,15 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         student_eval_fn = self._evaluation_factory(
             data_key, data_err_key, student_evaluator, student_progress_fn, "Student"
         )
+        ablation_eval_fn = self._evaluation_factory(
+            data_key, data_err_key, ablation_evaluator, ablation_progress_fn, "Student (Ablation)"
+        )
 
         def evaluation_fn(current_step, params, training_metrics):
             logging.info(f"current_step: {current_step}")
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
+            ablation_eval_fn(current_step, params, training_metrics)
             if convergence_key in training_metrics:
                 logging.info(f"student absolute loss: {training_metrics[convergence_key]}")
                 convergence_progress_fn(current_step, training_metrics)
