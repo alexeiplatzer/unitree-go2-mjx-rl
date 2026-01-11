@@ -5,15 +5,15 @@
 - [X] improve the non-vision teacher student env and test it
 - [X] rethink configuration of amount of tiles in colored map terrain
 - [X] check optimizer config initialization and usage
-- [ ] check if the ground plane collides with the tiles in color map terrain
-- [ ] think of improvements to target-reaching (variance reduction, goal achievement)
-- [ ] think of improvements to vision students, and vision teachers, improve CNNs, training
+- [X] check if the ground plane collides with the tiles in color map terrain
+- [X] think of improvements to target-reaching (variance reduction, goal achievement)
+- [X] think of improvements to vision students, and vision teachers, improve CNNs, training
 - [X] write down configs for everything
-- [ ] verify that all config-examples function on the GPU server
-- [ ] check maximum memory utilization for the final, heaviest experiment-config
+- [X] verify that all config-examples function on the GPU server
+- [X] check maximum memory utilization for the final, heaviest experiment-config
 - [ ] save configs when running an experiment 
 - [ ] visualize examples from more angles, with GPU also, improve camera angles  
-- [ ] analyze opportunities for privileged critic
+- [X] analyze opportunities for privileged critic
 Daily line
 - [ ] improve and persist resulting evaluation and convergence data from the plots
 - [ ] develop speed benchmarks for different parts

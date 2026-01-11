@@ -25,7 +25,7 @@ from quadruped_mjx_rl.training.configs import (
     TeacherStudentOptimizerConfig,
     TrainingConfig,
 )
-from quadruped_mjx_rl.training.evaluation import make_progress_fn
+from quadruped_mjx_rl.training.progress_plotting import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.fitting.optimization import (
     EvalFn,

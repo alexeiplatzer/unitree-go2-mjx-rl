@@ -20,7 +20,7 @@ from quadruped_mjx_rl.training.configs import (
     OptimizerConfig,
     TrainingConfig,
 )
-from quadruped_mjx_rl.training.evaluation import make_progress_fn
+from quadruped_mjx_rl.training.progress_plotting import make_progress_fn
 from quadruped_mjx_rl.training.evaluator import Evaluator
 from quadruped_mjx_rl.training.gradients import gradient_update_fn
 from quadruped_mjx_rl.types import Metrics, PRNGKey, Transition
