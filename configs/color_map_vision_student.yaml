@@ -22,12 +22,14 @@ environment:
       feet_air_time: 0.2
       foot_slip: -0.1
       goal_progress: 2.5
+      goal_reached: 5.0
       goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
       orientation: -5.0
       speed_towards_goal: 2.5
       termination: -1.0
       torques: -0.0002
+    success_radius: 2.5
     termination_body_height: 0.18
     yaw_alignment_threshold: 1.35
   sim:
@@ -130,13 +132,13 @@ terrain:
 training:
   action_repeat: 1
   augment_pixels: false
-  batch_size: 32
+  batch_size: 64
   deterministic_eval: false
   episode_length: 4096
   log_training_metrics: false
   normalize_observations: true
-  num_envs: 1024
-  num_eval_envs: 1024
+  num_envs: 2048
+  num_eval_envs: 2048
   num_evals: 9
   num_minibatches: 32
   num_resets_per_eval: 0
