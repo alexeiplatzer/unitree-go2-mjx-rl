@@ -201,7 +201,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             data_min=-10,
         )
         acting_policy_eval_fn = self._evaluation_factory(
-            data_key, data_err_key, evaluator, progress_fn
+            evaluator, progress_fn
         )
 
         def evaluation_fn(
@@ -216,8 +216,6 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
 
     @staticmethod
     def _evaluation_factory(
-        data_key: str,
-        data_err_key: str,
         evaluator: Evaluator,
         progress_fn: Callable[[int, Metrics], None],
         name: str = "",
@@ -230,8 +228,8 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             evaluator_metrics = evaluator.run_evaluation(
                 params, training_metrics=training_metrics
             )
-            logging.info(f"{name} {data_key}: {evaluator_metrics[data_key]}")
-            logging.info(f"{name} {data_err_key}: {evaluator_metrics[data_err_key]}")
+            for key in evaluator_metrics:
+                logging.info(f"{name} {key}: {evaluator_metrics[key]}")
             progress_fn(current_step, evaluator_metrics)
 
         return evaluation_fn

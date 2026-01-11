@@ -229,13 +229,13 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         )
 
         teacher_eval_fn = self._evaluation_factory(
-            data_key, data_err_key, teacher_evaluator, teacher_progress_fn, "Teacher"
+            teacher_evaluator, teacher_progress_fn, "Teacher"
         )
         student_eval_fn = self._evaluation_factory(
-            data_key, data_err_key, student_evaluator, student_progress_fn, "Student"
+            student_evaluator, student_progress_fn, "Student"
         )
         ablation_eval_fn = self._evaluation_factory(
-            data_key, data_err_key, ablation_evaluator, ablation_progress_fn, "Student (Ablation)"
+            ablation_evaluator, ablation_progress_fn, "Student (Ablation)"
         )
 
         def evaluation_fn(current_step, params, training_metrics):

@@ -76,7 +76,7 @@ class QuadrupedVisionTargetEnv(QuadrupedBaseEnv):
             env_model,
         )
         self._rewards_config = environment_config.rewards
-        self._goal_id = self._env_model.body("goal_sphere").id
+        self._goal_id = self._env_model.geom("goal_sphere").id
 
     @staticmethod
     def _update_vectors(pipeline_state: PipelineState, state_info: dict[str, Any]) -> None:

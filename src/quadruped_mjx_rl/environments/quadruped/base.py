@@ -237,6 +237,10 @@ class QuadrupedBaseEnv(PipelineEnv):
         metrics = {f"reward/{k}": jnp.zeros(()) for k in self.reward_scales.keys()}
         metrics["total_dist"] = jnp.zeros(())
 
+        self._update_energy_metrics(pipeline_state, metrics)
+
+        metrics["termination"] = done
+
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
 
@@ -280,7 +284,11 @@ class QuadrupedBaseEnv(PipelineEnv):
             state.pipeline_state.x.pos[self._torso_idx - 1]
         )[1]
 
+        self._update_energy_metrics(state.pipeline_state, state.metrics)
+
         done = jnp.float32(done)
+        state.metrics["termination"] = done
+
         state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
         return state
 
@@ -509,6 +517,25 @@ class QuadrupedBaseEnv(PipelineEnv):
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done
+
+    # ------------ metrics calculations ------------
+    def _update_energy_metrics(
+        self, pipeline_state: PipelineState, state_metrics: dict[str, jax.Array]
+    ) -> None:
+        """Computes the energy expenditure of the robot in Joules."""
+        # Calculate power: sum(|torque * joint_velocity|)
+        # Note: Check shape of qfrc_actuator. If it covers all DOFs, slice it for the 12 joints.
+        joint_torques = pipeline_state.data.qfrc_actuator[6:18]
+        joint_vel = pipeline_state.qd[6:18]
+        power = jnp.sum(jnp.abs(joint_torques * joint_vel))
+
+        # Calculate energy for this step (Joules)
+        state_metrics["step_energy"] = power * self.dt
+
+        # Calculate distance traveled in this step (Metres)
+        # Using xy velocity magnitude
+        lin_vel_xy = pipeline_state.xd.vel[0, :2]
+        state_metrics["step_distance"] = jnp.linalg.norm(lin_vel_xy) * self.dt
 
     def render(
         self,

@@ -12,6 +12,15 @@ from quadruped_mjx_rl.terrain_gen import make_terrain
 from quadruped_mjx_rl.training import evaluate
 
 
+def make_training_hyperparams_lighter(training_cfg) -> None:
+    training_cfg.num_timesteps = 100_000
+    training_cfg.num_envs = 4
+    training_cfg.num_eval_envs = 4
+    training_cfg.batch_size = 4
+    training_cfg.num_minibatches = 1
+    training_cfg.num_evals = 5
+
+
 if __name__ == "__main__":
     debug = not (jax.default_backend() == 'gpu')
     headless = True
@@ -42,6 +51,8 @@ if __name__ == "__main__":
         paths.CONFIGS_DIRECTORY / f"target_reaching_basic.yaml",
     )
     assert isinstance(model_config, ActorCriticConfig)
+    if debug:
+        make_training_hyperparams_lighter(training_config)
 
     # Prepare environment model
     env_model = make_terrain(
