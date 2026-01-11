@@ -41,11 +41,12 @@ def make_training_hyperparams_lighter(training_cfg: TrainingConfig) -> None:
 
 if __name__ == "__main__":
     debug = not (jax.default_backend() == 'gpu')
-    headless = False
+    headless = True
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
     logging.info("Logging configured.")
+    logging.info(f"Debugging: {debug}")
 
     # More legible printing from numpy.
     np.set_printoptions(precision=3, suppress=True, linewidth=100)
