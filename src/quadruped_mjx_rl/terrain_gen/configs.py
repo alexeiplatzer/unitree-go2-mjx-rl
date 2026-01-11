@@ -191,6 +191,11 @@ class FlatTiledTerrainConfig(TerrainConfig):
         ]
         make_arena(spec, tiles, self.column_offset)
 
+        # offset the robot
+        init_qpos = spec.key(robot_config.initial_keyframe).qpos
+        init_qpos[2] += self.floor_thickness
+        spec.key(robot_config.initial_keyframe).qpos = init_qpos
+
 
 @dataclass
 class ColorMapTerrainConfig(FlatTiledTerrainConfig):

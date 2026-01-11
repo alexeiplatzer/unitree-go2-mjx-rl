@@ -197,7 +197,7 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             label_key="episode reward",
             data_key=data_key,
             data_err_key=data_err_key,
-            data_max=40,
+            data_max=150,
             data_min=-10,
         )
         acting_policy_eval_fn = self._evaluation_factory(

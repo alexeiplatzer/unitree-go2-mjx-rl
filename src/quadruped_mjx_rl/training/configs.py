@@ -39,8 +39,8 @@ class VisionConfig:
 @dataclass
 class TrainingConfig(Configuration):
     augment_pixels: bool = False
-    num_envs: int = 1024
-    num_eval_envs: int = 1024
+    num_envs: int = 2048
+    num_eval_envs: int = 2048
     seed: int = 0
     num_timesteps: int = 2**27
     log_training_metrics: bool = False
@@ -52,7 +52,7 @@ class TrainingConfig(Configuration):
     unroll_length: int = 64
     normalize_observations: bool = True
     action_repeat: int = 1
-    batch_size: int = 32
+    batch_size: int = 64
     num_updates_per_batch: int = 4
     num_minibatches: int = 32
     optimizer: TeacherStudentOptimizerConfig | OptimizerConfig = field(

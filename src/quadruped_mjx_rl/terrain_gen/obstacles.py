@@ -77,13 +77,26 @@ class FlatTile(TerrainTileConfig):
         grid_loc: list[float] | None = None,
         name: str = "flat_tile",
     ):
-        body = _set_body(spec, grid_loc, name)
-        body.add_geom(
+        if spec is None:
+            spec = mj.MjSpec()
+
+        if grid_loc is None:
+            grid_loc = [0, 0]
+
+        # Defaults
+        main = spec.default
+        main.geom.type = mj.mjtGeom.mjGEOM_BOX
+
+        # Create tile
+        spec.worldbody.add_geom(
+            pos=grid_loc + [0],
+            name=name,
             size=[self.square_side, self.square_side, self.floor_thickness],
             rgba=self.color.rgba,
         )
 
 
+# TODO: update this to support purely geometric addition
 @dataclass
 class StripesTile(TerrainTileConfig):
     stripe_width: float = 0.1

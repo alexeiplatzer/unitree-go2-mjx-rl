@@ -165,7 +165,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode reward",
             data_key=data_key,
             data_err_key=data_err_key,
-            data_max=40,
+            data_max=150,
             data_min=-10,
         )
 
@@ -179,7 +179,7 @@ class RecurrentStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode reward",
             data_key=data_key,
             data_err_key=data_err_key,
-            data_max=40,
+            data_max=150,
             data_min=-10,
         )
 

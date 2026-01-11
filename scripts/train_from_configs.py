@@ -35,13 +35,13 @@ def make_training_hyperparams_lighter(training_cfg: TrainingConfig) -> None:
     training_cfg.num_envs = 4
     training_cfg.num_eval_envs = 4
     training_cfg.batch_size = 4
-    training_cfg.num_minibatches = 4
+    training_cfg.num_minibatches = 1
     training_cfg.num_evals = 5
 
 
 if __name__ == "__main__":
     debug = not (jax.default_backend() == 'gpu')
-    headless = True
+    headless = False
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     if not headless:
         # Render the environment model
-        for camera_name in terrain_config.visualization_cameras:
+        for camera_name in [*terrain_config.visualization_cameras, "track"] :
             image = render_model(
                 env_model,
                 initial_keyframe=robot_config.initial_keyframe,

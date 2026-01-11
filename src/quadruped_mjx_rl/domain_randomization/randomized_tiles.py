@@ -22,29 +22,29 @@ def color_meaning_fn(
     return friction_table[idx], stiffness_table[idx]
 
 
-def collect_tile_ids(env_model: EnvModel, tile_body_prefix: str = "tile_") -> jax.Array:
+def collect_tile_ids(env_model: EnvModel, tile_geom_prefix: str = "tile_") -> jax.Array:
     """Collects the ids of geoms that belong to tile bodies.
 
     Args:
         env_model: Compiled environment model containing the tiled terrain.
-        tile_body_prefix: Prefix that identifies bodies representing tiles.
+        tile_geom_prefix: Prefix that identifies bodies representing tiles.
 
     Returns:
         An array with the ids of all geoms that belong to bodies with the provided prefix.
     """
 
     geom_ids: list[int] = []
-    for body_id in range(env_model.nbody):
-        name = mujoco.mj_id2name(env_model, mujoco.mjtObj.mjOBJ_BODY, body_id)
-        if name is None or not name.startswith(tile_body_prefix):
+    for geom_id in range(env_model.ngeom):
+        name = mujoco.mj_id2name(env_model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)
+        if name is None or not name.startswith(tile_geom_prefix):
             continue
-        first_geom = env_model.body_geomadr[body_id]
-        geom_ids.append(first_geom)
+        # first_geom = env_model.body_geomadr[body_id]
+        geom_ids.append(geom_id)
 
     if not geom_ids:
         raise ValueError(
             "Unable to locate any tile geoms. Ensure that the terrain builder "
-            f"creates bodies with the prefix '{tile_body_prefix}'."
+            f"creates bodies with the prefix '{tile_geom_prefix}'."
         )
 
     return jnp.array(geom_ids)
@@ -72,7 +72,7 @@ class ColorMapRandomizationConfig(TerrainMapRandomizationConfig):
     ) -> tuple[PipelineModel, PipelineModel, tuple[jax.Array, jax.Array, jax.Array]]:
         """Randomizes the mjx.Model. Assumes the ground is a square grid of square tiles."""
 
-        tile_geom_ids = collect_tile_ids(env_model, tile_body_prefix=self.tile_body_prefix)
+        tile_geom_ids = collect_tile_ids(env_model, tile_geom_prefix=self.tile_body_prefix)
 
         @jax.vmap
         def rand(rng):
