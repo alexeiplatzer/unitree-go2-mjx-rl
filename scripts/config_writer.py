@@ -1,8 +1,12 @@
 import paths
 from quadruped_mjx_rl import config_utils as cfg
 from quadruped_mjx_rl import environments, models, policy_rendering, training, terrain_gen
-from quadruped_mjx_rl.domain_randomization import SurfaceDomainRandomizationConfig
+from quadruped_mjx_rl.domain_randomization import (
+    ColorMapRandomizationConfig,
+    SurfaceDomainRandomizationConfig,
+)
 from quadruped_mjx_rl.environments import JoystickBaseEnvConfig
+from quadruped_mjx_rl.terrain_gen import ColorMapTerrainConfig
 
 # TODO: update this and the default values for models
 if __name__ == "__main__":
@@ -138,6 +142,23 @@ if __name__ == "__main__":
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "color_map_blind_joystick.yaml",
         terrain_config_joystick,
+        env_config_joystick,
+        model_config,
+        training_config,
+    )
+
+    # Colored terrain map, blind joystick, no surface values randomized baseline
+    # This serves to compare, whether the blind joystick defined above experiences any
+    # difficulty at all from our terrain randomization.
+    terrain_config_joystick_baseline = terrain_gen.ColorMapTerrainConfig.default_joystick()
+    terrain_config_joystick_baseline.randomization_config = ColorMapRandomizationConfig(
+        friction_min=1.00, friction_max=1.00, stiffness_min=0.02, stiffness_max=0.02
+    )
+    model_config = models.ActorCriticConfig.default()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "color_map_blind_joystick_baseline.yaml",
+        terrain_config_joystick_baseline,
         env_config_joystick,
         model_config,
         training_config,

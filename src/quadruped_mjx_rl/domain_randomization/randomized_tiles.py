@@ -58,10 +58,10 @@ class ColorMapRandomizationConfig(TerrainMapRandomizationConfig):
 
     num_colors: int = 2
     tile_body_prefix: str = "tile_"
-    friction_min: float = 0.1
-    friction_max: float = 1.6
+    friction_min: float = 0.01
+    friction_max: float = 2.00
     stiffness_min: float = 0.002
-    stiffness_max: float = 0.1
+    stiffness_max: float = 0.100
 
     def domain_randomize(
         self,

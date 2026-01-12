@@ -123,8 +123,8 @@ terrain:
   n_columns: 20
   n_rows: 5
   randomization_config:
-    friction_max: 1.6
-    friction_min: 0.1
+    friction_max: 2.0
+    friction_min: 0.01
     num_colors: 2
     stiffness_max: 0.1
     stiffness_min: 0.002
