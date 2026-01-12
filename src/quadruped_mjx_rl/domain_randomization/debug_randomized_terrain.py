@@ -36,12 +36,12 @@ class SurfaceDomainRandomizationConfig(DomainRandomizationConfig):
             friction_key, stiffness_key = jax.random.split(rng, 2)
             # friction
             friction = jax.random.uniform(
-                friction_key, (1,), minval=self.friction_min, maxval=self.friction_max
+                friction_key, (), minval=self.friction_min, maxval=self.friction_max
             )
             friction = pipeline_model.model.geom_friction.at[floor_id, 0].set(friction)
             # actuator
             stiffness = jax.random.uniform(
-                stiffness_key, (1,), minval=self.stiffness_min, maxval=self.stiffness_max
+                stiffness_key, (), minval=self.stiffness_min, maxval=self.stiffness_max
             )
             stiffness = pipeline_model.model.geom_solref.at[floor_id, 0].set(stiffness)
             return friction, stiffness
