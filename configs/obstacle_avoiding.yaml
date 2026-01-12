@@ -122,7 +122,7 @@ training:
   augment_pixels: false
   batch_size: 64
   deterministic_eval: false
-  episode_length: 2048
+  episode_length: 1024
   log_training_metrics: false
   normalize_observations: true
   num_envs: 2048
@@ -130,7 +130,7 @@ training:
   num_evals: 11
   num_minibatches: 32
   num_resets_per_eval: 0
-  num_timesteps: 268435456
+  num_timesteps: 134217728
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0002

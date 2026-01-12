@@ -1,4 +1,6 @@
 import logging
+from pathlib import Path
+import sys
 
 import jax
 import numpy as np
@@ -33,9 +35,12 @@ if __name__ == "__main__":
     # More legible printing from numpy.
     np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
-    # Prepare experiment results directory
-    experiment_name = "target_reaching_2"
-    experiment_dir = paths.EXPERIMENTS_DIRECTORY / "server_experiments" / experiment_name
+    # Prepare used files
+    experiment_dirs = [
+        paths.EXPERIMENTS_DIRECTORY / "server_experiments" / sys.argv[i]
+        for i in range(0, len(sys.argv))
+    ]
+    # Prepare experiment results directories
 
     # Prepare configs
     robot_name = "unitree_go2"
