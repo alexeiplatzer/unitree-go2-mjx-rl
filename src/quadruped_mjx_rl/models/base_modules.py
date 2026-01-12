@@ -121,7 +121,7 @@ class CNN(linen.Module):
             # hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
 
         # hidden = jnp.mean(hidden, axis=(-2, -3))
-        hidden = jnp.reshape(hidden, (hidden.shape[0], -1))
+        hidden = jnp.reshape(hidden, hidden.shape[:-3] + (-1,))
         return MLP(
             layer_sizes=self.dense_layer_sizes,
             activation=self.activation,
