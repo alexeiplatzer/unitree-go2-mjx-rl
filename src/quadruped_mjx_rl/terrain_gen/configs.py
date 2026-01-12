@@ -9,7 +9,7 @@ import mujoco as mj
 
 from quadruped_mjx_rl.domain_randomization import (
     DomainRandomizationConfig,
-    TerrainMapRandomizationConfig,
+    SurfaceDomainRandomizationConfig, TerrainMapRandomizationConfig,
     PhysicsDomainRandomizationConfig,
     ObstaclePositionRandomizationConfig,
     ColorMapRandomizationConfig,
@@ -96,7 +96,7 @@ class FlatTerrainConfig(TerrainConfig):
     """A simple flat terrain with no modifications, and a simple domain randomization function,
     that randomizes global physical parameters."""
 
-    randomization_config: PhysicsDomainRandomizationConfig = field(
+    randomization_config: PhysicsDomainRandomizationConfig | SurfaceDomainRandomizationConfig = field(
         default_factory=PhysicsDomainRandomizationConfig
     )
 

@@ -1,18 +1,36 @@
 import paths
 from quadruped_mjx_rl import config_utils as cfg
 from quadruped_mjx_rl import environments, models, policy_rendering, training, terrain_gen
+from quadruped_mjx_rl.domain_randomization import SurfaceDomainRandomizationConfig
 from quadruped_mjx_rl.environments import JoystickBaseEnvConfig
 
 # TODO: update this and the default values for models
 if __name__ == "__main__":
     # PLAIN TERRAIN JOYSTICK CONFIGS
-    # Joystick basic
-    terrain_config = terrain_gen.FlatTerrainConfig()
+    # Joystick basic DEBUG SURFACE
+    terrain_config = terrain_gen.FlatTerrainConfig(
+        randomization_config=SurfaceDomainRandomizationConfig.default_easier()
+    )
     env_config = environments.JoystickBaseEnvConfig()
     model_config = models.ActorCriticConfig.default()
     training_config = training.TrainingConfig()
     cfg.save_configs(
         paths.CONFIGS_DIRECTORY / "joystick_basic.yaml",
+        terrain_config,
+        env_config,
+        model_config,
+        training_config,
+    )
+
+    # Joystick difficult DEBUG SURFACE
+    terrain_config = terrain_gen.FlatTerrainConfig(
+        randomization_config=SurfaceDomainRandomizationConfig()
+    )
+    env_config = environments.JoystickBaseEnvConfig()
+    model_config = models.ActorCriticConfig.default()
+    training_config = training.TrainingConfig()
+    cfg.save_configs(
+        paths.CONFIGS_DIRECTORY / "joystick_difficult.yaml",
         terrain_config,
         env_config,
         model_config,

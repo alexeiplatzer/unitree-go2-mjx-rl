@@ -96,7 +96,8 @@ class EnvironmentConfig(Configuration):
             action_rate: float = -0.01  # Penalize changes in actions; encourage smooth actions.
             feet_air_time: float = 0.2  # Encourage long swing steps (not high clearances).
             termination: float = -1.0  # Early termination penalty.
-            foot_slip: float = -0.1  # Penalize foot slipping on the ground.
+            foot_slip: float = -0.5  # Penalize foot slipping on the ground.
+            energy: float = -0.001  # Penalize energy expenditure
 
         scales: ScalesConfig = field(default_factory=ScalesConfig)
 
@@ -466,6 +467,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             ),
             "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
             "termination": self._reward_termination(done, state_info["step"]),
+            "energy": self._reward_energy(pipeline_state),
         }
 
         state_info["last_vel"] = joint_vel
@@ -518,19 +520,24 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done
 
+    def _reward_energy(self, pipeline_state: PipelineState) -> jax.Array:
+        return self._compute_energy(pipeline_state)
+
     # ------------ metrics calculations ------------
-    def _update_energy_metrics(
-        self, pipeline_state: PipelineState, state_metrics: dict[str, jax.Array]
-    ) -> None:
+    def _compute_energy(self, pipeline_state: PipelineState) -> jax.Array:
         """Computes the energy expenditure of the robot in Joules."""
         # Calculate power: sum(|torque * joint_velocity|)
         # Note: Check shape of qfrc_actuator. If it covers all DOFs, slice it for the 12 joints.
         joint_torques = pipeline_state.data.qfrc_actuator[6:18]
         joint_vel = pipeline_state.qd[6:18]
         power = jnp.sum(jnp.abs(joint_torques * joint_vel))
+        return power * self.dt
 
+    def _update_energy_metrics(
+        self, pipeline_state: PipelineState, state_metrics: dict[str, jax.Array]
+    ) -> None:
         # Calculate energy for this step (Joules)
-        state_metrics["step_energy"] = power * self.dt
+        state_metrics["step_energy"] = self._compute_energy(pipeline_state)
 
         # Calculate distance traveled in this step (Metres)
         # Using xy velocity magnitude
