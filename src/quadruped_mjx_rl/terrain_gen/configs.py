@@ -210,8 +210,8 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
         return ColorMapTerrainConfig(
             add_goal=False,
             n_rows=1,
-            n_columns=20,
-            tile=FlatTile(width=1.0, length=5.0, floor_thickness=0.05),
+            n_columns=24,
+            tile=FlatTile(width=0.5, length=5.0, floor_thickness=0.05),
         )
 
     @classmethod

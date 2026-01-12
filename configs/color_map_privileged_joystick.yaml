@@ -96,7 +96,7 @@ terrain:
   - 0
   - 2
   goal_size: 2
-  n_columns: 20
+  n_columns: 24
   n_rows: 1
   randomization_config:
     num_colors: 2
@@ -126,7 +126,7 @@ terrain:
       r: 0.46
     floor_thickness: 0.05
     length: 5.0
-    width: 1.0
+    width: 0.5
 training:
   action_repeat: 1
   augment_pixels: false
@@ -137,10 +137,10 @@ training:
   normalize_observations: true
   num_envs: 2048
   num_eval_envs: 2048
-  num_evals: 9
+  num_evals: 11
   num_minibatches: 32
   num_resets_per_eval: 0
-  num_timesteps: 67108864
+  num_timesteps: 134217728
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0002
