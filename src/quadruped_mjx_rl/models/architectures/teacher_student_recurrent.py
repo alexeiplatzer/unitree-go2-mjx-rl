@@ -66,7 +66,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentConfig):
             ),
             student=ModuleConfigMixedModeRNN(
                 convolutional=ModuleConfigCNN(
-                    filter_sizes=[16, 32, 32],
+                    filter_sizes=[16, 16, 16],
                     dense=ModuleConfigMLP(layer_sizes=[128, 64]),
                     obs_key="pixels/frontal_ego/rgb_adjusted"
                 ),

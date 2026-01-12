@@ -181,7 +181,7 @@ if __name__ == "__main__":
     # Mixed-mode Teacher with RGB Student
     model_config = models.TeacherStudentConfig.default_mixed()
     training_config = training.TrainingConfig()
-    training_config.vision_config = training.VisionConfig()
+    training_config.vision_config = training.VisionConfig(vision_obs_period=4)
     training_config.optimizer = training.TeacherStudentOptimizerConfig.default()
     vision_wrapper_config = environments.ColorGuidedEnvConfig()
     cfg.save_configs(

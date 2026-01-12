@@ -107,7 +107,7 @@ class CNN(linen.Module):
             data = data[self.obs_key]
         hidden = data
         kernel_sizes = [(3, 3)] * len(self.num_filters)
-        strides = [(1, 1)] * len(self.num_filters)
+        strides = [(2, 2)] * len(self.num_filters)
         for i, (num_filter, kernel_size, stride) in enumerate(
             zip(self.num_filters, kernel_sizes, strides)
         ):
@@ -118,9 +118,10 @@ class CNN(linen.Module):
                 use_bias=self.use_bias,
             )(hidden)
             hidden = self.activation(hidden)
-            hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
+            # hidden = linen.avg_pool(hidden, window_shape=(2, 2), strides=(2, 2))
 
-        hidden = jnp.mean(hidden, axis=(-2, -3))
+        # hidden = jnp.mean(hidden, axis=(-2, -3))
+        hidden = jnp.reshape(hidden, (hidden.shape[0], -1))
         return MLP(
             layer_sizes=self.dense_layer_sizes,
             activation=self.activation,

@@ -99,7 +99,11 @@ terrain:
   n_columns: 24
   n_rows: 1
   randomization_config:
+    friction_max: 1.6
+    friction_min: 0.1
     num_colors: 2
+    stiffness_max: 0.1
+    stiffness_min: 0.002
     tile_body_prefix: tile_
   terrain_class: ColorMap
   terrain_map_camera:

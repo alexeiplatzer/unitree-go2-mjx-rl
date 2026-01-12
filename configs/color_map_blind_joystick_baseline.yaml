@@ -1,12 +1,20 @@
 environment:
-  command: {}
+  command:
+    ranges:
+      ang_vel_yaw_max: 0.0
+      ang_vel_yaw_min: -0.0
+      lin_vel_x_max: 1.5
+      lin_vel_x_min: 0.1
+      lin_vel_y_max: 0.0
+      lin_vel_y_min: 0.0
+    resampling_time: 500
   control:
     action_scale: 0.3
   domain_rand:
     apply_kicks: false
     kick_interval: 10
     kick_vel: 0.05
-  environment_class: QuadrupedVisionTarget
+  environment_class: JoystickBase
   observation_noise:
     add_privileged_obs: false
     clip: 100.0
@@ -21,17 +29,15 @@ environment:
       ang_vel_xy: -0.05
       feet_air_time: 0.2
       foot_slip: -0.1
-      goal_progress: 2.5
-      goal_reached: 5.0
-      goal_yaw_alignment: 1.0
       lin_vel_z: -2.0
       orientation: -5.0
-      speed_towards_goal: 2.5
+      stand_still: -0.5
       termination: -1.0
       torques: -0.0002
-    success_radius: 2.5
+      tracking_ang_vel: 0.8
+      tracking_lin_vel: 1.5
     termination_body_height: 0.18
-    yaw_alignment_threshold: 1.35
+    tracking_sigma: 0.25
   sim:
     ctrl_dt: 0.02
     override:
@@ -39,23 +45,7 @@ environment:
       Kp: 35.0
     sim_dt: 0.004
 model:
-  encoder:
-    joint_processing:
-      layer_sizes:
-      - 256
-      obs_key: goal_direction
-    vision_preprocessing:
-      dense:
-        layer_sizes:
-        - 256
-        obs_key: null
-      filter_sizes:
-      - 16
-      - 24
-      - 32
-      obs_key: privileged_terrain_map
-  latent_encoding_size: 256
-  model_class: TeacherStudent
+  model_class: ActorCritic
   policy:
     layer_sizes:
     - 128
@@ -63,16 +53,6 @@ model:
     - 128
     - 128
     obs_key: proprioceptive
-  student:
-    dense:
-      layer_sizes:
-      - 256
-      obs_key: null
-    filter_sizes:
-    - 16
-    - 24
-    - 32
-    obs_key: pixels/frontal_ego/rgb_adjusted
   value:
     layer_sizes:
     - 256
@@ -81,7 +61,7 @@ model:
     - 256
     obs_key: proprioceptive
 terrain:
-  add_goal: true
+  add_goal: false
   base_scene_file: scene_mjx_vision.xml
   column_offset: 0
   egocentric_camera:
@@ -105,13 +85,13 @@ terrain:
   - 0
   - 2
   goal_size: 2
-  n_columns: 20
-  n_rows: 5
+  n_columns: 24
+  n_rows: 1
   randomization_config:
-    friction_max: 1.6
-    friction_min: 0.1
+    friction_max: 1.0
+    friction_min: 1.0
     num_colors: 2
-    stiffness_max: 0.1
+    stiffness_max: 0.02
     stiffness_min: 0.002
     tile_body_prefix: tile_
   terrain_class: ColorMap
@@ -138,8 +118,8 @@ terrain:
       g: 0.362
       r: 0.46
     floor_thickness: 0.05
-    length: 1.0
-    width: 1.0
+    length: 5.0
+    width: 0.5
 training:
   action_repeat: 1
   augment_pixels: false
@@ -158,7 +138,6 @@ training:
   optimizer:
     learning_rate: 0.0002
     max_grad_norm: null
-    student_learning_rate: 0.001
   rl_hyperparams:
     clipping_epsilon: 0.3
     discounting: 0.97
@@ -170,21 +149,4 @@ training:
   training_class: default
   training_metrics_steps: null
   unroll_length: 32
-  vision_config:
-    vision_frame_height: 64
-    vision_frame_width: 64
-    vision_obs_period: 4
-vision_wrapper:
-  brightness:
-  - 0.75
-  - 2.0
-  camera_inputs:
-  - name: frontal_ego
-    use_actual_rgb: false
-    use_brightness_randomized_rgb: true
-    use_depth: false
-  - name: terrain_map
-    use_actual_rgb: true
-    use_brightness_randomized_rgb: false
-    use_depth: false
-  vision_wrapper_class: ColorGuidedWrapper
+  vision_config: null

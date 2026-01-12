@@ -57,7 +57,7 @@ class ActorCriticEnrichedConfig(ActorCriticConfig):
             policy=default_super.policy,
             value=default_super.value,
             encoder=ModuleConfigCNN(
-                filter_sizes=[16, 24, 32],
+                filter_sizes=[16, 16, 16],
                 dense=ModuleConfigMLP(layer_sizes=[256]),
                 obs_key="pixels/frontal_ego/rgb_adjusted"
             ),
