@@ -42,14 +42,14 @@ class TrainingConfig(Configuration):
     num_envs: int = 2048
     num_eval_envs: int = 2048
     seed: int = 0
-    num_timesteps: int = 2**27
+    num_timesteps: int = 2**26
     log_training_metrics: bool = False
     training_metrics_steps: int | None = None
     num_evals: int = 9
     deterministic_eval: bool = False
     num_resets_per_eval: int = 0
-    episode_length: int = 4096
-    unroll_length: int = 64
+    episode_length: int = 1024
+    unroll_length: int = 32
     normalize_observations: bool = True
     action_repeat: int = 1
     batch_size: int = 64

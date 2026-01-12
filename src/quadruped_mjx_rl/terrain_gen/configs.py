@@ -110,13 +110,14 @@ class FlatTerrainConfig(TerrainConfig):
 
 def check_tiles(tiles: list[list[TerrainTileConfig]]) -> bool:
     """Checks whether the tiles form a rectangular grid."""
-    square_side = tiles[0][0].square_side
+    tile_width = tiles[0][0].width
+    tile_length = tiles[0][0].length
     row_length = len(tiles[0])
     for row in tiles:
         if len(row) != row_length:
             return False
         for tile in row:
-            if tile.square_side != square_side:
+            if tile.width != tile_width or tile.length != tile_length:
                 return False
     return True
 
@@ -137,15 +138,16 @@ def make_arena(
     if not check_tiles(tiles):
         raise ValueError("Tiles do not form a rectangular grid!")
 
-    square_side = tiles[0][0].square_side
+    tile_width = tiles[0][0].width
+    tile_length = tiles[0][0].length
     row_offset = len(tiles) // 2
     for i in range(len(tiles)):
         for j in range(len(tiles[0])):
             tiles[i][j].create_tile(
                 spec=spec,
                 grid_loc=[
-                    (j - column_offset) * 2 * square_side,
-                    (i - row_offset) * 2 * square_side,
+                    (j - column_offset) * 2 * tile_width,
+                    (i - row_offset) * 2 * tile_length,
                 ],
                 name=f"tile_{i}_{j}",
             )
@@ -157,7 +159,7 @@ def get_tile_center_qpos(
     tiles: list[list[TerrainTileConfig]], row: int, col: int
 ) -> tuple[float, float, float]:
     """Returns the x-y coordinates and the z offset of the center of the tile at row, col."""
-    square_side = tiles[0][0].square_side
+    square_side = tiles[0][0].width
     x = col * 2 * square_side
     y = row * 2 * square_side
     z_offset = tiles[row][col].floor_thickness
@@ -172,8 +174,9 @@ class FlatTiledTerrainConfig(TerrainConfig):
     base_scene_file: str = "scene_mjx_vision.xml"
     n_rows: int = 20
     n_columns: int = 20
-    square_size: float = 1.0
-    floor_thickness: float = 0.05
+    tile: FlatTile = field(
+        default_factory=lambda: FlatTile(width=1.0, length=1.0, floor_thickness=0.05)
+    )
     column_offset: int = 0
 
     @classmethod
@@ -182,18 +185,12 @@ class FlatTiledTerrainConfig(TerrainConfig):
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         super().create_in_spec(spec, robot_config)
-        tiles = [
-            [
-                FlatTile(square_side=self.square_size, floor_thickness=self.floor_thickness)
-                for _ in range(self.n_columns)
-            ]
-            for _ in range(self.n_rows)
-        ]
+        tiles = [[self.tile] * self.n_columns] * self.n_rows
         make_arena(spec, tiles, self.column_offset)
 
         # offset the robot
         init_qpos = spec.key(robot_config.initial_keyframe).qpos
-        init_qpos[2] += self.floor_thickness
+        init_qpos[2] += self.tile.floor_thickness
         spec.key(robot_config.initial_keyframe).qpos = init_qpos
 
 
@@ -207,6 +204,15 @@ class ColorMapTerrainConfig(FlatTiledTerrainConfig):
     terrain_map_camera: CameraConfig = field(
         default_factory=lambda: predefined_camera_configs["terrain_map"]
     )
+
+    @classmethod
+    def default_joystick(cls) -> "ColorMapTerrainConfig":
+        return ColorMapTerrainConfig(
+            add_goal=False,
+            n_rows=1,
+            n_columns=20,
+            tile=FlatTile(width=1.0, length=5.0, floor_thickness=0.05),
+        )
 
     @classmethod
     def config_class_key(cls) -> str:
@@ -235,9 +241,9 @@ class StripeTilesTerrainConfig(TerrainConfig):
 
     def create_in_spec(self, spec: mj.MjSpec, robot_config: RobotConfig) -> None:
         super().create_in_spec(spec, robot_config)
-        flat_tiles = [FlatTile(square_side=self.square_size) for _ in range(self.n_flat_tiles)]
+        flat_tiles = [FlatTile(width=self.square_size) for _ in range(self.n_flat_tiles)]
         stripe_tiles = [
-            StripesTile(square_side=self.square_size) for _ in range(self.n_stripe_tiles)
+            StripesTile(width=self.square_size) for _ in range(self.n_stripe_tiles)
         ]
         tiles = [flat_tiles + stripe_tiles]
         make_arena(spec, tiles)

@@ -1,7 +1,7 @@
 import paths
 from quadruped_mjx_rl import config_utils as cfg
 from quadruped_mjx_rl import environments, models, policy_rendering, training, terrain_gen
-
+from quadruped_mjx_rl.environments import JoystickBaseEnvConfig
 
 # TODO: update this and the default values for models
 if __name__ == "__main__":
@@ -97,10 +97,17 @@ if __name__ == "__main__":
 
     # COLORED TERRAIN MAPS
     # Joystick
-    terrain_config_joystick = terrain_gen.ColorMapTerrainConfig(add_goal=False)
-    terrain_config_joystick.column_offset = 5  # for occasional backwards movements
+    terrain_config_joystick = terrain_gen.ColorMapTerrainConfig.default_joystick()
     env_config_joystick = environments.JoystickBaseEnvConfig()
     env_config_joystick.domain_rand.apply_kicks = False
+    env_config_joystick.command.ranges = JoystickBaseEnvConfig.CommandConfig.RangesConfig(
+        lin_vel_x_max=1.5,
+        lin_vel_x_min=0.1,
+        lin_vel_y_max=0.0,
+        lin_vel_y_min=0.0,
+        ang_vel_yaw_max=0.0,
+        ang_vel_yaw_min=-0.0,
+    )
 
     # Target-reaching
     terrain_config_target = terrain_gen.ColorMapTerrainConfig(add_goal=True)
@@ -187,7 +194,6 @@ if __name__ == "__main__":
     )
 
     # Recurrent student joystick
-    terrain_config_joystick.column_offset = 5  # for occasional backwards movements
     env_config_joystick.observation_noise.history_length = 1
     env_config_joystick.observation_noise.extended_history_length = 15
     model_config = models.TeacherStudentRecurrentConfig.default()

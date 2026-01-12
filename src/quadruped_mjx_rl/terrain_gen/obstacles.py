@@ -52,7 +52,8 @@ class TerrainTileConfig(ABC):
     """Abstract base class for a generic square tile type with common attributes and methods."""
 
     color: Color = field(default_factory=lambda: Color(0.460, 0.362, 0.216, 1.0))  # (Brown)
-    square_side: float = 2.0
+    width: float = 2.0  # along x axis
+    length: float = 2.0  # along y axis
     floor_thickness: float = 0.05
 
     @abstractmethod
@@ -91,7 +92,7 @@ class FlatTile(TerrainTileConfig):
         spec.worldbody.add_geom(
             pos=grid_loc + [0],
             name=name,
-            size=[self.square_side, self.square_side, self.floor_thickness],
+            size=[self.width, self.length, self.floor_thickness],
             rgba=self.color.rgba,
         )
 
@@ -117,8 +118,8 @@ class StripesTile(TerrainTileConfig):
         body = _set_body(spec, grid_loc, name)
 
         # Compute how many stripes we can fit across the 2 m span
-        n_stripes = int((2 * self.square_side) / self.stripe_width)
-        x_start = -self.square_side + self.stripe_width / 2  # centre of first stripe
+        n_stripes = int((2 * self.width) / self.stripe_width)
+        x_start = -self.width + self.stripe_width / 2  # centre of first stripe
 
         for k in range(n_stripes):
             is_high = k % 2 == 1  # alternate low/high
@@ -128,7 +129,7 @@ class StripesTile(TerrainTileConfig):
 
             body.add_geom(
                 pos=[x_center, 0, z_center],
-                size=[self.stripe_width / 2, self.square_side, height / 2],
+                size=[self.stripe_width / 2, self.width, height / 2],
                 rgba=self.color.rgba,
             )
 
@@ -156,7 +157,7 @@ class Cylinders(TerrainTileConfig):
     ):
         body = _set_body(spec, grid_loc, name)
         body.add_geom(
-            size=[self.square_side, self.square_side, self.floor_thickness],
+            size=[self.width, self.width, self.floor_thickness],
             rgba=self.color.rgba,
         )
 
@@ -189,11 +190,11 @@ class StairsTile(TerrainTileConfig):
         body = _set_body(spec, grid_loc, name)
 
         # Offset
-        x_beginning, y_end = [-self.square_side + self.step_horizontal_size] * 2
-        x_end, y_beginning = [self.square_side - self.step_horizontal_size] * 2
+        x_beginning, y_end = [-self.width + self.step_horizontal_size] * 2
+        x_end, y_beginning = [self.width - self.step_horizontal_size] * 2
         # Dimension
-        size_one = [self.step_horizontal_size, self.square_side, self.step_vertical_size]
-        size_two = [self.square_side, self.step_horizontal_size, self.step_vertical_size]
+        size_one = [self.step_horizontal_size, self.width, self.step_vertical_size]
+        size_two = [self.width, self.step_horizontal_size, self.step_vertical_size]
         # Geoms positions
         x_pos_l = [x_beginning, 0, self.direction * self.step_vertical_size]
         x_pos_r = [x_end, 0, self.direction * self.step_vertical_size]
@@ -201,8 +202,8 @@ class StairsTile(TerrainTileConfig):
         y_pos_down = [0, y_end, self.direction * self.step_vertical_size]
 
         for i in range(self.num_stairs):
-            size_one[1] = self.square_side - H_STEP * i
-            size_two[0] = self.square_side - H_STEP * i
+            size_one[1] = self.width - H_STEP * i
+            size_two[0] = self.width - H_STEP * i
 
             x_pos_l[2], x_pos_r[2], y_pos_up[2], y_pos_down[2] = [
                 self.direction * (self.step_vertical_size + V_STEP * i)
@@ -223,8 +224,8 @@ class StairsTile(TerrainTileConfig):
 
         # Closing
         size = [
-            self.square_side - H_STEP * self.num_stairs,
-            self.square_side - H_STEP * self.num_stairs,
+            self.width - H_STEP * self.num_stairs,
+            self.width - H_STEP * self.num_stairs,
             self.step_vertical_size,
         ]
         pos = [0, 0, self.direction * (self.step_vertical_size + V_STEP * self.num_stairs)]
@@ -243,13 +244,13 @@ class DebrisWithSimpleGeoms(TerrainTileConfig):
     ):
         body = _set_body(spec, grid_loc, name)
         body.add_geom(
-            size=[self.square_side, self.square_side, self.floor_thickness],
+            size=[self.width, self.width, self.floor_thickness],
             rgba=self.color.rgba,
         )
 
         # Simple Geoms
-        x_beginning, y_end = [-self.square_side + self.floor_thickness] * 2
-        x_end, y_beginning = [self.square_side - self.floor_thickness] * 2
+        x_beginning, y_end = [-self.width + self.floor_thickness] * 2
+        x_end, y_beginning = [self.width - self.floor_thickness] * 2
 
         x_grid = np.linspace(x_beginning, x_end, 10)
         y_grid = np.linspace(y_beginning, y_end, 10)
@@ -290,8 +291,8 @@ class DebrisWithMeshGeoms(DebrisWithSimpleGeoms):
 
         spec.default.mesh.scale = np.array([self.scale] * 3, dtype=np.float64)
 
-        x_beginning = -self.square_side + self.floor_thickness
-        y_beginning = self.square_side - self.floor_thickness
+        x_beginning = -self.width + self.floor_thickness
+        y_beginning = self.width - self.floor_thickness
 
         # Place debris on the tile
         for i in range(10):
@@ -335,13 +336,13 @@ class BoxyTerrain(TerrainTileConfig):
         grid_loc: list[float] | None = None,
         name: str = "boxy_terrain",
     ):
-        grid_size = int(self.square_side / self.cube_length)
+        grid_size = int(self.width / self.cube_length)
         step = self.cube_length * 2
 
         body = _set_body(spec, grid_loc, name)
 
-        x_beginning = -self.square_side + self.cube_length
-        y_beginning = self.square_side - self.cube_length
+        x_beginning = -self.width + self.cube_length
+        y_beginning = self.width - self.cube_length
 
         for i in range(grid_size):
             for j in range(grid_size):
@@ -366,13 +367,13 @@ class BoxExtrusions(BoxyTerrain):
         name: str = "box_extrusions",
     ):
         # Warning! complex sometimes leads to creation of holes
-        grid_size = int(self.square_side / self.cube_length)
+        grid_size = int(self.width / self.cube_length)
         step = self.cube_length * 2
 
         body = _set_body(spec, grid_loc, name)
 
-        x_beginning = -self.square_side + self.cube_length
-        y_beginning = self.square_side - self.cube_length
+        x_beginning = -self.width + self.cube_length
+        y_beginning = self.width - self.cube_length
 
         # Create initial grid and store geoms ref
         grid = [[0 for _ in range(grid_size)] for _ in range(grid_size)]
@@ -436,8 +437,8 @@ class HeightField(TerrainTileConfig):
         hfield = spec.add_hfield(
             name=name,
             size=[
-                self.square_side,
-                self.square_side,
+                self.width,
+                self.width,
                 self.field_height,
                 self.field_height / 10,
             ],

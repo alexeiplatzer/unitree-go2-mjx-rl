@@ -78,7 +78,7 @@ class TeacherStudentRecurrentConfig(TeacherStudentConfig):
                 ),
             ),
             latent_encoding_size=128,
-            student_recurrent_backpropagation_steps=64,
+            student_recurrent_backpropagation_steps=32,
         )
 
     @classmethod

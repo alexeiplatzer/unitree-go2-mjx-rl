@@ -90,7 +90,6 @@ terrain:
     - 0
     - 0
     - 1
-  floor_thickness: 0.05
   goal_location:
   - 20
   - 0
@@ -101,7 +100,6 @@ terrain:
   randomization_config:
     num_colors: 2
     tile_body_prefix: tile_
-  square_size: 1.0
   terrain_class: ColorMap
   terrain_map_camera:
     fovy: 5
@@ -119,12 +117,21 @@ terrain:
     - 1
     - 0
     - 0
+  tile:
+    color:
+      a: 1.0
+      b: 0.216
+      g: 0.362
+      r: 0.46
+    floor_thickness: 0.05
+    length: 1.0
+    width: 1.0
 training:
   action_repeat: 1
   augment_pixels: false
   batch_size: 64
   deterministic_eval: false
-  episode_length: 4096
+  episode_length: 1024
   log_training_metrics: false
   normalize_observations: true
   num_envs: 2048
@@ -132,7 +139,7 @@ training:
   num_evals: 9
   num_minibatches: 32
   num_resets_per_eval: 0
-  num_timesteps: 134217728
+  num_timesteps: 67108864
   num_updates_per_batch: 4
   optimizer:
     learning_rate: 0.0002
@@ -147,7 +154,7 @@ training:
   seed: 0
   training_class: default
   training_metrics_steps: null
-  unroll_length: 64
+  unroll_length: 32
   vision_config:
     vision_frame_height: 64
     vision_frame_width: 64

@@ -41,7 +41,7 @@ def make_training_hyperparams_lighter(training_cfg: TrainingConfig) -> None:
 
 if __name__ == "__main__":
     debug = not (jax.default_backend() == 'gpu')
-    headless = True
+    headless = False
 
     # Configure logging
     logging.basicConfig(level=logging.INFO, force=True)
