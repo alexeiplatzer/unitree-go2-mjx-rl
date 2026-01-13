@@ -2,6 +2,7 @@ import functools
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Generic, Protocol, TypeVar
 
@@ -9,6 +10,7 @@ import jax
 import optax
 from flax.struct import dataclass as flax_dataclass
 
+from quadruped_mjx_rl.models.acting import GenerateUnrollFn
 from quadruped_mjx_rl.physics_pipeline import Env
 from quadruped_mjx_rl.models import AgentParams
 from quadruped_mjx_rl.models.architectures.configs_base import ComponentNetworksArchitecture
@@ -173,35 +175,17 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
         run_in_cell: bool = True,
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
-        evaluator = Evaluator(
+        acting_policy_eval_fn, times = self._evaluation_factory(
             eval_env=eval_env,
-            key=eval_key,
-            num_eval_envs=training_config.num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=training_config.action_repeat,
-            unroll_factory=functools.partial(
+            eval_key=eval_key,
+            training_config=training_config,
+            make_unroll_fn=functools.partial(
                 self.network.make_acting_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
-        )
-
-        data_key = "eval/episode_reward"
-        data_err_key = "eval/episode_reward_std"
-        progress_fn, times = make_progress_fn(
             show_outputs=show_outputs,
             run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path / "evaluation_results" if save_plots_path else None,
-            num_timesteps=training_config.num_timesteps,
-            title="Evaluation results",
-            color="blue",
-            label_key="episode reward",
-            data_key=data_key,
-            data_err_key=data_err_key,
-            data_max=150,
-            data_min=-10,
-        )
-        acting_policy_eval_fn = self._evaluation_factory(
-            evaluator, progress_fn
+            save_plots_path=save_plots_path,
         )
 
         def evaluation_fn(
@@ -216,10 +200,57 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
 
     @staticmethod
     def _evaluation_factory(
-        evaluator: Evaluator,
-        progress_fn: Callable[[int, Metrics], None],
+        eval_env: Env,
+        eval_key: PRNGKey,
+        training_config: TrainingConfig,
+        make_unroll_fn: Callable[[AgentParams[AgentNetworkParams]], GenerateUnrollFn],
+        show_outputs: bool = False,
+        run_in_cell: bool = True,
+        save_plots_path: Path | None = None,
         name: str = "",
-    ):
+        color: str = "blue",
+    ) -> tuple[EvalFn[AgentNetworkParams], list[float]]:
+        """Creates the evaluation function, given an unroll function for an agent
+        and the relevant evaluation configs"""
+        evaluator = Evaluator(
+            eval_env=eval_env,
+            key=eval_key,
+            num_eval_envs=training_config.num_eval_envs,
+            episode_length=training_config.episode_length,
+            action_repeat=training_config.action_repeat,
+            unroll_factory=make_unroll_fn,
+        )
+
+        reward_plots_path = save_plots_path / f"{name}_evaluation_results" if save_plots_path else None
+        name = name + " " if name else ""
+        progress_fn, times = make_progress_fn(
+            show_outputs=show_outputs,
+            run_in_cell=run_in_cell,
+            save_plots_path=reward_plots_path,
+            num_timesteps=training_config.num_timesteps,
+            title=name + "Evaluation results",
+            color=color,
+            label_key="episode reward",
+            data_key="eval/episode_reward",
+            data_err_key="eval/episode_reward_std",
+            data_max=60 * training_config.episode_length // 1024,  # TODO: dynamically adjust to expected reward
+            data_min=-10,
+        )
+        energy_plots_path = save_plots_path / f"{name}_energy_evaluation" if save_plots_path else None
+        energy_progress_fn, _ = make_progress_fn(
+            show_outputs=show_outputs,
+            run_in_cell=run_in_cell,
+            save_plots_path=energy_plots_path,
+            num_timesteps=training_config.num_timesteps,
+            title=name + "Energy per distance",
+            color="orange",
+            label_key="energy per meter",
+            data_key="eval/episode_energy_per_meter",
+            data_err_key="eval/episode_energy_per_meter_std",
+            data_max=2000,
+            data_min=0,
+        )
+
         def evaluation_fn(
             current_step: int,
             params: AgentParams[AgentNetworkParams],
@@ -228,8 +259,10 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             evaluator_metrics = evaluator.run_evaluation(
                 params, training_metrics=training_metrics
             )
-            for key in evaluator_metrics:
-                logging.info(f"{name} {key}: {evaluator_metrics[key]}")
+            logging.info(f"All {name}Evaluation metrics: {evaluator_metrics}")
+            logging.info(f"{name}Episode reward mean: {evaluator_metrics['eval/episode_reward']}")
+            logging.info(f"{name}Episode reward std: {evaluator_metrics['eval/episode_reward_std']}")
             progress_fn(current_step, evaluator_metrics)
+            energy_progress_fn(current_step, evaluator_metrics)
 
-        return evaluation_fn
+        return evaluation_fn, times

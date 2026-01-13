@@ -42,7 +42,7 @@ class TrainingConfig(Configuration):
     num_envs: int = 2048
     num_eval_envs: int = 2048
     seed: int = 0
-    num_timesteps: int = 2**27
+    num_timesteps: int = 2**26
     log_training_metrics: bool = False
     training_metrics_steps: int | None = None
     num_evals: int = 11

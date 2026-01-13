@@ -16,8 +16,8 @@ def make_progress_fn(
     label_key: str = "reward",
     data_key: str = "eval/episode_reward",
     data_err_key: str | None = "eval/episode_reward_std",
-    data_max: int = 40,
-    data_min: int = -10,
+    data_max: float = 40,
+    data_min: float = -10,
 ):
     """Returns a progress function that plots the chosen metric values over time.
     Args:

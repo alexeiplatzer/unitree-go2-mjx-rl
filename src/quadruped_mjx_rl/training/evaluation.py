@@ -54,11 +54,6 @@ def evaluate(
 
     # Check arguments
     training_config.check_validity()
-    if vision and evaluation_env is not None:
-        raise ValueError(
-            "Evaluation env is not None. The Madrona-MJX vision backend doesn't support "
-            "multiple env instances, one env must be used for both training and evaluation."
-        )
 
     xt = time.time()
 

@@ -11,7 +11,7 @@
 - [X] write down configs for everything
 - [X] verify that all config-examples function on the GPU server
 - [X] check maximum memory utilization for the final, heaviest experiment-config
-- [ ] save configs when running an experiment 
+- [X] save configs when running an experiment 
 - [ ] visualize examples from more angles, with GPU also, improve camera angles  
 - [X] analyze opportunities for privileged critic
 Daily line

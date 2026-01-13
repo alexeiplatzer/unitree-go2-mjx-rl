@@ -68,6 +68,12 @@ class Evaluator:
         eval_metrics.active_episodes.block_until_ready()
         epoch_eval_time = time.time() - t
         metrics = {}
+        metrics["eval/episode_energy_per_meter"] = np.mean(
+            eval_metrics.episode_metrics["step_energy"] / eval_metrics.episode_metrics["step_distance"]
+        )
+        metrics["eval/episode_energy_per_meter_std"] = np.std(
+            eval_metrics.episode_metrics["step_energy"] / eval_metrics.episode_metrics["step_distance"]
+        )
         for fn in [np.mean, np.std]:
             suffix = "_std" if fn == np.std else ""
             metrics.update(

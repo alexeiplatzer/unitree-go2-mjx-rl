@@ -67,6 +67,9 @@ def save_configs(
     """
     Saves all configs to a YAML file, each config under an appropriate top level key.
     """
-    final_dict = {config.config_base_class_key(): config.to_dict() for config in configs}
+    final_dict = {
+        config.config_base_class_key(): config.to_dict()
+        for config in configs if config is not None
+    }
     with open(save_file_path, "w") as f:
         yaml.dump(final_dict, f)

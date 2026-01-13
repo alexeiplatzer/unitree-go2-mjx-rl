@@ -129,89 +129,51 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
         save_plots_path: Path | None = None,
     ) -> tuple[EvalFn[TeacherStudentNetworkParams], list[float]]:
         teacher_eval_key, student_eval_key, ablation_eval_key = jax.random.split(eval_key, 3)
-        teacher_evaluator = Evaluator(
+
+        evaluation_factory = functools.partial(
+            self._evaluation_factory,
             eval_env=eval_env,
-            key=teacher_eval_key,
-            num_eval_envs=training_config.num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=training_config.action_repeat,
-            unroll_factory=functools.partial(
+            training_config=training_config,
+            show_outputs=show_outputs,
+            run_in_cell=run_in_cell,
+            save_plots_path=save_plots_path,
+        )
+
+        teacher_eval_fn, times = evaluation_factory(
+            eval_key=teacher_eval_key,
+            make_unroll_fn=functools.partial(
                 self.network.make_acting_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
+            name="Teacher",
+            color="blue",
         )
-        student_evaluator = Evaluator(
-            eval_env=eval_env,
-            key=student_eval_key,
-            num_eval_envs=training_config.num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=training_config.action_repeat,
-            unroll_factory=functools.partial(
+
+        student_eval_fn, _ = evaluation_factory(
+            eval_key=teacher_eval_key,
+            make_unroll_fn=functools.partial(
                 self.network.make_student_unroll_fn,
                 deterministic=training_config.deterministic_eval,
             ),
+            name="Student",
+            color="green",
         )
+
+        # Student ablation with rarer vision observations
         ablation_network = copy.copy(self.network)
-        ablation_network.vision_obs_period = 64  # TODO: configure dynamically
-        ablation_evaluator = Evaluator(
-            eval_env=eval_env,
-            key=ablation_eval_key,
-            num_eval_envs=training_config.num_eval_envs,
-            episode_length=training_config.episode_length,
-            action_repeat=training_config.action_repeat,
-            unroll_factory=functools.partial(
+        ablation_network.vision_obs_period = training_config.unroll_length
+        student_ablation_eval_fn, _ = evaluation_factory(
+            eval_key=teacher_eval_key,
+            make_unroll_fn=functools.partial(
                 ablation_network.make_student_unroll_fn,  # Use the MODIFIED network copy
                 deterministic=training_config.deterministic_eval,
             ),
-        )
-
-        data_key = "eval/episode_reward"
-        data_err_key = "eval/episode_reward_std"
-
-        teacher_progress_fn, times = make_progress_fn(
-            show_outputs=show_outputs,
-            run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path / "teacher_evaluation" if save_plots_path else None,
-            num_timesteps=training_config.num_timesteps,
-            title="Teacher evaluation results",
-            color="blue",
-            label_key="episode reward",
-            data_key=data_key,
-            data_err_key=data_err_key,
-            data_max=150,
-            data_min=-10,
-        )
-
-        student_progress_fn, _ = make_progress_fn(
-            show_outputs=show_outputs,
-            run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path / "student_evaluation" if save_plots_path else None,
-            num_timesteps=training_config.num_timesteps,
-            title="Student evaluation results",
-            color="green",
-            label_key="episode reward",
-            data_key=data_key,
-            data_err_key=data_err_key,
-            data_max=150,
-            data_min=-10,
-        )
-
-        ablation_progress_fn, _ = make_progress_fn(
-            show_outputs=show_outputs,
-            run_in_cell=run_in_cell,
-            save_plots_path=save_plots_path / "student_ablation_evaluation" if save_plots_path else None,
-            num_timesteps=training_config.num_timesteps,
-            title="Student Ablation (Period=64)",
-            color="orange",  # Different color
-            label_key="episode reward",
-            data_key=data_key,
-            data_err_key=data_err_key,
-            data_max=150,
-            data_min=-10,
+            name="Student-Ablation",
+            color="olive",
         )
 
         convergence_key = "training/student_total_loss"
-        convergence_err_key = ""  # TODO: check how student loss is passed along
+        convergence_err_key = ""
         convergence_progress_fn, _ = make_progress_fn(
             show_outputs=show_outputs,
             run_in_cell=run_in_cell,
@@ -224,27 +186,17 @@ class TeacherStudentFitter(SimpleFitter[TeacherStudentNetworkParams]):
             label_key="episode MSE",
             data_key=convergence_key,
             data_err_key=convergence_err_key,
-            data_max=1,
-            data_min=0,  # TODO no idea what are appropriate values here, check in practice
-        )
-
-        teacher_eval_fn = self._evaluation_factory(
-            teacher_evaluator, teacher_progress_fn, "Teacher"
-        )
-        student_eval_fn = self._evaluation_factory(
-            student_evaluator, student_progress_fn, "Student"
-        )
-        ablation_eval_fn = self._evaluation_factory(
-            ablation_evaluator, ablation_progress_fn, "Student (Ablation)"
+            data_max=0.03,
+            data_min=0,
         )
 
         def evaluation_fn(current_step, params, training_metrics):
             logging.info(f"current_step: {current_step}")
             teacher_eval_fn(current_step, params, training_metrics)
             student_eval_fn(current_step, params, training_metrics)
-            ablation_eval_fn(current_step, params, training_metrics)
+            student_ablation_eval_fn(current_step, params, training_metrics)
             if convergence_key in training_metrics:
-                logging.info(f"student absolute loss: {training_metrics[convergence_key]}")
+                logging.info(f"Student absolute loss: {training_metrics[convergence_key]}")
                 convergence_progress_fn(current_step, training_metrics)
             else:
                 logging.info("student absolute loss: not known yet.")

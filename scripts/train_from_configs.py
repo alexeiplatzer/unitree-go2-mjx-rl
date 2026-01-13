@@ -7,6 +7,7 @@ import jax
 
 import paths
 from quadruped_mjx_rl.configs import prepare_all_configs
+from quadruped_mjx_rl.config_utils import save_configs
 from quadruped_mjx_rl.environments import get_env_factory
 from quadruped_mjx_rl.environments.rendering import (
     render_model,
@@ -110,6 +111,17 @@ if __name__ == "__main__":
     if debug:
         make_model_hyperparams_lighter(model_config)
         make_training_hyperparams_lighter(training_config)
+
+    # Save the used configs into the experiment results directory
+    save_configs(
+        experiment_dir / "configs.yaml",
+        robot_config,
+        terrain_config,
+        env_config,
+        vision_wrapper_config,
+        model_config,
+        training_config,
+    )
 
     # Prepare environment model
     env_model = make_terrain(
