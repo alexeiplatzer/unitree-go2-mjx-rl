@@ -175,7 +175,7 @@ class FlatTiledTerrainConfig(TerrainConfig):
     n_rows: int = 20
     n_columns: int = 20
     tile: FlatTile = field(
-        default_factory=lambda: FlatTile(width=1.0, length=1.0, floor_thickness=0.05)
+        default_factory=lambda: FlatTile(width=0.5, length=0.5, floor_thickness=0.05)
     )
     column_offset: int = 0
 
