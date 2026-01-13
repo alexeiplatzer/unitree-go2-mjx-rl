@@ -11,7 +11,7 @@ from quadruped_mjx_rl.terrain_gen import make_terrain
 
 if __name__ == "__main__":
     debug = False
-    version = "target_plain"
+    version = "joystick"
     seed = 0
 
     # Configure logging
@@ -77,6 +77,6 @@ if __name__ == "__main__":
             # Channel 0: Friction
             save_image(image[..., 0], pictures_dir / f"vision_obs_{safe_name}_friction.png")
             # Channel 1: Stiffness
-            save_image(image[..., 1] * 10, pictures_dir / f"vision_obs_{safe_name}_stiffness.png")
+            save_image(image[..., 1] * 50, pictures_dir / f"vision_obs_{safe_name}_stiffness.png")
         else:
             save_image(image, pictures_dir / f"vision_obs_{safe_name}.png")
