@@ -22,10 +22,10 @@ class ColorGuidedEnvConfig(VisionWrapperConfig):
 
     camera_inputs: list[VisionWrapperConfig.CameraInputConfig] = field(
         default_factory=lambda: [
+            VisionWrapperConfig.CameraInputConfig(name="terrain_map", use_actual_rgb=True),
             VisionWrapperConfig.CameraInputConfig(
                 name="frontal_ego", use_brightness_randomized_rgb=True
             ),
-            VisionWrapperConfig.CameraInputConfig(name="terrain_map", use_actual_rgb=True),
         ]
     )
 
