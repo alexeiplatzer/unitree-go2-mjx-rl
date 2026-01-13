@@ -39,7 +39,7 @@ if __name__ == "__main__":
         terrain_config = terrain_gen.ColorMapTerrainConfig(add_goal=True)
         env_config = environments.QuadrupedVisionTargetEnvConfig()
         vision_wrapper_config = environments.ColorGuidedEnvConfig()
-    training_config = training.TrainingConfig.default_vision()
+    training_config = training.TrainingConfig(vision_config=training.VisionConfig())
 
     # Prepare environment model
     env_model = make_terrain(
