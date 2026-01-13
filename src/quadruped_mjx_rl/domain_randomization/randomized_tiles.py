@@ -59,7 +59,7 @@ class ColorMapRandomizationConfig(TerrainMapRandomizationConfig):
     num_colors: int = 2
     tile_body_prefix: str = "tile_"
     friction_min: float = 0.01
-    friction_max: float = 2.00
+    friction_max: float = 1.60
     stiffness_min: float = 0.002
     stiffness_max: float = 0.100
 
