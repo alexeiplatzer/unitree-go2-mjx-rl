@@ -117,6 +117,11 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         new_command = jnp.array([lin_vel_x[0], lin_vel_y[0], ang_vel_yaw[0]])
         return new_command
 
+    def reset(self, rng: PRNGKey) -> State:
+        state = super().reset(rng)
+        state.metrics["tracking_error"] = state.info["tracking_error"]
+        return state
+
     def step(self, state: State, action: Action) -> State:
         state = super().step(state, action)
 
@@ -133,6 +138,8 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
             state.info["step"] > self._resampling_time, 0, state.info["step"]
         )
 
+        state.metrics["tracking_error"] = state.info["tracking_error"]
+
         return state
 
     def _init_obs(
@@ -143,6 +150,9 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         """Resamples the command in addition to initializing observation arrays."""
         state_info["rng"], command_key = jax.random.split(state_info["rng"])
         state_info["command"] = self.sample_command(command_key)
+        state_info["tracking_error"] = self._lin_vel_tracking_error(
+            state_info["command"], pipeline_state.x, pipeline_state.xd
+        )
         return super()._init_obs(pipeline_state, state_info)
 
     def _get_proprioceptive_obs_list(
@@ -164,14 +174,16 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
         rewards = QuadrupedBaseEnv._get_rewards(self, pipeline_state, state_info, action, done)
 
         x, xd = pipeline_state.x, pipeline_state.xd
-        joint_angles = pipeline_state.q[7:19]
 
-        rewards["tracking_lin_vel"] = self._reward_tracking_lin_vel(
-            state_info["command"], x, xd
-        )
-        rewards["tracking_ang_vel"] = self._reward_tracking_ang_vel(
-            state_info["command"], x, xd
-        )
+        lin_vel_tracking_error = self._lin_vel_tracking_error(state_info["command"], x, xd)
+        state_info["tracking_error"] = lin_vel_tracking_error
+        rewards["tracking_lin_vel"] = self._reward_tracking_lin_vel(lin_vel_tracking_error)
+
+        # TODO: also track angular velocity error for more advanced joystick setups
+        ang_vel_tracking_error = self._ang_vel_tracking_error(state_info["command"], x, xd)
+        rewards["tracking_ang_vel"] = self._reward_tracking_ang_vel(ang_vel_tracking_error)
+
+        joint_angles = pipeline_state.q[7:19]
         rewards["stand_still"] = self._reward_stand_still(state_info["command"], joint_angles)
 
         # no reward for a zero command
@@ -179,22 +191,28 @@ class QuadrupedJoystickBaseEnv(QuadrupedBaseEnv):
 
         return rewards
 
-    # ------------ reward functions----------------
-    def _reward_tracking_lin_vel(
+    # ------------ reward calculation functions----------------
+    def _lin_vel_tracking_error(
         self, commands: jax.Array, x: Transform, xd: Motion
     ) -> jax.Array:
         # Tracking of linear velocity commands (xy axes)
         local_vel = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
         lin_vel_error = jnp.sum(jnp.square(commands[:2] - local_vel[:2]))
-        lin_vel_reward = jnp.exp(-lin_vel_error / self._rewards_config.tracking_sigma)
-        return lin_vel_reward
+        return lin_vel_error
 
-    def _reward_tracking_ang_vel(
+    def _ang_vel_tracking_error(
         self, commands: jax.Array, x: Transform, xd: Motion
     ) -> jax.Array:
         # Tracking of angular velocity commands (yaw)
         base_ang_vel = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         ang_vel_error = jnp.square(commands[2] - base_ang_vel[2])
+        return ang_vel_error
+
+    def _reward_tracking_lin_vel(self, lin_vel_error: jax.Array) -> jax.Array:
+        lin_vel_reward = jnp.exp(-lin_vel_error / self._rewards_config.tracking_sigma)
+        return lin_vel_reward
+
+    def _reward_tracking_ang_vel(self, ang_vel_error) -> jax.Array:
         return jnp.exp(-ang_vel_error / self._rewards_config.tracking_sigma)
 
     def _reward_stand_still(

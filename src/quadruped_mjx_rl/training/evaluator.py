@@ -68,12 +68,16 @@ class Evaluator:
         eval_metrics.active_episodes.block_until_ready()
         epoch_eval_time = time.time() - t
         metrics = {}
-        metrics["eval/episode_energy_per_meter"] = np.mean(
-            eval_metrics.episode_metrics["step_energy"] / eval_metrics.episode_metrics["step_distance"]
-        )
-        metrics["eval/episode_energy_per_meter_std"] = np.std(
-            eval_metrics.episode_metrics["step_energy"] / eval_metrics.episode_metrics["step_distance"]
-        )
+        episode_energy_per_meter = eval_metrics.episode_metrics["step_energy"] / eval_metrics.episode_metrics["step_distance"]
+        metrics["eval/episode_energy_per_meter"] = np.mean(episode_energy_per_meter)
+        metrics["eval/episode_energy_per_meter_std"] = np.std(episode_energy_per_meter)
+        episode_foot_slip = eval_metrics.episode_metrics["foot_slip"] / eval_metrics.episode_steps
+        metrics["eval/episode_average_foot_slip"] = np.mean(episode_foot_slip)
+        metrics["eval/episode_average_foot_slip_std"] = np.std(episode_foot_slip)
+        if "tracking_error" in eval_metrics.episode_metrics:
+            episode_tracking_error = eval_metrics.episode_metrics["tracking_error"] / eval_metrics.episode_steps
+            metrics["eval/episode_average_tracking_error"] = np.mean(episode_tracking_error)
+            metrics["eval/episode_average_tracking_error_std"] = np.std(episode_tracking_error)
         for fn in [np.mean, np.std]:
             suffix = "_std" if fn == np.std else ""
             metrics.update(

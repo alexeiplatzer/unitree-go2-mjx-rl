@@ -262,6 +262,13 @@ class SimpleFitter(Fitter[AgentNetworkParams]):
             logging.info(f"All {name}Evaluation metrics: {evaluator_metrics}")
             logging.info(f"{name}Episode reward mean: {evaluator_metrics['eval/episode_reward']}")
             logging.info(f"{name}Episode reward std: {evaluator_metrics['eval/episode_reward_std']}")
+            logging.info(f"{name}Episode energy per meter mean: {evaluator_metrics['eval/episode_energy_per_meter']}")
+            logging.info(f"{name}Episode energy per meter std: {evaluator_metrics['eval/episode_energy_per_meter_std']}")
+            logging.info(f"{name}Episode average foot slip mean: {evaluator_metrics['eval/episode_foot_slip']}")
+            logging.info(f"{name}Episode average foot slip std: {evaluator_metrics['eval/episode_foot_slip_std']}")
+            if "eval/episode_average_tracking_error" in evaluator_metrics:
+                logging.info(f"{name}Average tracking error mean: {evaluator_metrics['eval/episode_average_tracking_error']}")
+                logging.info(f"{name}Average tracking error std: {evaluator_metrics['eval/episode_average_tracking_error_std']}")
             progress_fn(current_step, evaluator_metrics)
             energy_progress_fn(current_step, evaluator_metrics)
 

@@ -229,6 +229,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             "last_contact": jnp.zeros(shape=4, dtype=bool),
             "feet_air_time": jnp.zeros(4),
             "kick": jnp.array([0.0, 0.0]),
+            "foot_slip": jnp.zeros(()),
         }
 
         obs = self._init_obs(pipeline_state, state_info)
@@ -241,6 +242,7 @@ class QuadrupedBaseEnv(PipelineEnv):
         self._update_energy_metrics(pipeline_state, metrics)
 
         metrics["termination"] = done
+        metrics["foot_slip"] = state_info["foot_slip"]
 
         state = State(pipeline_state, obs, reward, done, metrics, state_info)
         return state
@@ -289,6 +291,7 @@ class QuadrupedBaseEnv(PipelineEnv):
 
         done = jnp.float32(done)
         state.metrics["termination"] = done
+        state.metrics["foot_slip"] = state.info["foot_slip"]
 
         state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done)
         return state
@@ -447,14 +450,15 @@ class QuadrupedBaseEnv(PipelineEnv):
         x, xd = pipeline_state.x, pipeline_state.xd
         joint_vel = pipeline_state.qd[6:18]
 
-        # foot contact data based on z-position
-        foot_pos = pipeline_state.data.site_xpos[self._feet_site_id]
-        foot_contact_z = foot_pos[:, 2] - self._foot_radius
+        foot_contact_z = self._compute_foot_contact_z(pipeline_state)
         contact = foot_contact_z < 1e-3  # a mm or less off the floor
         contact_filt_mm = contact | state_info["last_contact"]
         contact_filt_cm = (foot_contact_z < 3e-2) | state_info["last_contact"]
         first_contact = (state_info["feet_air_time"] > 0) * contact_filt_mm
         state_info["feet_air_time"] += self.dt
+
+        foot_slip_vel = self._compute_foot_slip_vel(pipeline_state)
+        state_info["foot_slip"] = self._absolute_foot_slip(foot_slip_vel, contact_filt_cm)
 
         rewards = {
             "lin_vel_z": self._reward_lin_vel_z(xd),
@@ -465,7 +469,7 @@ class QuadrupedBaseEnv(PipelineEnv):
             "feet_air_time": self._reward_feet_air_time(
                 state_info["feet_air_time"], first_contact
             ),
-            "foot_slip": self._reward_foot_slip(pipeline_state, contact_filt_cm),
+            "foot_slip": self._reward_foot_slip(foot_slip_vel, contact_filt_cm),
             "termination": self._reward_termination(done, state_info["step"]),
             "energy": self._reward_energy(pipeline_state),
         }
@@ -505,17 +509,10 @@ class QuadrupedBaseEnv(PipelineEnv):
         return rew_air_time
 
     def _reward_foot_slip(
-        self, pipeline_state: PipelineState, contact_filt: jax.Array
+        self, foot_slip_vel: jax.Array, contact_filt: jax.Array
     ) -> jax.Array:
-        # get velocities at feet which are offset from lower legs
-        pos = pipeline_state.data.site_xpos[self._feet_site_id]  # feet position
-        feet_offset = pos - pipeline_state.data.xpos[self._lower_leg_body_id]
-        offset = Transform.create(pos=feet_offset)
-        foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
-        foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
-
         # Penalize large feet velocity for feet that are in contact with the ground.
-        return jnp.sum(jnp.square(foot_vel[:, :2]) * contact_filt.reshape((-1, 1)))
+        return jnp.sum(jnp.square(foot_slip_vel) * contact_filt.reshape((-1, 1)))
 
     def _reward_termination(self, done: jax.Array, step: jax.Array) -> jax.Array:
         return done
@@ -523,7 +520,21 @@ class QuadrupedBaseEnv(PipelineEnv):
     def _reward_energy(self, pipeline_state: PipelineState) -> jax.Array:
         return self._compute_energy(pipeline_state)
 
-    # ------------ metrics calculations ------------
+    # ------------ additional calculations ------------
+    def _compute_foot_contact_z(self, pipeline_state: PipelineState) -> jax.Array:
+        # foot contact data based on z-position
+        foot_pos = pipeline_state.data.site_xpos[self._feet_site_id]
+        return foot_pos[:, 2] - self._foot_radius
+
+    def _compute_foot_slip_vel(self, pipeline_state: PipelineState) -> jax.Array:
+        # get velocities at feet which are offset from lower legs
+        pos = pipeline_state.data.site_xpos[self._feet_site_id]  # feet position
+        feet_offset = pos - pipeline_state.data.xpos[self._lower_leg_body_id]
+        offset = Transform.create(pos=feet_offset)
+        foot_indices = self._lower_leg_body_id - 1  # we got rid of the world body
+        foot_vel = offset.vmap().do(pipeline_state.xd.take(foot_indices)).vel
+        return foot_vel[:, :2]
+
     def _compute_energy(self, pipeline_state: PipelineState) -> jax.Array:
         """Computes the energy expenditure of the robot in Joules."""
         # Calculate power: sum(|torque * joint_velocity|)
@@ -532,6 +543,9 @@ class QuadrupedBaseEnv(PipelineEnv):
         joint_vel = pipeline_state.qd[6:18]
         power = jnp.sum(jnp.abs(joint_torques * joint_vel))
         return power * self.dt
+
+    def _absolute_foot_slip(self, foot_slip_vel: jax.Array, contact_filt: jax.Array) -> jax.Array:
+        return jnp.sum(jnp.abs(foot_slip_vel) * contact_filt.reshape((-1, 1)))
 
     def _update_energy_metrics(
         self, pipeline_state: PipelineState, state_metrics: dict[str, jax.Array]
